@@ -1,0 +1,59 @@
+{
+  "firestore": {
+    "/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Questions bank"
+    },
+    "/exam_results/{resultId}": {
+      "schema": "ExamResult",
+      "description": "Final grades"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Users collection"
+    }
+  },
+  "entities": {
+    "Question": {
+      "title": "Question",
+      "description": "Exam Question",
+      "type": "object",
+      "properties": {
+        "exam_type": { "type": "string" },
+        "subject": { "type": "string" },
+        "year": { "type": "number" },
+        "question_text": { "type": "string" },
+        "image_url": { "type": "string" },
+        "options": { "type": "object" },
+        "correct_answer": { "type": "string" },
+        "explanation": { "type": "string" }
+      }
+    },
+    "User": {
+      "title": "User",
+      "description": "A user profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "tier": { "type": "string" },
+        "examCount": { "type": "number" }
+      }
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "User's test score",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "score": { "type": "number" },
+        "total": { "type": "number" },
+        "answers": { "type": "object" },
+        "createdAt": { "type": "string" }
+      }
+    }
+  }
+}

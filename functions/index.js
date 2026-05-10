@@ -1,0 +1,171 @@
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const cors = require('cors')({ origin: true });
+const crypto = require('crypto');
+
+admin.initializeApp();
+const db = admin.firestore(admin.app(), "j-texams-db");
+
+// Hardcode the region to europe-west2
+const regionalFunctions = functions.region("europe-west2");
+
+// User Auth Trigger
+exports.onUserCreated = regionalFunctions.auth.user().onCreate(async (user) => {
+  try {
+    await db.collection("users").doc(user.uid).set({
+      uid: user.uid,
+      email: user.email || "",
+      displayName: user.displayName || "Student",
+      subscription_status: "free",
+      total_exams_taken: 0,
+      average_score: 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log("User profile created for", user.uid);
+  } catch (error) {
+    console.error("Error creating user profile", error);
+  }
+});
+
+// Grading Function
+exports.gradeExam = regionalFunctions.https.onCall(async (data, context) => {
+  // Ensure user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "User must be signed in to submit an exam."
+    );
+  }
+
+  const { examType, answers } = data;
+  const userId = context.auth.uid;
+
+  if (!answers || typeof answers !== "object") {
+    throw new functions.https.HttpsError("invalid-argument", "Valid answers map is required.");
+  }
+
+  let score = 0;
+  let total = 0;
+  const detailedResults = [];
+
+  try {
+    for (const [questionId, selectedOption] of Object.entries(answers)) {
+      total++;
+      const qDoc = await db.collection("questions").doc(questionId).get();
+      
+      if (qDoc.exists) {
+        const qData = qDoc.data();
+        const isCorrect = qData.correct_answer === selectedOption;
+        if (isCorrect) score++;
+        
+        detailedResults.push({
+          questionId,
+          isCorrect,
+          correctAnswer: qData.correct_answer,
+          explanation: qData.explanation
+        });
+      }
+    }
+
+    // Securely write results from the backend so clients can't spoof scores
+    const resultRef = await db.collection("exam_results").add({
+      userId,
+      examType,
+      score,
+      total,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      success: true,
+      score,
+      total,
+      detailedResults,
+      resultId: resultRef.id
+    };
+  } catch (error) {
+    console.error("Grading execution error:", error);
+    throw new functions.https.HttpsError("internal", "An error occurred during grading.");
+  }
+});
+
+// Premium Upgrades via Flutterwave V3 (Payment Link Generation)
+exports.generatePaymentLink = regionalFunctions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== "POST") {
+      return res.status(405).send("Method Not Allowed");
+    }
+
+    const { uid, email } = req.body;
+    if (!uid || !email) {
+      return res.status(400).send("UID and email are required");
+    }
+
+    try {
+      // Flutterwave V4 Standard Payload Scaffold
+      const payload = {
+        tx_ref: `jtexams-${uid}-${Date.now()}`,
+        amount: 5000,
+        currency: "NGN",
+        redirect_url: "https://your-domain.com/dashboard",
+        customer: {
+          email,
+        },
+        customizations: {
+          title: "exam city Premium Access",
+          description: "Unlock all past questions and analytics",
+        }
+      };
+
+      // Simulated payment link generation
+      // In prod: call Flutterwave endpoint and get real link
+      // const response = await axios.post("https://api.flutterwave.com/v3/payments", payload, { headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` } });
+      const paymentLink = `https://checkout.flutterwave.com/v3/hosted/pay/${payload.tx_ref}`;
+
+      return res.json({ success: true, paymentLink });
+    } catch (error) {
+      console.error("Payment Link Generation Error:", error);
+      return res.status(500).json({ error: "Failed to generate payment link" });
+    }
+  });
+});
+
+// Flutterwave Webhook Verification
+exports.verifyFlutterwaveWebhook = regionalFunctions.https.onRequest(async (req, res) => {
+  // We do not wrap webhook in cors usually, but following the pattern:
+  const signature = req.headers["verif-hash"];
+  if (!signature || signature !== process.env.FLW_SECRET_HASH) {
+    // In dev mode or missing env, we might comment this out to test or keep it secure
+    console.warn("Invalid or missing webhook signature");
+    return res.status(401).send("Unauthorized");
+  }
+
+  const payload = req.body;
+  if (!payload || !payload.data) {
+    return res.status(400).send("Invalid payload");
+  }
+
+  // Assuming Flutterwave V3 payload structure for success
+  if (payload.data.status === "successful" && payload.data.amount >= 5000) {
+    try {
+      // Extract uid from tx_ref (e.g. jtexams-<uid>-<timestamp>)
+      const txRef = payload.data.tx_ref || "";
+      const uidMatch = txRef.match(/jtexams-([a-zA-Z0-9]+)-/);
+      const uid = uidMatch ? uidMatch[1] : null;
+
+      if (uid) {
+        await db.collection("users").doc(uid).set({
+          subscription_status: "premium",
+          premiumUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        console.log(`User ${uid} upgraded to premium via webhook.`);
+      }
+      return res.status(200).send("Webhook processed");
+    } catch (error) {
+      console.error("Webhook processing error:", error);
+      return res.status(500).send("Failed to process webhook");
+    }
+  }
+
+  return res.status(200).send("Event ignored");
+});
