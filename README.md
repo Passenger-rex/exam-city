@@ -29,7 +29,7 @@ Make sure you have Node.js and npm installed on your machine.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/exam-city.git
+   git clone https://github.com/Passenger-rex/exam-city.git
    cd exam-city
    ```
 
@@ -50,7 +50,7 @@ Make sure you have Node.js and npm installed on your machine.
    npm run dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+5. Open [https://ais-pre-5vbd2arshlvauuzdnzkjiv-804058776311.europe-west2.run.app](https://ais-pre-5vbd2arshlvauuzdnzkjiv-804058776311.europe-west2.run.app) to view it in your browser.
 
 ## 📦 Deployment (Vercel)
 
@@ -64,7 +64,7 @@ Make sure to add your environment variables in the Vercel project settings!
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
-Feel free to check out the [issues page](https://github.com/your-username/exam-city/issues).
+Feel free to check out the [issues page](https://github.com/Passenger-rex/exam-city/issues).
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -80,4 +80,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 John Tobi - johntobismart@gmail.com
 
-Project Link: [https://github.com/your-username/exam-city](https://github.com/your-username/exam-city)
+Project Link: [https://github.com/Passenger-rex/exam-city](https://github.com/Passenger-rex/exam-city)
