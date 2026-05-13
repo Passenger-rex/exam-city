@@ -12,6 +12,10 @@ An intelligent, AI-powered mock examination platform tailored for WAEC, JAMB, an
 - **Offline Output:** Generate and print offline PDFs of exams for physical practice.
 - **User Dashboard:** Track performance trends, total tests taken, and overall readiness. 
 
+## 🌐 Live Demo
+
+You can view the live application here: [https://exam-city.vercel.app](https://exam-city.vercel.app) *(Replace this with your actual Vercel deployment URL)*
+
 ## 🛠️ Tech Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Framer Motion
@@ -50,7 +54,7 @@ Make sure you have Node.js and npm installed on your machine.
    npm run dev
    ```
 
-5. Open [https://ais-pre-5vbd2arshlvauuzdnzkjiv-804058776311.europe-west2.run.app](https://ais-pre-5vbd2arshlvauuzdnzkjiv-804058776311.europe-west2.run.app) to view it in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 ## 📦 Deployment (Vercel)
 
