@@ -222,6 +222,17 @@ export default function ReviewPage() {
                   />
                 </div>
 
+                {q.image && (
+                  <div className="mb-6 pl-0 sm:pl-12 w-full flex justify-start">
+                    <img 
+                      src={q.image} 
+                      alt="Question Graphic" 
+                      className="max-w-full h-auto max-h-64 object-contain rounded-xl border border-outline-variant/30 bg-white shadow-sm" 
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-3 pl-0 sm:pl-12">
                   {Object.entries(q.options || {}).map(
                     ([key, val]: [string, any]) => {

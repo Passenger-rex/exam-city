@@ -14,7 +14,7 @@ An intelligent, AI-powered mock examination platform tailored for WAEC, JAMB, an
 
 ## 🌐 Live Demo
 
-You can view the live application here: [https://exam-city.vercel.app](https://exam-city.vercel.app) *(Replace this with your actual Vercel deployment URL)*
+You can view the live application here: [https://exam-city.vercel.app](https://exam-city.vercel.app)
 
 ## 🛠️ Tech Stack
 
@@ -53,8 +53,6 @@ Make sure you have Node.js and npm installed on your machine.
    ```bash
    npm run dev
    ```
-
-5. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 ## 📦 Deployment (Vercel)
 

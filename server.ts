@@ -142,7 +142,7 @@ Correct Answer: ${options[correctAnswer] || correctAnswer}
 Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-step breakdown. Use markdown to format the output nicely.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt
     });
 
@@ -156,70 +156,125 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
 // Questions generator API Endpoint
 app.get("/api/questions", async (req, res) => {
   try {
-    const { subject = "english", year = "any", type = "standard" } = req.query;
-    const limitStr = type === "micro" ? "5" : "15";
+    const { subject = "english", year = "any", type = "standard", bank = "public" } = req.query;
+    const limitNum = type === "micro" ? 5 : 40;
+    const isPro = bank === "premium";
     
-    const { GoogleGenAI, Type } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    let allQuestions: any[] = [];
+    
+    // Attempt ALOC API
+    const alocToken = process.env.VITE_ALOC_ACCESS_TOKEN || process.env.ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8"; // Fallback to a known demo token if missing
+    const alocLimit = isPro ? Math.floor(limitNum / 2) : limitNum; 
+    let alocError = null;
 
-    let yearInstruction = "";
-    if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
-      yearInstruction = "Assign a random past year to each question.";
-    } else {
-      yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
+    try {
+      if (alocLimit > 0) {
+        // Fetch up to 40 questions: ALOC provides 'q/40' for multiple questions
+        const fetchUrl = alocLimit > 1 ? `https://questions.aloc.com.ng/api/v2/q/${alocLimit}?subject=${subject}` : `https://questions.aloc.com.ng/api/v2/q?subject=${subject}`;
+        
+        const alocRes = await fetch(fetchUrl, {
+           headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "AccessToken": alocToken
+           }
+        });
+        if (alocRes.ok) {
+           const alocJson = await alocRes.json();
+           if (alocJson.status && alocJson.data) {
+              const fetchedData = Array.isArray(alocJson.data) ? alocJson.data : [alocJson.data];
+              allQuestions = fetchedData.slice(0, alocLimit);
+           }
+        } else {
+           alocError = alocRes.status;
+        }
+      }
+    } catch (e: any) {
+      console.error("Backend ALOC API error:", e);
+      alocError = e.message;
     }
 
-    const prompt = `Surf online to find and return exactly ${limitStr} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.`;
+    const remainingLimit = limitNum - allQuestions.length;
     
-    const responseSchema = {
-        type: Type.OBJECT,
-        properties: {
-           subject: { type: Type.STRING },
-           data: {
-             type: Type.ARRAY,
-             items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  question: { type: Type.STRING },
-                  option: {
-                    type: Type.OBJECT,
-                    properties: {
-                      a: { type: Type.STRING },
-                      b: { type: Type.STRING },
-                      c: { type: Type.STRING },
-                      d: { type: Type.STRING }
-                    }
-                  },
-                  answer: { type: Type.STRING, enum: ["a", "b", "c", "d"] },
-                  solution: { type: Type.STRING },
-                  examyear: { type: Type.STRING }
-                },
-                required: ["id", "question", "option", "answer", "solution", "examyear"]
-             }
-           }
-        },
-        required: ["subject", "data"]
-    };
+    // If we need more questions, or if it's pro mode, mix in Gemini questions
+    if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: responseSchema
+      let yearInstruction = "";
+      if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
+        yearInstruction = "Assign a random past year to each question.";
+      } else {
+        yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
       }
-    });
 
-    const jsonStr = response.text?.trim() || "{}";
-    const json = JSON.parse(jsonStr);
+      const prompt = `Surf online to find and return exactly ${remainingLimit} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.`;
+      
+      const responseSchema = {
+          type: Type.OBJECT,
+          properties: {
+             subject: { type: Type.STRING },
+             data: {
+               type: Type.ARRAY,
+               items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    question: { type: Type.STRING },
+                    option: {
+                      type: Type.OBJECT,
+                      properties: {
+                        a: { type: Type.STRING },
+                        b: { type: Type.STRING },
+                        c: { type: Type.STRING },
+                        d: { type: Type.STRING }
+                      }
+                    },
+                    answer: { type: Type.STRING, enum: ["a", "b", "c", "d"] },
+                    solution: { type: Type.STRING },
+                    examyear: { type: Type.STRING }
+                  },
+                  required: ["id", "question", "option", "answer", "solution", "examyear"]
+               }
+             }
+          },
+          required: ["subject", "data"]
+      };
 
-    res.json({ success: true, subject: json.subject || subject, data: json.data || [] });
-  } catch (genErr: any) {
-    console.error("Error generating questions with Gemini: ", genErr);
-    res.status(500).json({ success: false, error: "Failed to generate questions. " + genErr.message });
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-1.5-flash",
+          contents: prompt,
+          config: {
+            temperature: 0.7,
+            tools: [{ googleSearch: {} }],
+            responseMimeType: "application/json",
+            responseSchema: responseSchema
+          }
+        });
+
+        const jsonStr = response.text?.trim() || "{}";
+        const json = JSON.parse(jsonStr);
+        if (json.data && Array.isArray(json.data)) {
+          allQuestions = [...allQuestions, ...json.data];
+        }
+      } catch (genErr) {
+        console.error("Error generating questions with Gemini: ", genErr);
+      }
+    }
+
+    // fallback mapping if both failed entirely will be handled by the frontend picking from DB.
+    
+    // Shuffle the array nicely
+    for (let i = allQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+    }
+
+    res.json({ success: true, subject, data: allQuestions.slice(0, limitNum), alocError });
+  } catch (err: any) {
+    console.error("Questions endpoint error:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -236,7 +291,7 @@ app.post("/api/chatbot", async (req, res) => {
     }));
     
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite",
+      model: "gemini-1.5-flash",
       contents: history,
       config: {
         systemInstruction: "You are a helpful Study Coach tutor. Provide study tips, mental math tricks, and clear concise explanations for specific topics. Be encouraging and concise. Answer in markdown."
