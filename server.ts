@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -251,20 +250,7 @@ app.post("/api/chatbot", async (req, res) => {
   }
 });
 
-// Vite middleware for development
-if (process.env.NODE_ENV !== "production") {
-  createViteServer({
-    server: { middlewareMode: true },
-    appType: "spa",
-  }).then((vite) => {
-    app.use(vite.middlewares);
-    if (!process.env.VERCEL) {
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-      });
-    }
-  });
-} else {
+function startStaticServer() {
   const distPath = path.join(process.cwd(), "dist");
   app.use(express.static(distPath));
   app.get("*", (req, res) => {
@@ -273,9 +259,38 @@ if (process.env.NODE_ENV !== "production") {
 
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Static server running on http://localhost:${PORT}`);
     });
   }
+}
+
+// Vite middleware for development or fallback
+if (process.env.NODE_ENV !== "production") {
+  import("vite")
+    .then(({ createServer: createViteServer }) => {
+      createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      })
+        .then((vite) => {
+          app.use(vite.middlewares);
+          if (!process.env.VERCEL) {
+            app.listen(PORT, "0.0.0.0", () => {
+              console.log(`Vite Dev Server running on http://localhost:${PORT}`);
+            });
+          }
+        })
+        .catch(() => {
+          console.warn("Vite init failed, falling back to static server.");
+          startStaticServer();
+        });
+    })
+    .catch(() => {
+      console.warn("Vite not found, assuming production mode and falling back to static server.");
+      startStaticServer();
+    });
+} else {
+  startStaticServer();
 }
 
 export default app;
