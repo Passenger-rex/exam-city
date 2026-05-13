@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   LayoutGrid,
   Send,
+  Volume2,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 
@@ -33,17 +34,43 @@ export default function ExamPage() {
   const typeParam = searchParams.get("type") || "standard";
   const bankParam = searchParams.get("bank") || "public";
   const subjectParam = searchParams.get("subject") || "english";
+  const printParam = searchParams.get("print") === "true";
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(3600000); // 1 hour in ms
+  const [timeLeft, setTimeLeft] = useState(typeParam === "micro" ? 300000 : 3600000); // 5 mins / 1 hour
   const [showGrid, setShowGrid] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // We should not use sessionStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
+  const stateKey = printParam ? "offline_print_only" : `exam_state_${subjectParam}_${yearParam}_${typeParam}`;
 
   useEffect(() => {
     const fetchQuestions = async () => {
+      if (!printParam) {
+        const savedStateStr = sessionStorage.getItem(stateKey);
+        if (savedStateStr) {
+          try {
+            const savedState = JSON.parse(savedStateStr);
+            if (savedState.questions && savedState.questions.length > 0) {
+              setQuestions(savedState.questions);
+              setAnswers(savedState.answers || {});
+              setCurrentIndex(savedState.currentIndex || 0);
+              if (savedState.timeLeft !== undefined) {
+                setTimeLeft(savedState.timeLeft);
+              }
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse saved state", e);
+          }
+        }
+      }
+
       try {
         let qList: any[] = [];
         
@@ -67,150 +94,131 @@ export default function ExamPage() {
             // Approximate weakest subject (could be improved)
             targetSubject = "mathematics";
           }
-          setTimeLeft(600000);
+          if (timeLeft > 300000) setTimeLeft(300000); // 5 mins
         }
 
-        try {
-          const { GoogleGenAI, Type } = await import("@google/genai");
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-          let yearInstruction = "";
-          if (yearParam.toLowerCase() === "random" || yearParam.toLowerCase() === "any") {
-            yearInstruction = "Assign a random past year to each question.";
-          } else {
-            yearInstruction = `All questions should be specifically from or adapted from the year ${yearParam}.`;
-          }
-
-          const prompt = `Surf online to find and return exactly ${limitStr} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${targetSubject}". ${yearInstruction} Make sure to use the Google Search tool to find exact past questions from online platforms if available. The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.
-          
-IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a markdown code block like \`\`\`json. The JSON object must exactly match this structure:
-{
-  "subject": "subject name",
-  "data": [
-    {
-       "id": 1,
-       "question": "question text",
-       "option": { "a": "option A text", "b": "option B text", "c": "option C text", "d": "option D text" },
-       "answer": "a",
-       "solution": "explanation of the answer",
-       "examyear": "2023"
-    }
-  ]
-}`;
-
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-              temperature: 0.7,
-              tools: [{ googleSearch: {} }]
+        if (bankParam === "premium") {
+          try {
+            const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}`);
+            if (!res.ok) throw new Error("Failed to fetch questions");
+            const json = await res.json();
+            if (json.success && json.data && Array.isArray(json.data)) {
+              qList = json.data.map((item: any) => ({
+                id: String(item.id),
+                question_html: item.question,
+                options: item.option,
+                correct_answer: item.answer,
+                subject: json.subject || targetSubject,
+                explanation: item.solution,
+                year: item.examyear || yearParam,
+                isPremium: bankParam === "premium"
+              }));
             }
-          });
-
-          let jsonStr = response.text?.trim() || "{}";
-          // Remove Markdown formatting if AI included it
-          if (jsonStr.startsWith("\`\`\`json")) {
-            jsonStr = jsonStr.replace(/^\`\`\`json/, "");
-            if (jsonStr.endsWith("\`\`\`")) {
-              jsonStr = jsonStr.slice(0, -3).trim();
-            }
-          } else if (jsonStr.startsWith("\`\`\`")) {
-            jsonStr = jsonStr.replace(/^\`\`\`/, "");
-            if (jsonStr.endsWith("\`\`\`")) {
-               jsonStr = jsonStr.slice(0, -3).trim();
-            }
+          } catch (genErr) {
+            console.error("Error fetching questions from API: ", genErr);
           }
-          const json = JSON.parse(jsonStr);
-
-          if (json && json.data && Array.isArray(json.data)) {
-            qList = json.data.map((item: any) => ({
-              id: String(item.id),
-              question_html: item.question,
-              options: item.option,
-              correct_answer: item.answer,
-              subject: json.subject || targetSubject,
-              explanation: item.solution,
-              year: item.examyear || yearParam,
-              isPremium: bankParam === "premium"
-            }));
-          } else if (json && json.data && typeof json.data === "object") {
-            qList = [{
-              id: String(json.data.id),
-              question_html: json.data.question,
-              options: json.data.option,
-              correct_answer: json.data.answer,
-              subject: json.subject || targetSubject,
-              explanation: json.data.solution,
-              year: json.data.examyear || yearParam,
-              isPremium: bankParam === "premium"
-             }];
+        } else {
+          try {
+            // fetch ALOC public API
+            const alocToken = import.meta.env.VITE_ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8";
+            const alocRes = await fetch(`https://questions.aloc.com.ng/api/v2/m?subject=${targetSubject}`, {
+               headers: {
+                  "Accept": "application/json",
+                  "Content-Type": "application/json",
+                  "AccessToken": alocToken
+               }
+            });
+            if (alocRes.ok) {
+               const alocJson = await alocRes.json();
+               if (alocJson.status && alocJson.data && Array.isArray(alocJson.data)) {
+                  qList = alocJson.data.map((item: any) => ({
+                     id: String(item.id),
+                     question_html: item.question,
+                     options: item.option,
+                     correct_answer: item.answer,
+                     subject: item.subject || targetSubject,
+                     explanation: item.solution,
+                     year: item.examyear || yearParam,
+                     isPremium: false
+                  })).slice(0, Number(limitStr));
+               }
+            } else {
+              console.error("ALOC API returned not ok:", alocRes.status);
+            }
+          } catch (e) {
+            console.error("ALOC API failed:", e);
           }
-        } catch (genErr) {
-          console.error("Error generating questions with Gemini: ", genErr);
         }
 
         // If ALOC API fails or returns nothing, fallback to Firestore DB questions
         if (qList.length === 0) {
-           const snapshot = await getDocs(collection(db, "questions"));
-           qList = snapshot.docs.map((doc) => ({
-             id: doc.id,
-             question_html: doc.data().question_text || doc.data().question_html,
-             ...doc.data(),
-           }));
-           
-           if (yearParam !== "any") {
-             qList = qList.filter((q) => q.year == yearParam);
-           }
-           if (typeParam === "micro") qList = qList.slice(0, 5);
-        }
+          console.log("No questions from ALOC/API, falling back to Firestore");
+          try {
+             // Let's only fetch a small subset or everything? Fetching all might be heavy if db is large, 
+             // but we will do our best.
+             const snapshot = await getDocs(collection(db, "questions"));
+             qList = snapshot.docs.map((doc) => ({
+               id: doc.id,
+               question_html: doc.data().question_text || doc.data().question_html,
+               ...doc.data(),
+             }));
+             
+             if (yearParam !== "any") {
+               qList = qList.filter((q) => q.year == yearParam);
+             }
+             if (typeParam === "micro") qList = qList.slice(0, 5);
+          } catch (dbErr) {
+            console.error("Error fetching from Firestore", dbErr);
+          }
+         }
         
         if (qList.length === 0) {
           // Fallback if db is also empty and ALOC API fails
           qList = [
             {
               id: "demo-1",
-              question_html: "Which of the following is not a programming language?",
-              options: { a: "Python", b: "HTML", c: "Java", d: "C++" },
+              question_html: `Which of the following is an example of ${subjectParam || "the topic"}?`,
+              options: { a: "Example A", b: "Example B", c: "Example C", d: "Example D" },
               correct_answer: "b",
-              explanation: "HTML is a markup language, not a programming language.",
-              subject: targetSubject || "computer",
-              year: "2024"
+              explanation: "Option B is the correct answer based on general principles.",
+              subject: subjectParam || "demo",
+              year: yearParam || "2024"
             },
             {
               id: "demo-2",
-              question_html: "What is the capital of Nigeria?",
-              options: { a: "Lagos", b: "Kano", c: "Abuja", d: "Ibadan" },
+              question_html: "What is the primary characteristic of this subject?",
+              options: { a: "Option A", b: "Option B", c: "Option C", d: "Option D" },
               correct_answer: "c",
-              explanation: "Abuja replaced Lagos as the capital of Nigeria in 1991.",
-              subject: targetSubject || "general",
-              year: "2024"
+              explanation: "Option C correctly identifies the primary characteristic.",
+              subject: subjectParam || "demo",
+              year: yearParam || "2024"
             },
             {
               id: "demo-3",
-              question_html: "Solve for x: 2x + 5 = 15",
-              options: { a: "5", b: "10", c: "15", d: "20" },
+              question_html: "Solve the basic problem related to this topic.",
+              options: { a: "1", b: "2", c: "3", d: "4" },
               correct_answer: "a",
-              explanation: "Subtract 5 from both sides: 2x = 10, so x = 5.",
-              subject: "mathematics",
-              year: "2024"
+              explanation: "The correct answer is derived from basic rules.",
+              subject: subjectParam || "demo",
+              year: yearParam || "2024"
             },
             {
               id: "demo-4",
-              question_html: "Which planet is known as the Red Planet?",
-              options: { a: "Venus", b: "Mars", c: "Jupiter", d: "Saturn" },
+              question_html: "Which theory is most associated with this field?",
+              options: { a: "Theory X", b: "Theory Y", c: "Theory Z", d: "Theory W" },
               correct_answer: "b",
-              explanation: "Mars appears red due to iron oxide on its surface.",
-              subject: "science",
-              year: "2024"
+              explanation: "Theory Y is widely recognized as foundational.",
+              subject: subjectParam || "demo",
+              year: yearParam || "2024"
             },
             {
               id: "demo-5",
-              question_html: "Who wrote 'Things Fall Apart'?",
-              options: { a: "Wole Soyinka", b: "Chimamanda Ngozi Adichie", c: "Chinua Achebe", d: "Buchi Emecheta" },
-              correct_answer: "c",
-              explanation: "Chinua Achebe wrote the novel 'Things Fall Apart' in 1958.",
-              subject: targetSubject || "literature",
-              year: "2024"
+              question_html: "Identify the correct statement below.",
+              options: { a: "Statement 1 is false.", b: "Statement 2 is true.", c: "Statement 3 is mixed.", d: "Statement 4 is incorrect." },
+              correct_answer: "b",
+              explanation: "Statement 2 aligns with established facts.",
+              subject: subjectParam || "demo",
+              year: yearParam || "2024"
             }
           ];
           
@@ -228,22 +236,52 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
       }
     };
     fetchQuestions();
-  }, [bankParam, typeParam, yearParam]);
+  }, [bankParam, typeParam, yearParam, subjectParam, stateKey]);
 
   useEffect(() => {
-    if (loading || submitting) return;
+    if (loading || questions.length === 0) return;
+    if (!printParam) {
+       sessionStorage.setItem(stateKey, JSON.stringify({
+         questions,
+         answers,
+         currentIndex,
+         timeLeft
+       }));
+    } else {
+       // It's print mode. Wait a bit for DOM to render then trigger print
+       setTimeout(() => {
+          window.print();
+       }, 500);
+    }
+  }, [questions, answers, currentIndex, timeLeft, stateKey, loading, printParam]);
+
+  // Audio Cleanup
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    return () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
+  }, [currentIndex]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (loading || submitting || printParam || timeLeft <= 0) return;
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1000) {
-          clearInterval(timer);
-          handleSubmit();
-          return 0;
-        }
-        return prev - 1000;
-      });
+      setTimeLeft((prev) => Math.max(0, prev - 1000));
     }, 1000);
     return () => clearInterval(timer);
-  }, [loading, submitting]);
+  }, [loading, submitting, printParam, timeLeft]);
+
+  // Handle timer reaching zero
+  useEffect(() => {
+    if (timeLeft === 0 && !submitting && !loading && !printParam && questions.length > 0) {
+      alert("Time is up! Submitting your exam automatically.\nGood luck!");
+      handleSubmit();
+    }
+  }, [timeLeft, submitting, loading, printParam, questions.length]);
 
   const handleSelect = (optionKey: string) => {
     setAnswers((prev) => ({
@@ -254,6 +292,8 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    sessionStorage.removeItem(stateKey);
+
     let score = 0;
     questions.forEach((q) => {
       if (answers[q.id] === q.correct_answer) score++;
@@ -313,6 +353,80 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
   const progressPercent = ((currentIndex + 1) / questions.length) * 100;
   const answeredCount = Object.keys(answers).length;
 
+  const speakQuestion = () => {
+    if (!('speechSynthesis' in window)) {
+      alert("Text-to-speech is not supported in this browser.");
+      return;
+    }
+    
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      return;
+    }
+    
+    setIsPlaying(true);
+    if (!currentQ) return;
+    
+    let textToSpeak = "";
+    
+    const tempQ = document.createElement("div");
+    tempQ.innerHTML = currentQ.question_text || currentQ.question_html || '';
+    textToSpeak += "Question. " + (tempQ.textContent || tempQ.innerText || "") + ". ";
+
+    Object.entries(currentQ.options || {}).forEach(([key, val]) => {
+       const optText = val as string;
+       const tempO = document.createElement("div");
+       tempO.innerHTML = optText;
+       textToSpeak += `Option ${key.toUpperCase()}. ${tempO.textContent || tempO.innerText || ""}. `;
+    });
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    
+    const voices = window.speechSynthesis.getVoices();
+    const naturalVoice = voices.find(v => v.name.includes("Google") || v.lang === "en-US" || v.lang === "en-GB");
+    if (naturalVoice) {
+      utterance.voice = naturalVoice;
+    }
+    
+    utterance.rate = 0.9;
+    
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  if (printParam) {
+    return (
+       <div className="min-h-screen bg-white text-black p-8 font-serif print:p-0 print:m-0">
+          <div className="text-center mb-8 border-b-2 border-black pb-4">
+             <h1 className="text-3xl font-extrabold uppercase tracking-widest">{subjectParam} MOCK EXAM</h1>
+             <p className="text-sm mt-2">Generated by EXAM CITY. - Offline Practice Document</p>
+          </div>
+          <div className="space-y-8">
+             {questions.map((q, idx) => (
+                <div key={q.id} className="break-inside-avoid">
+                   <h3 className="text-lg font-bold mb-2">Question {idx + 1}</h3>
+                   <div 
+                     className="mb-4 text-base"
+                     dangerouslySetInnerHTML={{ __html: q.question_html || q.question_text }}
+                   />
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4">
+                     {Object.entries(q.options || {}).map(([key, val]: [string, any]) => (
+                        <div key={key} className="flex gap-2">
+                           <span className="font-bold uppercase">{key}.</span>
+                           <span dangerouslySetInnerHTML={{__html: val}} />
+                        </div>
+                     ))}
+                   </div>
+                </div>
+             ))}
+          </div>
+       </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface-dim font-body-md text-on-surface flex flex-col h-screen overflow-hidden">
       <nav className="bg-surface px-6 py-4 shadow-sm z-50 border-b border-outline-variant/30 flex justify-between items-center shrink-0">
@@ -327,17 +441,35 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setShowGrid(!showGrid)}
-            className="md:hidden p-2 rounded-lg bg-surface-dim text-on-surface-variant hover:text-primary transition-colors"
+            className="lg:hidden p-2 rounded-lg bg-surface-dim text-on-surface-variant hover:text-primary transition-colors"
             aria-label="Toggle Exam Overview"
           >
             <LayoutGrid className="w-5 h-5" />
           </button>
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold font-mono text-lg transition-colors ${timeLeft < 300000 ? "bg-error/10 text-error animate-pulse" : "bg-primary/10 text-primary"}`}
+          <motion.div
+            animate={
+              timeLeft < 60000
+                ? { scale: [1, 1.08, 1], filter: ["hue-rotate(0deg)", "hue-rotate(10deg)", "hue-rotate(0deg)"] }
+                : timeLeft < 300000
+                ? { scale: [1, 1.02, 1] }
+                : {}
+            }
+            transition={{
+              repeat: Infinity,
+              duration: timeLeft < 60000 ? 0.5 : 2,
+              ease: "easeInOut",
+            }}
+            className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold font-mono text-xl md:text-2xl transition-colors duration-500 shadow-lg border-2 ${
+              timeLeft < 60000
+                ? "bg-error text-white border-error shadow-error/40"
+                : timeLeft < 300000
+                ? "bg-error/10 text-error border-error/50 shadow-error/10"
+                : "bg-surface-dim text-on-surface border-outline-variant/50 shadow-black/5"
+            }`}
           >
-            <Clock className="w-5 h-5" />
+            <Clock className={`w-6 h-6 ${timeLeft < 60000 ? "animate-pulse" : ""}`} />
             {formatTime(timeLeft)}
-          </div>
+          </motion.div>
         </div>
       </nav>
 
@@ -348,14 +480,21 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
         />
       </div>
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden flex-col lg:flex-row relative">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 scroll-smooth">
-          <div className="max-w-3xl mx-auto pb-24">
-            <div className="flex justify-between items-end mb-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scroll-smooth w-full">
+          <div className="max-w-4xl mx-auto md:pb-10 pb-28">
+            <div className="flex justify-between items-end mb-6 md:mb-8">
               <h2 className="text-sm font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1.5 rounded-full inline-block">
                 Question {currentIndex + 1}
               </h2>
+              <button
+                onClick={speakQuestion}
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full border flex items-center justify-center transition-colors shadow-sm ${isPlaying ? "bg-primary text-white border-primary animate-pulse" : "border-outline-variant/50 text-on-surface hover:bg-surface-dim hover:text-primary"}`}
+                aria-label={isPlaying ? "Stop Reading" : "Read Question Aloud"}
+              >
+                <Volume2 className="w-5 h-5" />
+              </button>
             </div>
 
             <motion.div
@@ -364,21 +503,21 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="bg-surface p-8 sm:p-10 rounded-[32px] border border-outline-variant/40 shadow-sm"
+              className="bg-surface p-5 sm:p-8 md:p-10 rounded-[20px] sm:rounded-[28px] border border-outline-variant/40 shadow-sm"
             >
               <h1 
-                className="text-2xl sm:text-3xl font-headline-md font-bold mb-10 text-on-surface leading-snug prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl"
+                className="text-lg sm:text-2xl md:text-3xl font-headline-md font-bold mb-6 sm:mb-8 md:mb-10 text-on-surface leading-snug prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl break-words w-full"
                 dangerouslySetInnerHTML={{ __html: currentQ?.question_html || currentQ?.question_text }}
               />
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {Object.entries(currentQ?.options || {}).map(
                   ([key, val]: [string, any]) => {
                     const isSelected = answers[currentQ.id] === key;
                     return (
                       <label
                         key={key}
-                        className={`w-full text-left p-6 flex gap-4 items-start rounded-2xl border-2 transition-all group cursor-pointer ${isSelected ? "border-primary bg-primary/5 text-primary shadow-sm" : "border-outline-variant/40 hover:bg-surface-dim hover:border-outline-variant/80 bg-surface"}`}
+                        className={`w-full text-left p-4 sm:p-5 md:p-6 flex gap-3 sm:gap-4 lg:gap-5 items-start rounded-xl sm:rounded-2xl border-2 transition-all group cursor-pointer ${isSelected ? "border-primary bg-primary/5 text-primary shadow-sm" : "border-outline-variant/40 hover:bg-surface-dim hover:border-outline-variant/80 bg-surface"}`}
                       >
                         <input
                            type="radio"
@@ -389,16 +528,16 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
                            className="hidden"
                         />
                         <div
-                          className={`mt-1 shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors font-bold text-sm ${isSelected ? "border-primary bg-primary text-white" : "border-outline-variant text-on-surface-variant group-hover:border-outline"}`}
+                          className={`mt-0.5 sm:mt-1 shrink-0 w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center transition-colors font-bold text-xs sm:text-sm ${isSelected ? "border-primary bg-primary text-white" : "border-outline-variant text-on-surface-variant group-hover:border-outline"}`}
                         >
                           {isSelected ? (
-                             <CheckCircle2 className="w-5 h-5 text-white" />
+                             <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                           ) : (
                              key.toUpperCase()
                           )}
                         </div>
                         <div
-                          className={`text-lg font-medium prose prose-p:my-0 flex-1 ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
+                          className={`text-[15px] sm:text-base md:text-lg font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
                           dangerouslySetInnerHTML={{ __html: val }}
                         />
                       </label>
@@ -408,13 +547,13 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
               </div>
             </motion.div>
 
-            <div className="mt-8 flex justify-between items-center">
+            <div className="mt-6 sm:mt-8 flex justify-between items-center gap-3">
               <button
                 onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentIndex === 0}
-                className="px-6 py-3.5 font-bold text-on-surface hover:bg-surface border border-outline-variant/50 rounded-2xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-2"
+                className="px-4 sm:px-6 py-3 sm:py-3.5 font-bold text-on-surface hover:bg-surface border border-outline-variant/50 rounded-2xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-2"
               >
-                <ChevronLeft className="w-5 h-5" /> Back
+                <ChevronLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
               </button>
 
               {currentIndex < questions.length - 1 ? (
@@ -424,7 +563,7 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
                       Math.min(questions.length - 1, prev + 1),
                     )
                   }
-                  className="px-8 py-3.5 bg-on-surface text-surface font-bold rounded-2xl hover:bg-on-surface/90 transition-all active:scale-95 shadow-lg shadow-on-surface/20 flex items-center gap-2"
+                  className="flex-1 sm:flex-none justify-center px-6 sm:px-8 py-3 sm:py-3.5 bg-on-surface text-surface font-bold rounded-2xl hover:bg-on-surface/90 transition-all active:scale-95 shadow-lg shadow-on-surface/20 flex items-center gap-2"
                 >
                   Continue <ChevronRight className="w-5 h-5" />
                 </button>
@@ -432,7 +571,7 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="px-8 py-3.5 bg-primary text-on-primary font-bold rounded-2xl hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2"
+                  className="flex-1 sm:flex-none justify-center px-6 sm:px-8 py-3 sm:py-3.5 bg-primary text-on-primary font-bold rounded-2xl hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2"
                 >
                   {submitting ? "Submitting..." : "Submit Exam"} <Send className="w-4 h-4" />
                 </button>
@@ -443,7 +582,7 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
 
         {/* Sidebar Nav (Desktop) / Mobile Drawer */}
         <div 
-          className={`shrink-0 w-80 bg-surface border-l border-outline-variant/30 flex flex-col transition-transform duration-300 md:translate-x-0 absolute md:relative right-0 top-0 h-full z-40 ${showGrid ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}
+          className={`shrink-0 w-80 lg:w-96 bg-surface border-l border-outline-variant/30 flex flex-col transition-transform duration-300 lg:translate-x-0 absolute lg:relative right-0 top-0 h-full z-40 ${showGrid ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'}`}
         >
           <div className="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface sticky top-0 z-10">
             <div>
@@ -455,7 +594,7 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
             </div>
             <button 
               onClick={() => setShowGrid(false)}
-              className="md:hidden p-2 bg-surface-dim rounded-full text-on-surface-variant"
+              className="lg:hidden p-2 bg-surface-dim rounded-full text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all"
               aria-label="Close Exam Overview"
             >
               <ChevronRight className="w-5 h-5" />
@@ -470,10 +609,10 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
                   key={q.id}
                   onClick={() => {
                     setCurrentIndex(idx);
-                    if(window.innerWidth < 768) setShowGrid(false);
+                    if(window.innerWidth < 1024) setShowGrid(false);
                   }}
                   aria-label={`Go to question ${idx + 1}`}
-                  className={`w-10 h-10 rounded-xl font-bold text-sm flex items-center justify-center transition-all ${
+                  className={`w-full aspect-square rounded-xl font-bold text-sm lg:text-base flex items-center justify-center transition-all ${
                     isCurrent 
                       ? "ring-2 ring-primary ring-offset-2 bg-primary/10 text-primary border border-primary/30" 
                       : isAnswered 
@@ -506,7 +645,7 @@ IMPORTANT: You MUST return your answer as a raw JSON object. Do not wrap it in a
       {showGrid && (
         <div 
           onClick={() => setShowGrid(false)}
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 lg:hidden"
         />
       )}
     </div>

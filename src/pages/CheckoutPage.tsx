@@ -3,12 +3,14 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Check, Shield, Lock, ChevronLeft, Zap, ArrowRight, Star } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import { Logo } from "../components/Logo";
+import { useUser } from "../UserContext";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const { user, loading: userLoading } = useUser();
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [transactionId, setTransactionId] = useState("");
@@ -22,9 +24,9 @@ export default function CheckoutPage() {
     currency: "NGN",
     payment_options: "card,mobilemoney,ussd",
     customer: {
-      email: auth.currentUser?.email || "user@example.com",
+      email: user?.email || "user@example.com",
       phone_number: "",
-      name: auth.currentUser?.displayName || "User",
+      name: user?.displayName || "User",
     },
     customizations: {
       title: "Pro Subscription",
@@ -36,7 +38,7 @@ export default function CheckoutPage() {
   const handleFlutterPayment = useFlutterwave(config);
 
   const handleUpgrade = () => {
-    if (!auth.currentUser) {
+    if (!user) {
       alert("Please log in first.");
       navigate("/login");
       return;
@@ -52,7 +54,7 @@ export default function CheckoutPage() {
         if (response.status === "successful" || response.status === "completed") {
           setLoading(true);
           try {
-            const userRef = doc(db, "users", auth.currentUser!.uid);
+            const userRef = doc(db, "users", user.uid);
             await setDoc(userRef, { tier: "pro" }, { merge: true });
             
             closePaymentModal();
@@ -77,11 +79,11 @@ export default function CheckoutPage() {
   if (paymentSuccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center font-body-md text-on-background p-4 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[100px] -z-10" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[800px] h-[400px] sm:h-[800px] bg-primary/5 rounded-full blur-[100px] -z-10" />
         <motion.div 
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="bg-surface border border-outline-variant/30 rounded-3xl p-8 md:p-12 max-w-md w-full shadow-2xl relative overflow-hidden text-center"
+          className="bg-surface border border-outline-variant/30 rounded-3xl p-6 sm:p-8 md:p-12 max-w-md w-full shadow-2xl relative overflow-hidden text-center"
         >
           <div className="absolute top-0 inset-x-0 h-1.5 bg-emerald-500" />
           <motion.div 
@@ -123,124 +125,154 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row font-body-md text-on-background selection:bg-primary/20 selection:text-primary">
-      {/* Left Column: Checkout Form / Actions */}
-      <div className="flex-1 flex flex-col bg-surface relative z-10 border-r border-outline-variant/30">
-        <nav className="p-6 md:px-12 md:py-8 flex items-center justify-between">
-          <Logo />
-          <button onClick={() => navigate(-1)} className="text-sm font-semibold text-on-surface-variant hover:text-on-surface flex items-center gap-2 group transition-colors">
-            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            Back
-          </button>
-        </nav>
+    <div className="min-h-screen bg-background flex flex-col font-body-md text-on-background selection:bg-primary/20 selection:text-primary pb-20">
+      {/* Navigation */}
+      <nav className="px-6 py-5 md:px-10 md:py-6 flex items-center justify-between border-b border-outline-variant/30 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+        <Logo />
+        <button 
+          onClick={() => navigate(-1)} 
+          className="text-sm font-semibold text-on-surface-variant hover:text-on-surface flex items-center gap-2 group transition-colors bg-surface hover:bg-surface-dim px-4 py-2 rounded-full border border-outline-variant/50"
+        >
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Back
+        </button>
+      </nav>
+
+      <main className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 pt-8 md:pt-16 pb-24 px-6 md:px-10">
         
-        <main className="flex-1 flex flex-col justify-center px-6 py-10 md:px-12 max-w-2xl mx-auto w-full">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-sm mb-8 border border-primary/20">
-              <Star className="w-4 h-4 fill-primary/20" />
-              Upgrade to Pro
-            </div>
-            <h1 className="text-4xl md:text-5xl font-headline-xl font-extrabold mb-6 text-on-surface tracking-tight leading-tight">
-              Complete your <br/> purchase
+        {/* Left Column: Actions & Form */}
+        <div className="lg:col-span-7 flex flex-col order-1">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
+            <h1 className="text-3xl md:text-4xl font-headline-lg font-bold mb-3 text-on-surface tracking-tight">
+              Complete your purchase
             </h1>
-            <p className="text-on-surface-variant text-lg mb-10 leading-relaxed max-w-md">
-              You're one step away from unlocking premium past questions, unlimited mock exams, and analytics.
+            <p className="text-on-surface-variant text-base mb-10">
+              Unlock unlimited mock exams, advanced analytics, and premium question banks.
             </p>
 
-            {/* Email Contact info display */}
-            <div className="mb-10 w-full">
-              <h3 className="text-sm font-bold text-on-surface mb-3 uppercase tracking-wider">Account Information</h3>
-              <div className="p-4 rounded-2xl border border-outline-variant/60 bg-surface-dim/30 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-sm text-on-surface-variant mb-1">Email address</span>
-                  <span className="font-semibold text-on-surface">{auth.currentUser?.email || "user@example.com"}</span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                   {auth.currentUser?.email?.charAt(0).toUpperCase() || "U"}
+            {/* Account Details Panel */}
+            <div className="mb-8">
+              <h3 className="text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">Account Information</h3>
+              <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface flex items-center justify-between w-full shadow-sm">
+                <div className="flex items-center gap-4 w-full">
+                  {userLoading ? (
+                    <div className="w-10 h-10 rounded-full bg-outline-variant/30 animate-pulse shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                      {user?.email?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                  )}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    {userLoading ? (
+                       <>
+                         <div className="h-4 w-24 bg-outline-variant/30 animate-pulse rounded mb-1" />
+                         <div className="h-3 w-40 bg-outline-variant/20 animate-pulse rounded" />
+                       </>
+                    ) : (
+                       <>
+                         <span className="font-semibold text-on-surface text-sm">{user?.displayName || "Student Account"}</span>
+                         <span className="text-sm text-on-surface-variant truncate">{user?.email || "user@example.com"}</span>
+                       </>
+                    )}
+                  </div>
+                  <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap self-center hidden sm:block">
+                    Current User
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6 w-full max-w-md">
+            <div className="h-px w-full bg-outline-variant/40 my-8" />
+
+            {/* Payment Section */}
+            <div className="space-y-5">
+              <h3 className="text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">Payment Details</h3>
+              <p className="text-sm text-on-surface-variant mb-6">Payment is securely processed by Flutterwave.</p>
+              
               <button 
                 onClick={handleUpgrade}
-                disabled={loading}
-                className="w-full h-16 bg-primary text-on-primary font-bold text-lg rounded-2xl hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 flex justify-center items-center gap-3 group overflow-hidden relative"
+                disabled={loading || userLoading}
+                className="w-full h-14 bg-primary text-on-primary font-semibold text-base rounded-xl hover:bg-primary/95 transition-all shadow-sm flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-                {loading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {loading || userLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    Pay ₦1,500 via Flutterwave
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    Pay ₦1,500
+                    <ArrowRight className="w-4 h-4 ml-1" />
                   </>
                 )}
               </button>
               
-              <div className="flex items-center justify-center gap-2 text-sm text-on-surface-variant font-medium">
-                <Shield className="w-4 h-4 text-emerald-500" />
-                <span>Payments are secure and encrypted.</span>
+              <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant mt-4">
+                <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Secure encrypted transaction</span>
               </div>
-            </div>
-          </motion.div>
-        </main>
-      </div>
-      
-      {/* Right Column: Order Summary */}
-      <div className="flex-1 bg-surface-dim/30 hidden md:flex flex-col justify-center px-12 py-10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-        
-        <div className="max-w-md w-full mx-auto z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <h2 className="text-2xl font-bold font-headline-md mb-8 text-on-surface">Order Summary</h2>
-            
-            <div className="bg-surface border border-outline-variant/50 rounded-3xl p-6 shadow-sm mb-8">
-              <div className="flex items-start gap-4 mb-6 pb-6 border-b border-outline-variant/30">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-inner shrink-0">
-                  <Zap className="w-8 h-8 text-on-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-on-surface mb-1">Pro Subscription</h3>
-                  <p className="text-on-surface-variant text-sm leading-relaxed">Unlimited access to mock exams and analytics features.</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4 font-medium mb-6 pb-6 border-b border-outline-variant/30">
-                <div className="flex justify-between items-center text-on-surface-variant">
-                  <span>Subtotal</span>
-                  <span className="text-on-surface">₦1,500</span>
-                </div>
-                <div className="flex justify-between items-center text-on-surface-variant">
-                  <span>Taxes & Fees</span>
-                  <span className="text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded text-xs">Included</span>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-baseline">
-                <span className="text-lg font-bold text-on-surface">Total</span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-sm font-semibold text-on-surface-variant">NGN</span>
-                  <span className="text-4xl font-extrabold text-on-surface tracking-tighter">₦1,500</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                "Unlimited mock exams and question banks",
-                "Advanced performance analytics",
-                "Ad-free learning environment"
-              ].map((feat, i) => (
-                <div key={i} className="flex items-center gap-3 text-on-surface-variant text-sm font-medium">
-                  <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                  <span>{feat}</span>
-                </div>
-              ))}
             </div>
           </motion.div>
         </div>
-      </div>
+        
+        {/* Right Column: Order Summary */}
+        <div className="lg:col-span-5 order-2">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-surface border border-outline-variant/50 rounded-2xl p-6 lg:p-8 shadow-sm lg:sticky lg:top-28"
+          >
+            <h2 className="text-lg font-bold font-headline-md mb-6 text-on-surface flex items-center gap-2">
+              <Star className="w-5 h-5 text-primary" />
+              Order Summary
+            </h2>
+            
+            <div className="flex flex-col">
+              <div className="flex items-start gap-4 mb-6 pb-6 border-b border-outline-variant/30">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                   <Zap className="w-6 h-6" />
+                </div>
+                <div>
+                   <h3 className="font-semibold text-base mb-0.5 text-on-surface">Pro Subscription</h3>
+                   <p className="text-on-surface-variant text-sm">Lifetime access</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3 font-medium mb-6 pb-6 border-b border-outline-variant/30 text-sm">
+                <div className="flex justify-between items-center text-on-surface-variant">
+                   <span>Subtotal</span>
+                   <span className="text-on-surface">₦1,500</span>
+                </div>
+                <div className="flex justify-between items-center text-on-surface-variant">
+                   <span>Taxes & Fees</span>
+                   <span className="text-on-surface">₦0</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-end mb-8">
+                <span className="text-sm font-semibold text-on-surface-variant">Total</span>
+                <div className="flex items-baseline gap-1 text-on-surface">
+                   <span className="text-sm font-medium text-on-surface-variant">NGN</span>
+                   <span className="text-3xl font-bold tracking-tight">₦1,500</span>
+                </div>
+              </div>
+              
+              <div className="bg-surface-dim/30 rounded-xl p-5 border border-outline-variant/30 space-y-3 mt-auto">
+                <h4 className="text-xs font-semibold text-on-surface uppercase tracking-wider mb-3">Includes:</h4>
+                {[
+                  "Unlimited premium exams",
+                  "Advanced analytics",
+                  "Ad-free experience",
+                ].map((feat, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-on-surface-variant text-sm">
+                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>{feat}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+      </main>
     </div>
   );
 }

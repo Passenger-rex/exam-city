@@ -9,9 +9,11 @@ import {
   Target,
   Award,
   Play,
+  Sparkles,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { motion } from "motion/react";
+import Markdown from "react-markdown";
 
 export default function ReviewPage() {
   const { resultId } = useParams();
@@ -19,6 +21,7 @@ export default function ReviewPage() {
   const [result, setResult] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiExplanations, setAiExplanations] = useState<Record<string, {loading: boolean, text: string}>>({});
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -66,6 +69,30 @@ export default function ReviewPage() {
     return () => unsubscribe();
   }, [resultId]);
 
+  const handleExplain = async (q: any, userAnswer: string) => {
+    setAiExplanations(prev => ({...prev, [q.id]: {loading: true, text: ''}}));
+     try {
+       const res = await fetch('/api/explain', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+             question: q.question_text || q.question_html,
+             options: q.options,
+             userAnswer,
+             correctAnswer: q.correct_answer
+          })
+       });
+       const data = await res.json();
+       if(data.success) {
+          setAiExplanations(prev => ({...prev, [q.id]: {loading: false, text: data.explanation}}));
+       } else {
+          setAiExplanations(prev => ({...prev, [q.id]: {loading: false, text: 'Failed to generate explanation.'}}));
+       }
+     } catch (e) {
+        setAiExplanations(prev => ({...prev, [q.id]: {loading: false, text: 'Network error.'}}));
+     }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-dim flex items-center justify-center">
@@ -107,13 +134,13 @@ export default function ReviewPage() {
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-surface p-10 rounded-[32px] border border-outline-variant/50 shadow-sm flex flex-col md:flex-row items-center gap-10 mb-12"
+          className="bg-surface p-6 sm:p-10 rounded-[24px] sm:rounded-[32px] border border-outline-variant/50 shadow-sm flex flex-col md:flex-row items-center gap-6 sm:gap-10 mb-8 sm:mb-12"
         >
-          <div className="relative w-48 h-48 flex items-center justify-center flex-shrink-0">
+          <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center flex-shrink-0">
             <svg
               className="w-full h-full -rotate-90 transform"
               viewBox="0 0 100 100"
@@ -181,7 +208,7 @@ export default function ReviewPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
-                className="bg-surface p-8 rounded-[32px] border border-outline-variant/50 shadow-sm bento-card"
+                className="bg-surface p-6 sm:p-8 rounded-[24px] sm:rounded-[32px] border border-outline-variant/50 shadow-sm bento-card flex flex-col"
               >
                 <div className="flex gap-4 items-start mb-6">
                   <div
@@ -190,12 +217,12 @@ export default function ReviewPage() {
                     {idx + 1}
                   </div>
                   <h3 
-                    className="text-xl font-bold font-headline-md leading-relaxed"
+                    className="text-lg sm:text-xl font-bold font-headline-md leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: q.question_html || q.question_text }}
                   />
                 </div>
 
-                <div className="space-y-3 pl-12">
+                <div className="space-y-3 pl-0 sm:pl-12">
                   {Object.entries(q.options || {}).map(
                     ([key, val]: [string, any]) => {
                       const isUserChoice = userAnswer === key;
@@ -233,7 +260,7 @@ export default function ReviewPage() {
                 </div>
 
                 {q.explanation && (
-                  <div className="mt-8 pl-12">
+                  <div className="mt-8 pl-0 sm:pl-12">
                     <div
                       className={`p-6 rounded-2xl border-l-4 ${isCorrect ? "bg-green-500/5 border-green-500" : "bg-surface-dim border-primary"}`}
                     >
@@ -246,6 +273,38 @@ export default function ReviewPage() {
                       />
                     </div>
                   </div>
+                )}
+
+                {/* AI Explanation Request */}
+                {!isCorrect && (
+                   <div className="mt-4 pl-0 sm:pl-12">
+                      {!aiExplanations[q.id] ? (
+                         <button 
+                            onClick={() => handleExplain(q, userAnswer)}
+                            className="text-sm font-bold text-primary flex items-center gap-2 hover:underline"
+                         >
+                            <Sparkles className="w-4 h-4" /> Explain this mistake with AI
+                         </button>
+                      ) : (
+                         <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20">
+                            <h4 className="font-bold text-sm uppercase tracking-wider mb-2 text-primary flex items-center gap-2">
+                               <Sparkles className="w-4 h-4" /> AI Explanation
+                            </h4>
+                            {aiExplanations[q.id].loading ? (
+                               <div className="flex space-x-2 items-center text-on-surface-variant text-sm font-medium">
+                                 <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                                 <div className="w-2 h-2 bg-primary rounded-full animate-bounce delay-75"></div>
+                                 <div className="w-2 h-2 bg-primary rounded-full animate-bounce delay-150"></div>
+                                 <span className="ml-2 mt-[-2px]">Generating...</span>
+                               </div>
+                            ) : (
+                               <div className="markdown-body prose prose-primary prose-sm sm:prose-base max-w-none text-on-surface-variant">
+                                  <Markdown>{aiExplanations[q.id].text}</Markdown>
+                               </div>
+                            )}
+                         </div>
+                      )}
+                   </div>
                 )}
               </motion.div>
             );

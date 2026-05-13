@@ -185,25 +185,25 @@ export default function AuthPage() {
 
       <button
         onClick={() => navigate("/")}
-        className="absolute top-6 left-6 lg:top-8 lg:left-8 flex items-center gap-3 text-on-surface-variant hover:text-primary transition-all font-semibold z-20 bg-surface/40 p-2 pr-5 rounded-full backdrop-blur-md border border-outline-variant/30 hover:bg-surface/60 hover:-translate-y-0.5 shadow-sm"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 lg:top-8 lg:left-8 flex items-center gap-2 sm:gap-3 text-on-surface-variant hover:text-primary transition-all font-semibold z-20 bg-surface/80 sm:bg-surface/40 p-2 sm:pr-5 rounded-full backdrop-blur-md border border-outline-variant/30 hover:bg-surface/60 hover:-translate-y-0.5 shadow-sm"
       >
         <span className="bg-surface p-2 rounded-full shadow-sm">
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </span>
-        Back to Home
+        <span className="hidden sm:inline">Back to Home</span>
       </button>
 
       <motion.div
         initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-[420px] z-10 relative"
+        className="w-full max-w-[420px] sm:max-w-[460px] z-10 relative"
       >
         {/* Header content outside card */}
-        <div className="text-center mb-8 relative">
+        <div className="text-center mb-6 sm:mb-8 relative mt-12 sm:mt-0">
           <Logo
             onClick={() => navigate("/")}
-            className="mx-auto text-4xl mb-6 relative z-10 cursor-pointer"
+            className="mx-auto text-3xl sm:text-4xl mb-4 sm:mb-6 relative z-10 cursor-pointer"
           />
           {new URLSearchParams(location.search).get("fromDemo") === "true" && (
             <motion.div 
@@ -226,7 +226,7 @@ export default function AuthPage() {
               <h2 className="text-3xl sm:text-4xl font-headline-md font-extrabold text-on-surface tracking-tight mb-2">
                 {isLogin ? "Welcome back" : "Create an account"}
               </h2>
-              <p className="text-on-surface-variant font-medium">
+              <p className="text-on-surface-variant font-medium text-[15px] sm:text-base px-2">
                 {isLogin
                   ? "Enter your details to access your dashboard"
                   : "Join thousands of learners today"}
@@ -237,12 +237,12 @@ export default function AuthPage() {
 
         <motion.div
           layout
-          className="bg-surface/80 backdrop-blur-2xl border border-outline-variant/40 rounded-[32px] p-6 sm:p-8 shadow-2xl relative overflow-hidden"
+          className="bg-surface/80 backdrop-blur-2xl border border-outline-variant/40 rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 shadow-2xl relative overflow-hidden"
         >
           {/* Form switch toggle */}
-          <div className="bg-surface-dim/80 p-1.5 rounded-2xl flex relative mb-8 shadow-inner">
+          <div className="bg-surface-dim/80 p-1.5 rounded-xl sm:rounded-2xl flex relative mb-6 sm:mb-8 shadow-inner">
             <motion.div
-              className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-surface rounded-xl shadow-sm border border-outline-variant/20"
+              className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-surface rounded-lg sm:rounded-xl shadow-sm border border-outline-variant/20"
               initial={false}
               animate={{ left: isLogin ? "6px" : "calc(50%)" }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -307,7 +307,7 @@ export default function AuthPage() {
                 >
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <User className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                     </div>
                     <input
                       type="text"
@@ -315,7 +315,7 @@ export default function AuthPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Full Name"
-                      className="w-full bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 rounded-2xl py-4 pl-12 pr-4 outline-none font-medium text-on-surface transition-all placeholder:text-on-surface-variant/60 hover:border-outline-variant shadow-sm"
+                      className="w-full bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 rounded-xl sm:rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 outline-none font-medium text-on-surface transition-all placeholder:text-on-surface-variant/60 hover:border-outline-variant shadow-sm text-sm sm:text-base"
                     />
                   </div>
                 </motion.div>
@@ -324,7 +324,7 @@ export default function AuthPage() {
 
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Mail className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
               </div>
               <input
                 type="email"
@@ -332,13 +332,13 @@ export default function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Address"
-                className="w-full bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 rounded-2xl py-4 pl-12 pr-4 outline-none font-medium text-on-surface transition-all placeholder:text-on-surface-variant/60 hover:border-outline-variant shadow-sm"
+                className="w-full bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 rounded-xl sm:rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-4 outline-none font-medium text-on-surface transition-all placeholder:text-on-surface-variant/60 hover:border-outline-variant shadow-sm text-sm sm:text-base"
               />
             </div>
 
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Lock className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
               </div>
               <input
                 type={showPassword ? "text" : "password"}
@@ -346,14 +346,14 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 rounded-2xl py-4 pl-12 pr-12 outline-none font-medium text-on-surface transition-all placeholder:text-on-surface-variant/60 hover:border-outline-variant shadow-sm"
+                className="w-full bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 rounded-xl sm:rounded-2xl py-3.5 sm:py-4 pl-10 sm:pl-12 pr-12 outline-none font-medium text-on-surface transition-all placeholder:text-on-surface-variant/60 hover:border-outline-variant shadow-sm text-sm sm:text-base"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-4 flex items-center text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
               </button>
             </div>
 
@@ -418,9 +418,9 @@ export default function AuthPage() {
 
           <button
             onClick={handleGoogleSignIn}
-            className="w-full py-3.5 bg-surface font-bold text-on-surface rounded-2xl border border-outline-variant hover:bg-surface-dim hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.98] transition-all duration-300 flex justify-center items-center gap-3 shadow-sm"
+            className="w-full py-3.5 bg-surface font-bold text-on-surface rounded-2xl border border-outline-variant hover:bg-surface-dim hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.98] transition-all duration-300 flex justify-center items-center gap-3 shadow-sm text-[15px] sm:text-base"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
-import { SignOutModal } from "../components/SignOutModal";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -40,7 +39,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [showSuccess, setShowSuccess] = useState(false);
@@ -136,11 +135,26 @@ export default function Dashboard() {
           <Logo />
           <div className="flex items-center gap-4 sm:gap-6">
             <button
-              onClick={() => setShowSignOutModal(true)}
-              className="text-on-surface-variant font-semibold text-sm hover:text-error transition-colors flex items-center gap-2"
+              onClick={async () => {
+                setIsSigningOut(true);
+                setTimeout(async () => {
+                  try {
+                    await auth.signOut();
+                  } catch (error) {
+                    console.error("Sign out error", error);
+                    setIsSigningOut(false);
+                  }
+                }, 600);
+              }}
+              disabled={isSigningOut}
+              className="text-on-surface-variant font-semibold text-sm hover:text-error transition-colors flex items-center gap-2 disabled:opacity-50"
               aria-label="Sign Out"
             >
-              <LogOut className="w-4 h-4" />
+              {isSigningOut ? (
+                <div className="w-4 h-4 border-2 border-on-surface-variant border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
               <span className="hidden sm:inline">Sign Out</span>
             </button>
             <button
@@ -166,11 +180,6 @@ export default function Dashboard() {
           )}
         </AnimatePresence>
 
-        <SignOutModal 
-          isOpen={showSignOutModal}
-          onClose={() => setShowSignOutModal(false)}
-        />
-
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -193,14 +202,14 @@ export default function Dashboard() {
               </span>
               {userProfile.tier === "free" && (
                 <span className="text-on-surface-variant/80 text-xs font-semibold">
-                  {userProfile.testsTakenThisMonth} / 1 Mock Exams
+                  {userProfile.testsTakenThisMonth} / 2 Mock Exams
                 </span>
               )}
             </div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold font-headline-md tracking-tight mb-3 text-on-surface">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-headline-md tracking-tight mb-3 text-on-surface">
               Welcome back, {firstName}.
             </h1>
-            <p className="text-on-surface-variant text-lg">
+            <p className="text-on-surface-variant text-base sm:text-lg">
               Ready to conquer your next exam?
             </p>
           </div>

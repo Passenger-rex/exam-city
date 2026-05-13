@@ -15,6 +15,7 @@ import ProfilePage from "./pages/ProfilePage";
 import CheckoutPage from "./pages/CheckoutPage";
 import { PageTransition } from "./components/PageTransition";
 import { UserProvider } from "./UserContext";
+import { FloatingChatbot } from "./components/FloatingChatbot";
 
 import { SplashScreen } from "./components/SplashScreen";
 
@@ -23,7 +24,6 @@ function AnimatedRoutes() {
 
   return (
     <AnimatePresence mode="wait">
-      {/* @ts-expect-error: key is needed by AnimatePresence */}
       <Routes location={location} key={location.pathname}>
         <Route
           path="/"
@@ -108,6 +108,7 @@ export default function App() {
       <BrowserRouter>
         <SplashScreen />
         <AnimatedRoutes />
+        <FloatingChatbot />
       </BrowserRouter>
     </UserProvider>
   );

@@ -142,12 +142,12 @@ export default function LandingPage() {
               <Sparkles className="w-4 h-4" />
               The Next Evolution in Testing
             </span>
-            <h1 className="font-headline-xl text-5xl md:text-7xl font-extrabold tracking-tight mb-8 text-on-surface leading-tight">
-              Master Your Exams with <br />
+            <h1 className="font-headline-xl text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 md:mb-8 text-on-surface leading-tight">
+              Master Your Exams with <br className="hidden sm:block" />
               <span className="text-primary relative inline-block hover-jelly z-10">
                 Premium Access
                 <svg
-                  className="absolute w-full h-4 -bottom-1 left-0 text-secondary opacity-50 -z-10"
+                  className="absolute w-full h-3 md:h-4 -bottom-1 left-0 text-secondary opacity-50 -z-10"
                   viewBox="0 0 100 10"
                   preserveAspectRatio="none"
                 >
@@ -160,7 +160,7 @@ export default function LandingPage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-xl text-on-surface-variant max-w-2xl mx-auto mb-10 leading-relaxed hover-jelly font-medium">
+            <p className="text-lg sm:text-xl text-on-surface-variant max-w-2xl mx-auto mb-8 md:mb-10 leading-relaxed hover-jelly font-medium px-4 md:px-0">
               Experience the smartest way to prepare. Advanced analytics,
               real-time feedback, and personalized pathways designed for top
               achievers.
