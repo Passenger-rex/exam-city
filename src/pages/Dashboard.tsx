@@ -117,7 +117,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md">
+    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md select-none sm:select-text">
       <AnimatePresence>
         {showSuccess && (
           <motion.div 
@@ -206,10 +206,10 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-headline-md tracking-tight mb-3 text-on-surface">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-headline-md tracking-tight mb-3 text-on-surface leading-tight">
               Welcome back, {firstName}.
             </h1>
-            <p className="text-on-surface-variant text-base sm:text-lg">
+            <p className="text-on-surface-variant text-base sm:text-lg font-medium opacity-90">
               Ready to conquer your next exam?
             </p>
           </div>

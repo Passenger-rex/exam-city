@@ -130,7 +130,7 @@ app.post("/api/explain", async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
     const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
     
     const prompt = `Provide a detailed, step-by-step explanation for the following question, specifically addressing why the user's answer is incorrect and why the actual correct answer is right.
     
@@ -199,7 +199,7 @@ app.get("/api/questions", async (req, res) => {
     // If we need more questions, or if it's pro mode, mix in Gemini questions
     if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
       const { GoogleGenAI, Type } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
       let yearInstruction = "";
       if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
@@ -283,13 +283,14 @@ app.post("/api/chatbot", async (req, res) => {
   try {
     const { messages } = req.body; 
     const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
     
     const history = messages.map((m: any) => ({
       role: m.role,
-      parts: [{ text: m.parts[0].text }]
+      parts: m.parts || [{ text: m.parts[0]?.text || "" }]
     }));
     
+    // Generate content using the new genai SDK
     const response = await ai.models.generateContent({
       model: "gemini-1.5-flash",
       contents: history,

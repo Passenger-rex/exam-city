@@ -23,43 +23,43 @@
   --surface-container-high: #e5e7eb;
   --surface-container-highest: #d1d5db;
 
-  --on-surface-variant: #374151;
-  --outline: #9ca3af;
-  --outline-variant: #e5e7eb;
-
-  --background: #fafafa;
-  --on-background: #111111;
-}
-
-.dark {
-  --primary: #9d5dff;
-  --on-primary: #ffffff;
-  --primary-container: #3f00a3;
-  --on-primary-container: #ede1ff;
-  
-  --secondary: #fde047;
-  --on-secondary: #423000;
-  --secondary-container: #5c4300;
-  --on-secondary-container: #ffe066;
-
-  --surface: #0a0a0c;
-  --on-surface: #f4f4f5;
-  --surface-dim: #121217;
-  --surface-bright: #1b1b22;
-  
-  --surface-container-lowest: #000000;
-  --surface-container-low: #0a0a0c;
-  --surface-container: #121217;
-  --surface-container-high: #1b1b22;
-  --surface-container-highest: #27272f;
-
-  --on-surface-variant: #a1a1aa;
-  --outline: #52525b;
-  --outline-variant: #27272a;
-
-  --background: #050508;
-  --on-background: #fafafa;
-}
+   --on-surface-variant: #4b5563; /* Gray 600 - slightly lighter for variant but let's check visibility */
+   --outline: #9ca3af;
+   --outline-variant: #e5e7eb;
+ 
+   --background: #fdfdfd;
+   --on-background: #0f172a; /* Slate 900 */
+ }
+ 
+ .dark {
+   --primary: #9d5dff;
+   --on-primary: #ffffff;
+   --primary-container: #3f00a3;
+   --on-primary-container: #ede1ff;
+   
+   --secondary: #fde047;
+   --on-secondary: #423000;
+   --secondary-container: #5c4300;
+   --on-secondary-container: #ffe066;
+ 
+   --surface: #0a0a0c;
+   --on-surface: #f8fafc;
+   --surface-dim: #111116;
+   --surface-bright: #1b1b22;
+   
+   --surface-container-lowest: #000000;
+   --surface-container-low: #0a0a0c;
+   --surface-container: #111116;
+   --surface-container-high: #1b1b22;
+   --surface-container-highest: #27272f;
+ 
+   --on-surface-variant: #94a3b8; /* Slate 400 */
+   --outline: #475569;
+   --outline-variant: #1e293b;
+ 
+   --background: #050508;
+   --on-background: #f8fafc;
+ }
 
 @theme {
   --color-primary: var(--primary);
@@ -148,12 +148,20 @@ body {
 }
 
 .bento-card {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease;
 }
-.bento-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.08), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
-  border-color: rgba(129, 51, 255, 0.3);
+
+@media (hover: hover) {
+  .bento-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.05), 0 6px 12px -3px rgba(0, 0, 0, 0.03);
+    border-color: rgba(129, 51, 255, 0.2);
+  }
+}
+
+.bento-card:active {
+  transform: translateY(0);
+  scale: 0.98;
 }
 
 @layer utilities {

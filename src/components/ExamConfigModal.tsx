@@ -90,9 +90,9 @@ export function ExamConfigModal({
             <label className="text-sm font-bold text-on-surface">Subject</label>
             <button
               onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
-              className="w-full flex items-center justify-between p-3.5 bg-surface-dim border border-outline-variant/60 rounded-xl active:scale-[0.99] transition-transform"
+              className="w-full flex items-center justify-between p-3.5 bg-surface-dim border border-outline-variant/60 rounded-xl active:bg-surface-container-high transition-colors"
             >
-              <span className="font-semibold capitalize text-on-surface">{subject}</span>
+              <span className="font-bold capitalize text-on-surface">{subject}</span>
               <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform ${isSubjectDropdownOpen ? "rotate-180" : ""}`} />
             </button>
             
