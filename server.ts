@@ -142,7 +142,7 @@ Correct Answer: ${options[correctAnswer] || correctAnswer}
 Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-step breakdown. Use markdown to format the output nicely.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt
     });
 
@@ -243,7 +243,7 @@ app.get("/api/questions", async (req, res) => {
 
       try {
         const response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-3-flash-preview",
           contents: prompt,
           config: {
             temperature: 0.7,
@@ -292,7 +292,7 @@ app.post("/api/chatbot", async (req, res) => {
     
     // Generate content using the new genai SDK
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: history,
       config: {
         systemInstruction: "You are a helpful Study Coach tutor. Provide study tips, mental math tricks, and clear concise explanations for specific topics. Be encouraging and concise. Answer in markdown."
