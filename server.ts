@@ -5,11 +5,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import dotenv from "dotenv";
 dotenv.config({ override: true });
 
-import fs from "fs";
-
-// Load firebase config
-const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
-const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+import firebaseConfig from "./firebase-applet-config.json";
 
 // Initialize Firebase Admin pointing to the requested project and database
 const appAdmin = initializeApp({
