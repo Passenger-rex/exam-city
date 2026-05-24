@@ -125,8 +125,26 @@ app.post("/api/grade", async (req, res) => {
 app.post("/api/explain", async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    const { OpenAI } = await import("openai");
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+    const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
+    if (!apiKey) {
+      return res.status(500).json({ success: false, error: "AI_API_KEY is missing. Please provide GROK_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY." });
+    }
+    
+    // Auto-detect provider
+    let baseURL = undefined;
+    let model = "gpt-4o-mini"; // Default OpenAI fallback
+    
+    if (process.env.GROK_API_KEY) {
+       baseURL = "https://api.x.ai/v1";
+       model = "grok-2-latest";
+    } else if (process.env.GROQ_API_KEY) {
+       baseURL = "https://api.groq.com/openai/v1";
+       model = "llama-3.3-70b-versatile";
+    }
+
+    const openai = new OpenAI({ apiKey, baseURL });
     
     const prompt = `Provide a detailed, step-by-step explanation for the following question, specifically addressing why the user's answer is incorrect and why the actual correct answer is right.
     
@@ -137,12 +155,12 @@ Correct Answer: ${options[correctAnswer] || correctAnswer}
 
 Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-step breakdown. Use markdown to format the output nicely.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt
+    const response = await openai.chat.completions.create({
+      model: model,
+      messages: [{ role: "user", content: prompt }]
     });
 
-    res.json({ success: true, explanation: response.text });
+    res.json({ success: true, explanation: response.choices[0].message.content });
   } catch (error: any) {
      console.error("AI Explain Error:", error);
      res.status(500).json({ success: false, error: "Could not generate explanation." });
@@ -192,10 +210,27 @@ app.get("/api/questions", async (req, res) => {
 
     const remainingLimit = limitNum - allQuestions.length;
     
-    // If we need more questions, or if it's pro mode, mix in Gemini questions
+    // If we need more questions, or if it's pro mode, mix in AI questions
     if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
-      const { GoogleGenAI, Type } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+      const { OpenAI } = await import("openai");
+      const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+      const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
+      if (!apiKey) {
+        throw new Error("AI_API_KEY is missing");
+      }
+      
+      let baseURL = undefined;
+      let model = "gpt-4o-mini"; // Default OpenAI
+      
+      if (process.env.GROK_API_KEY) {
+         baseURL = "https://api.x.ai/v1";
+         model = "grok-2-latest";
+      } else if (process.env.GROQ_API_KEY) {
+         baseURL = "https://api.groq.com/openai/v1";
+         model = "llama-3.3-70b-versatile";
+      }
+
+      const openai = new OpenAI({ apiKey, baseURL });
 
       let yearInstruction = "";
       if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
@@ -204,58 +239,46 @@ app.get("/api/questions", async (req, res) => {
         yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
       }
 
-      const prompt = `Surf online to find and return exactly ${remainingLimit} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.`;
+      const prompt = `Surf online to find and return exactly ${remainingLimit} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.
+      IMPORTANT: You MUST return your response as a raw JSON string matching the following schema. Do NOT wrap in markdown code blocks.
+      Schema:
+      {
+         "subject": "string",
+         "data": [
+            {
+               "id": "string",
+               "question": "string",
+               "option": {
+                   "a": "string",
+                   "b": "string",
+                   "c": "string",
+                   "d": "string"
+               },
+               "answer": "string (a, b, c, or d)",
+               "solution": "string",
+               "examyear": "string"
+            }
+         ]
+      }`;
       
-      const responseSchema = {
-          type: Type.OBJECT,
-          properties: {
-             subject: { type: Type.STRING },
-             data: {
-               type: Type.ARRAY,
-               items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    question: { type: Type.STRING },
-                    option: {
-                      type: Type.OBJECT,
-                      properties: {
-                        a: { type: Type.STRING },
-                        b: { type: Type.STRING },
-                        c: { type: Type.STRING },
-                        d: { type: Type.STRING }
-                      }
-                    },
-                    answer: { type: Type.STRING, enum: ["a", "b", "c", "d"] },
-                    solution: { type: Type.STRING },
-                    examyear: { type: Type.STRING }
-                  },
-                  required: ["id", "question", "option", "answer", "solution", "examyear"]
-               }
-             }
-          },
-          required: ["subject", "data"]
-      };
-
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
-          config: {
-            temperature: 0.7,
-            tools: [{ googleSearch: {} }],
-            responseMimeType: "application/json",
-            responseSchema: responseSchema
-          }
+        const response = await openai.chat.completions.create({
+          model: model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
         });
 
-        const jsonStr = response.text?.trim() || "{}";
+        let jsonStr = response.choices[0].message.content?.trim() || "{}";
+        if (jsonStr.startsWith("\`\`\`json")) {
+           jsonStr = jsonStr.replace(/^\`\`\`json\n/, "").replace(/\n\`\`\`$/, "");
+        }
+        
         const json = JSON.parse(jsonStr);
         if (json.data && Array.isArray(json.data)) {
           allQuestions = [...allQuestions, ...json.data];
         }
       } catch (genErr) {
-        console.error("Error generating questions with Gemini: ", genErr);
+        console.error("Error generating questions with AI: ", genErr);
       }
     }
 
@@ -278,24 +301,44 @@ app.get("/api/questions", async (req, res) => {
 app.post("/api/chatbot", async (req, res) => {
   try {
     const { messages } = req.body; 
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    const { OpenAI } = await import("openai");
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+    const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
+    if (!apiKey) {
+      return res.status(500).json({ success: false, error: "AI_API_KEY is missing." });
+    }
     
-    const history = messages.map((m: any) => ({
-      role: m.role,
-      parts: m.parts || [{ text: m.parts[0]?.text || "" }]
-    }));
+    // Auto-detect provider
+    let baseURL = undefined;
+    let model = "gpt-4o-mini"; // Default OpenAI fallback
     
-    // Generate content using the new genai SDK
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: history,
-      config: {
-        systemInstruction: "You are a helpful Study Coach tutor. Provide study tips, mental math tricks, and clear concise explanations for specific topics. Be encouraging and concise. Answer in markdown."
-      }
+    if (process.env.GROK_API_KEY) {
+       baseURL = "https://api.x.ai/v1";
+       model = "grok-2-latest";
+    } else if (process.env.GROQ_API_KEY) {
+       baseURL = "https://api.groq.com/openai/v1";
+       model = "llama-3.3-70b-versatile";
+    }
+
+    const openai = new OpenAI({ apiKey, baseURL });
+    
+    const formattedMessages = [
+      { 
+        role: "system", 
+        content: "You are a helpful Study Coach tutor. Provide study tips, mental math tricks, and clear concise explanations for specific topics. Be encouraging and concise. Answer in markdown." 
+      },
+      ...messages.map((m: any) => ({
+        role: m.role === "model" ? "assistant" : m.role,
+        content: m.parts ? m.parts[0]?.text || "" : ""
+      }))
+    ];
+    
+    const response = await openai.chat.completions.create({
+      model: model,
+      messages: formattedMessages
     });
     
-    res.json({ success: true, text: response.text });
+    res.json({ success: true, text: response.choices[0].message.content });
   } catch (error: any) {
      console.error("Chatbot Error:", error);
      res.status(500).json({ success: false, error: "Could not reply." });
