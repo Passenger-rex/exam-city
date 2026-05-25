@@ -126,7 +126,7 @@ app.post("/api/grade", async (req, res) => {
 app.post("/api/explain", async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
       return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
@@ -142,9 +142,7 @@ app.post("/api/explain", async (req, res) => {
     } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
        baseURL = "https://api.x.ai/v1";
        model = "grok-2-latest";
-    } else if (apiKey.startsWith("AIza") || process.env.GEMINI_API_KEY) {
-       baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/";
-       model = "gemini-1.5-flash";
+   
     }
 
     const openai = new OpenAI({ apiKey, baseURL });
@@ -215,7 +213,7 @@ app.get("/api/questions", async (req, res) => {
     
     // If we need more questions, or if it's pro mode, mix in AI questions
     if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
-      const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+      const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
       const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
       if (!apiKey) {
         throw new Error("API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY.");
@@ -230,9 +228,7 @@ app.get("/api/questions", async (req, res) => {
       } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
          baseURL = "https://api.x.ai/v1";
          model = "grok-2-latest";
-      } else if (apiKey.startsWith("AIza") || process.env.GEMINI_API_KEY) {
-         baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/";
-         model = "gemini-1.5-flash";
+     
       }
 
       const openai = new OpenAI({ apiKey, baseURL });
@@ -307,7 +303,7 @@ app.get("/api/questions", async (req, res) => {
 app.post("/api/chatbot", async (req, res) => {
   try {
     const { messages } = req.body; 
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
       return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
@@ -323,9 +319,7 @@ app.post("/api/chatbot", async (req, res) => {
     } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
        baseURL = "https://api.x.ai/v1";
        model = "grok-2-latest";
-    } else if (apiKey.startsWith("AIza") || process.env.GEMINI_API_KEY) {
-       baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/";
-       model = "gemini-1.5-flash";
+   
     }
 
     const openai = new OpenAI({ apiKey, baseURL });

@@ -262,12 +262,17 @@ export function ExamConfigModal({
               )}
             </button>
             
-            {userTier === "pro" && !showPremiumGate && (
+            {((userTier === "pro") || (userTier === "free" && localStorage.getItem('hasUsedFreePdf') !== 'true')) && !showPremiumGate && (
               <button
-                onClick={() => navigate(`/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`)}
-                className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors"
+                onClick={() => {
+                   if (userTier === "free") {
+                      localStorage.setItem('hasUsedFreePdf', 'true');
+                   }
+                   navigate(`/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`);
+                }}
+                className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center gap-1.5"
               >
-                Generate Offline PDF
+                Generate Offline PDF {userTier === "free" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold ml-1">1 Free Trial</span>}
               </button>
             )}
 
