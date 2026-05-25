@@ -1,137 +1,27 @@
 import express from "express";
 import path from "path";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import dotenv from "dotenv";
 dotenv.config({ override: true });
 
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const firebaseConfig = require("./firebase-applet-config.json");
-
 import { OpenAI } from "openai";
 
-let appAdmin;
-let db: any;
-try {
-  appAdmin = initializeApp({
-    projectId: firebaseConfig.projectId
-  });
-  db = getFirestore(appAdmin, firebaseConfig.firestoreDatabaseId);
-} catch (e) {
-  console.error("Firebase Initialization Error:", e);
-}
+// Firebase-admin was removed as all firestore operations are client-driven via Firebase Web SDK
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// Upgrade / Payment API Endpoint
-app.post("/api/upgrade", (req, res) => {
-  const { userId, transactionId } = req.body;
-  res.json({
-    success: true,
-    message: "Payment verified. Account upgraded to premium.",
-    data: { userId, transactionId }
-  });
-});
+// Exam Grading endpoint has been removed as grading is handled client-side
+// Upgrade endpoint removed since it's handled via Flutterwave webhook and client-side setup
 
-// Flutterwave Webhook Endpoint
-app.post("/api/webhook/flutterwave", async (req, res) => {
-  try {
-    const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET;
-    const signature = req.headers["verif-hash"];
-
-    if (!secretHash || signature !== secretHash) {
-      return res.status(401).send("Unauthorized");
-    }
-
-    const payload = req.body;
-    
-    // Check if this is a successful payment event
-    if (payload.event === "charge.completed" && payload.data.status === "successful") {
-      const customerEmail = payload.data.customer.email;
-      const amount = payload.data.amount;
-      const currency = payload.data.currency;
-
-      // Verify amount and currency (e.g. 1500 NGN)
-      if (amount >= 1500 && currency === "NGN") {
-        // Find the user by email in Firestore
-        const usersRef = db.collection("users");
-        const snapshot = await usersRef.where("email", "==", customerEmail).get();
-        
-        if (!snapshot.empty) {
-          const userDoc = snapshot.docs[0];
-          await userDoc.ref.set({ tier: "pro" }, { merge: true });
-          console.log(`Upgraded user ${customerEmail} to pro`);
-        } else {
-           console.log(`Payment successful but user ${customerEmail} not found`);
-        }
-      }
-    }
-
-    res.status(200).send("Webhook received");
-  } catch (error) {
-    console.error("Webhook error:", error);
-    res.status(500).send("Webhook failed");
-  }
-});
-
-// Exam Grading Endpoint
-app.post("/api/grade", async (req, res) => {
-  try {
-    const { userId, examType, answers } = req.body;
-    
-    let score = 0;
-    let total = 0;
-    const detailedResults: any[] = []; // Using any for scoping ease in MVP
-
-    // We process all questions from the user's answers payload
-    for (const [questionId, selectedOption] of Object.entries(answers)) {
-      total++;
-      const qDoc = await db.collection("questions").doc(questionId).get();
-      if (qDoc.exists) {
-        const qData = qDoc.data();
-        const isCorrect = qData?.correct_answer === selectedOption;
-        if (isCorrect) score++;
-        detailedResults.push({
-          questionId,
-          questionText: qData?.question_text,
-          options: qData?.options,
-          isCorrect,
-          userSelectedOption: selectedOption,
-          correctAnswer: qData?.correct_answer,
-          explanation: qData?.explanation
-        });
-      }
-    }
-
-    // Store results in exam_results collection securely
-    const resultRef = await db.collection("exam_results").add({
-      userId,
-      examType,
-      score,
-      total,
-      detailedResults,
-      createdAt: FieldValue.serverTimestamp()
-    });
-
-    res.json({
-      success: true,
-      score,
-      total,
-      detailedResults,
-      resultId: resultRef.id
-    });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ success: false, error: "Grading failed" });
-  }
+app.use((req, res, next) => {
+  console.log(`[Router] ${req.method} ${req.url}`);
+  next();
 });
 
 // AI Explanations Endpoint
-app.post("/api/explain", async (req, res) => {
+app.post(["/api/explain", "/explain"], async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
     const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
@@ -177,7 +67,7 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
 });
 
 // Questions generator API Endpoint
-app.get("/api/questions", async (req, res) => {
+app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
     const { subject = "english", year = "any", type = "standard", bank = "public" } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
@@ -308,7 +198,7 @@ app.get("/api/questions", async (req, res) => {
 });
 
 // Study Coach / Chatbot Endpoint
-app.post("/api/chatbot", async (req, res) => {
+app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
   try {
     const { messages } = req.body; 
     const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
@@ -370,14 +260,20 @@ function startStaticServer() {
 }
 
 // API 404 Not Found Handler
-app.use("/api/*", (req, res) => {
-  res.status(404).json({ success: false, error: `Cannot ${req.method} ${req.url}` });
+app.use((req, res, next) => {
+  if (req.url.startsWith("/api/") || req.url === "/questions" || req.url === "/chatbot" || req.url === "/explain") {
+    return res.status(404).json({ success: false, error: `Cannot ${req.method} ${req.url}` });
+  }
+  next();
 });
 
 // API Error Handler
-app.use("/api/*", (err: any, req: any, res: any, next: any) => {
-  console.error("API Error:", err);
-  res.status(500).json({ success: false, error: err.message || "Internal Server Error" });
+app.use((err: any, req: any, res: any, next: any) => {
+  if (req.url.startsWith("/api/") || req.url === "/questions" || req.url === "/chatbot" || req.url === "/explain") {
+    console.error("API Error:", err);
+    return res.status(500).json({ success: false, error: err.message || "Internal Server Error" });
+  }
+  next(err);
 });
 
 // Vite middleware for development or fallback
