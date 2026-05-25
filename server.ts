@@ -5,16 +5,22 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import dotenv from "dotenv";
 dotenv.config({ override: true });
 
-import fs from "fs";
-const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8"));
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const firebaseConfig = require("./firebase-applet-config.json");
 
 import { OpenAI } from "openai";
 
-// Initialize Firebase Admin pointing to the requested project and database
-const appAdmin = initializeApp({
-  projectId: firebaseConfig.projectId
-});
-const db = getFirestore(appAdmin, firebaseConfig.firestoreDatabaseId);
+let appAdmin;
+let db: any;
+try {
+  appAdmin = initializeApp({
+    projectId: firebaseConfig.projectId
+  });
+  db = getFirestore(appAdmin, firebaseConfig.firestoreDatabaseId);
+} catch (e) {
+  console.error("Firebase Initialization Error:", e);
+}
 
 const app = express();
 const PORT = 3000;
