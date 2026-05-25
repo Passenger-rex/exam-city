@@ -62,7 +62,8 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
     res.json({ success: true, explanation: response.choices[0].message.content });
   } catch (error: any) {
      console.error("AI Explain Error:", error);
-     res.status(500).json({ success: false, error: "Could not generate explanation." });
+     const msg = error.message || "Unknown error";
+     res.status(500).json({ success: false, error: `Explain API Error: ${msg}. If on Vercel, check GROQ_API_KEY.` });
   }
 });
 
@@ -75,48 +76,11 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
     
     let allQuestions: any[] = [];
     
-    // Attempt ALOC API
-    const alocToken = process.env.VITE_ALOC_ACCESS_TOKEN || process.env.ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8"; // Fallback to a known demo token if missing
-    const alocLimit = isPro ? Math.floor(limitNum / 2) : limitNum; 
-    let alocError = null;
-
-    try {
-      if (alocLimit > 0) {
-        // Fetch up to 40 questions: ALOC provides 'q/40' for multiple questions
-        const fetchUrl = alocLimit > 1 ? `https://questions.aloc.com.ng/api/v2/q/${alocLimit}?subject=${subject}` : `https://questions.aloc.com.ng/api/v2/q?subject=${subject}`;
-        
-        const alocRes = await fetch(fetchUrl, {
-           headers: {
-              "Accept": "application/json",
-              "Content-Type": "application/json",
-              "AccessToken": alocToken
-           }
-        });
-        if (alocRes.ok) {
-           const alocJson = await alocRes.json();
-           if (alocJson.status && alocJson.data) {
-              const fetchedData = Array.isArray(alocJson.data) ? alocJson.data : [alocJson.data];
-              allQuestions = fetchedData.slice(0, alocLimit);
-           }
-        } else {
-           alocError = alocRes.status;
-        }
-      }
-    } catch (e: any) {
-      console.error("Backend ALOC API error:", e);
-      alocError = e.message;
-    }
-
-    const remainingLimit = limitNum - allQuestions.length;
+    // Attempt Generative AI First (Groq / OpenAI)
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+    const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     
-    // If we need more questions, or if it's pro mode, mix in AI questions
-    if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
-      const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
-      const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
-      if (!apiKey) {
-        throw new Error("API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY.");
-      }
-      
+    if (apiKey) {
       let baseURL = undefined;
       let model = "gpt-4o-mini"; // Default OpenAI
       
@@ -126,7 +90,6 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
          baseURL = "https://api.x.ai/v1";
          model = "grok-2-latest";
-     
       }
 
       const openai = new OpenAI({ apiKey, baseURL });
@@ -138,24 +101,18 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
         yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
       }
 
-      const prompt = `Surf online to find and return exactly ${remainingLimit} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.
-      IMPORTANT: You MUST return your response as a raw JSON string matching the following schema. Do NOT wrap in markdown code blocks.
-      Schema:
+      const prompt = `Surf online to find and return exactly ${limitNum} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.
+      IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
       {
-         "subject": "string",
+         "subject": "${subject}",
          "data": [
             {
-               "id": "string",
-               "question": "string",
-               "option": {
-                   "a": "string",
-                   "b": "string",
-                   "c": "string",
-                   "d": "string"
-               },
-               "answer": "string (a, b, c, or d)",
-               "solution": "string",
-               "examyear": "string"
+               "id": "q1",
+               "question": "question text here",
+               "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
+               "answer": "a",
+               "solution": "step by step solution",
+               "examyear": "2024"
             }
          ]
       }`;
@@ -163,6 +120,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       try {
         const response = await openai.chat.completions.create({
           model: model,
+          response_format: { type: "json_object" },
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
         });
@@ -174,23 +132,58 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
            jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
         }
         const json = JSON.parse(jsonStr);
-        if (json.data && Array.isArray(json.data)) {
-          allQuestions = [...allQuestions, ...json.data];
+        if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+          allQuestions = [...json.data];
         }
       } catch (genErr) {
         console.error("Error generating questions with AI: ", genErr);
       }
     }
 
-    // fallback mapping if both failed entirely will be handled by the frontend picking from DB.
-    
+    // Fallback to ALOC API if Groq failed or API key missing
+    if (allQuestions.length === 0) {
+      console.log("Groq generation failed/skipped. Falling back to ALOC.");
+      const alocToken = process.env.VITE_ALOC_ACCESS_TOKEN || process.env.ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8";
+      
+      try {
+        const fetchUrl = limitNum > 1 ? `https://questions.aloc.com.ng/api/v2/q/${limitNum}?subject=${subject}` : `https://questions.aloc.com.ng/api/v2/q?subject=${subject}`;
+        const alocRes = await fetch(fetchUrl, {
+           headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "AccessToken": alocToken
+           }
+        });
+        if (alocRes.ok) {
+           const alocJson = await alocRes.json();
+           if (alocJson.status && alocJson.data) {
+              const fetchedData = Array.isArray(alocJson.data) ? alocJson.data : [alocJson.data];
+              allQuestions = fetchedData.slice(0, limitNum);
+           }
+        } else {
+           console.error("ALOC API returned status: " + alocRes.status);
+        }
+      } catch (e: any) {
+        console.error("Backend ALOC API error:", e);
+      }
+    }
+
+    // Final Fallback if ALOC also failed
+    if (allQuestions.length === 0) {
+        console.log("ALOC failed and Groq failed. No questions available.");
+        return res.status(500).json({ 
+           success: false, 
+           error: "Failed to generate questions. ALOC API token may be expired and no valid GROQ_API_KEY was provided. Please add your GROQ_API_KEY in Vercel settings and redeploy." 
+        });
+    }
+
     // Shuffle the array nicely
     for (let i = allQuestions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
     }
 
-    res.json({ success: true, subject, data: allQuestions.slice(0, limitNum), alocError });
+    res.json({ success: true, subject, data: allQuestions.slice(0, limitNum) });
   } catch (err: any) {
     console.error("Questions endpoint error:", err);
     res.status(500).json({ success: false, error: err.message });
@@ -241,7 +234,8 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
     res.json({ success: true, text: response.choices[0].message.content });
   } catch (error: any) {
      console.error("Chatbot Error:", error);
-     res.status(500).json({ success: false, error: "Could not reply. If you deployed to Vercel, please add your GROQ_API_KEY as an Environment Variable in Vercel settings." });
+     const msg = error.message ? error.message : "If you deployed to Vercel, please add your GROQ_API_KEY.";
+     res.status(500).json({ success: false, error: `Study Coach API Error: ${msg}` });
   }
 });
 
