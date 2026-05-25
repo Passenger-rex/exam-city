@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 dotenv.config({ override: true });
 
 import firebaseConfig from "./firebase-applet-config.json";
+import { OpenAI } from "openai";
 
 // Initialize Firebase Admin pointing to the requested project and database
 const appAdmin = initializeApp({
@@ -125,7 +126,6 @@ app.post("/api/grade", async (req, res) => {
 app.post("/api/explain", async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
-    const { OpenAI } = await import("openai");
     const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
@@ -212,7 +212,6 @@ app.get("/api/questions", async (req, res) => {
     
     // If we need more questions, or if it's pro mode, mix in AI questions
     if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
-      const { OpenAI } = await import("openai");
       const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
       const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
       if (!apiKey) {
@@ -269,10 +268,11 @@ app.get("/api/questions", async (req, res) => {
         });
 
         let jsonStr = response.choices[0].message.content?.trim() || "{}";
-        if (jsonStr.startsWith("\`\`\`json")) {
-           jsonStr = jsonStr.replace(/^\`\`\`json\n/, "").replace(/\n\`\`\`$/, "");
+        const firstBracket = jsonStr.indexOf("{");
+        const lastBracket = jsonStr.lastIndexOf("}");
+        if (firstBracket !== -1 && lastBracket !== -1) {
+           jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
         }
-        
         const json = JSON.parse(jsonStr);
         if (json.data && Array.isArray(json.data)) {
           allQuestions = [...allQuestions, ...json.data];
@@ -301,7 +301,6 @@ app.get("/api/questions", async (req, res) => {
 app.post("/api/chatbot", async (req, res) => {
   try {
     const { messages } = req.body; 
-    const { OpenAI } = await import("openai");
     const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
