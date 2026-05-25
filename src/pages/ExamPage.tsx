@@ -99,7 +99,14 @@ export default function ExamPage() {
 
         try {
           const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}`);
-          const json = await res.json();
+          const text = await res.text();
+          let json;
+          try {
+             json = JSON.parse(text);
+          } catch(e) {
+             throw new Error(`Invalid JSON from server (${res.status}): ${text.slice(0, 100)}`);
+          }
+          
           if (!res.ok) {
              throw new Error(json.error || "Failed to fetch questions");
           }

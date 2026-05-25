@@ -43,13 +43,23 @@ export function FloatingChatbot() {
              }))
           })
        });
-       const data = await res.json();
+       
+       let data;
+       try {
+          const text = await res.text();
+          data = JSON.parse(text);
+       } catch (err) {
+          console.error("Failed to parse response:", err);
+          setMessages(prev => [...prev, {role: 'model', text: `Server error (${res.status}): Please try again.`}]);
+          return;
+       }
+
        if(data.success) {
          setMessages(prev => [...prev, {role: 'model', text: data.text}]);
        } else {
          setMessages(prev => [...prev, {role: 'model', text: data.error || 'Sorry, I am having trouble connecting right now.'}]);
        }
-    } catch(e) {
+    } catch(e: any) {
        setMessages(prev => [...prev, {role: 'model', text: 'Error connecting to the Study Coach: ' + e.message}]);
     } finally {
        setIsLoading(false);

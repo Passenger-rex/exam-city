@@ -5,7 +5,9 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import dotenv from "dotenv";
 dotenv.config({ override: true });
 
-import firebaseConfig from "./firebase-applet-config.json";
+import fs from "fs";
+const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8"));
+
 import { OpenAI } from "openai";
 
 // Initialize Firebase Admin pointing to the requested project and database
@@ -360,6 +362,17 @@ function startStaticServer() {
     });
   }
 }
+
+// API 404 Not Found Handler
+app.use("/api/*", (req, res) => {
+  res.status(404).json({ success: false, error: `Cannot ${req.method} ${req.url}` });
+});
+
+// API Error Handler
+app.use("/api/*", (err: any, req: any, res: any, next: any) => {
+  console.error("API Error:", err);
+  res.status(500).json({ success: false, error: err.message || "Internal Server Error" });
+});
 
 // Vite middleware for development or fallback
 if (process.env.NODE_ENV !== "production") {
