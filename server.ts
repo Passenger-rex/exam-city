@@ -126,22 +126,25 @@ app.post("/api/grade", async (req, res) => {
 app.post("/api/explain", async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
-      return res.status(500).json({ success: false, error: "AI_API_KEY is missing. Please provide GROK_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY." });
+      return res.status(500).json({ success: false, error: "AI_API_KEY is missing." });
     }
     
     // Auto-detect provider
     let baseURL = undefined;
     let model = "gpt-4o-mini"; // Default OpenAI fallback
     
-    if (process.env.GROK_API_KEY) {
-       baseURL = "https://api.x.ai/v1";
-       model = "grok-2-latest";
-    } else if (process.env.GROQ_API_KEY) {
+    if (apiKey.startsWith("gsk_") || process.env.GROQ_API_KEY) {
        baseURL = "https://api.groq.com/openai/v1";
        model = "llama-3.3-70b-versatile";
+    } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
+       baseURL = "https://api.x.ai/v1";
+       model = "grok-2-latest";
+    } else if (apiKey.startsWith("AIza") || process.env.GEMINI_API_KEY) {
+       baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/";
+       model = "gemini-1.5-flash";
     }
 
     const openai = new OpenAI({ apiKey, baseURL });
@@ -212,21 +215,24 @@ app.get("/api/questions", async (req, res) => {
     
     // If we need more questions, or if it's pro mode, mix in AI questions
     if (remainingLimit > 0 && (isPro || allQuestions.length === 0)) {
-      const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+      const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
       const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
       if (!apiKey) {
-        throw new Error("AI_API_KEY is missing");
+        throw new Error("AI_API_KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables.");
       }
       
       let baseURL = undefined;
       let model = "gpt-4o-mini"; // Default OpenAI
       
-      if (process.env.GROK_API_KEY) {
-         baseURL = "https://api.x.ai/v1";
-         model = "grok-2-latest";
-      } else if (process.env.GROQ_API_KEY) {
+      if (apiKey.startsWith("gsk_") || process.env.GROQ_API_KEY) {
          baseURL = "https://api.groq.com/openai/v1";
          model = "llama-3.3-70b-versatile";
+      } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
+         baseURL = "https://api.x.ai/v1";
+         model = "grok-2-latest";
+      } else if (apiKey.startsWith("AIza") || process.env.GEMINI_API_KEY) {
+         baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/";
+         model = "gemini-1.5-flash";
       }
 
       const openai = new OpenAI({ apiKey, baseURL });
@@ -301,7 +307,7 @@ app.get("/api/questions", async (req, res) => {
 app.post("/api/chatbot", async (req, res) => {
   try {
     const { messages } = req.body; 
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || "";
+    const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
       return res.status(500).json({ success: false, error: "AI_API_KEY is missing." });
@@ -311,12 +317,15 @@ app.post("/api/chatbot", async (req, res) => {
     let baseURL = undefined;
     let model = "gpt-4o-mini"; // Default OpenAI fallback
     
-    if (process.env.GROK_API_KEY) {
-       baseURL = "https://api.x.ai/v1";
-       model = "grok-2-latest";
-    } else if (process.env.GROQ_API_KEY) {
+    if (apiKey.startsWith("gsk_") || process.env.GROQ_API_KEY) {
        baseURL = "https://api.groq.com/openai/v1";
        model = "llama-3.3-70b-versatile";
+    } else if (apiKey.startsWith("xai-") || process.env.GROK_API_KEY) {
+       baseURL = "https://api.x.ai/v1";
+       model = "grok-2-latest";
+    } else if (apiKey.startsWith("AIza") || process.env.GEMINI_API_KEY) {
+       baseURL = "https://generativelanguage.googleapis.com/v1beta/openai/";
+       model = "gemini-1.5-flash";
     }
 
     const openai = new OpenAI({ apiKey, baseURL });
@@ -340,7 +349,7 @@ app.post("/api/chatbot", async (req, res) => {
     res.json({ success: true, text: response.choices[0].message.content });
   } catch (error: any) {
      console.error("Chatbot Error:", error);
-     res.status(500).json({ success: false, error: "Could not reply." });
+     res.status(500).json({ success: false, error: "Could not reply. If you deployed to Vercel, please add your GROQ_API_KEY as an Environment Variable in Vercel settings." });
   }
 });
 
