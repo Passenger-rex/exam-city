@@ -129,7 +129,7 @@ app.post("/api/explain", async (req, res) => {
     const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
-      return res.status(500).json({ success: false, error: "AI_API_KEY is missing." });
+      return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
     }
     
     // Auto-detect provider
@@ -218,7 +218,7 @@ app.get("/api/questions", async (req, res) => {
       const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
       const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
       if (!apiKey) {
-        throw new Error("AI_API_KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables.");
+        throw new Error("API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY.");
       }
       
       let baseURL = undefined;
@@ -310,7 +310,7 @@ app.post("/api/chatbot", async (req, res) => {
     const rawApiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
     const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
     if (!apiKey) {
-      return res.status(500).json({ success: false, error: "AI_API_KEY is missing." });
+      return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
     }
     
     // Auto-detect provider

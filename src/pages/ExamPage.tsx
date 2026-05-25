@@ -99,8 +99,10 @@ export default function ExamPage() {
 
         try {
           const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}`);
-          if (!res.ok) throw new Error("Failed to fetch questions");
           const json = await res.json();
+          if (!res.ok) {
+             throw new Error(json.error || "Failed to fetch questions");
+          }
           if (json.success && json.data && Array.isArray(json.data)) {
             qList = json.data.map((item: any) => ({
               id: String(item.id || Math.random()),
@@ -114,8 +116,11 @@ export default function ExamPage() {
               image: item.image || null
             }));
           }
-        } catch (genErr) {
+        } catch (genErr: any) {
           console.error("Error fetching questions from API: ", genErr);
+          if (genErr.message && genErr.message.includes("API_KEY")) {
+             alert(genErr.message);
+          }
         }
 
         // If ALOC API fails or returns nothing, fallback to Firestore DB questions

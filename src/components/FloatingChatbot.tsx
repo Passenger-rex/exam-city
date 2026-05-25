@@ -47,10 +47,10 @@ export function FloatingChatbot() {
        if(data.success) {
          setMessages(prev => [...prev, {role: 'model', text: data.text}]);
        } else {
-         setMessages(prev => [...prev, {role: 'model', text: 'Sorry, I am having trouble connecting right now.'}]);
+         setMessages(prev => [...prev, {role: 'model', text: data.error || 'Sorry, I am having trouble connecting right now.'}]);
        }
     } catch(e) {
-       setMessages(prev => [...prev, {role: 'model', text: 'Error connecting to the Study Coach.'}]);
+       setMessages(prev => [...prev, {role: 'model', text: 'Error connecting to the Study Coach: ' + e.message}]);
     } finally {
        setIsLoading(false);
     }
