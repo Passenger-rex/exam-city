@@ -62,7 +62,7 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
 app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
     const { subject = "english", year = "any", type = "standard", bank = "public" } = req.query;
-    const limitNum = type === "micro" ? 5 : 40;
+    const limitNum = type === "micro" ? 5 : 10;
     const isPro = bank === "premium";
     
     let allQuestions: any[] = [];
@@ -219,8 +219,9 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 
 // Vite middleware for development or fallback
-if (process.env.NODE_ENV !== "production") {
-  import("vite")
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  const vitePkg = "vi" + "te";
+  import(vitePkg)
     .then(({ createServer: createViteServer }) => {
       createViteServer({
         server: { middlewareMode: true },
