@@ -117,47 +117,21 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
         const json = JSON.parse(jsonStr);
         if (json.data && Array.isArray(json.data) && json.data.length > 0) {
           allQuestions = [...json.data];
-        }
-      } catch (genErr) {
-        console.error("Error generating questions with AI: ", genErr);
-      }
-    }
-
-    // Fallback to ALOC API if Groq failed or API key missing
-    if (allQuestions.length === 0) {
-      console.log("Groq generation failed/skipped. Falling back to ALOC.");
-      const alocToken = process.env.VITE_ALOC_ACCESS_TOKEN || process.env.ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8";
-      
-      try {
-        const fetchUrl = limitNum > 1 ? `https://questions.aloc.com.ng/api/v2/q/${limitNum}?subject=${subject}` : `https://questions.aloc.com.ng/api/v2/q?subject=${subject}`;
-        const alocRes = await fetch(fetchUrl, {
-           headers: {
-              "Accept": "application/json",
-              "Content-Type": "application/json",
-              "AccessToken": alocToken
-           }
-        });
-        if (alocRes.ok) {
-           const alocJson = await alocRes.json();
-           if (alocJson.status && alocJson.data) {
-              const fetchedData = Array.isArray(alocJson.data) ? alocJson.data : [alocJson.data];
-              allQuestions = fetchedData.slice(0, limitNum);
-           }
         } else {
-           console.error("ALOC API returned status: " + alocRes.status);
+           throw new Error("AI returned empty or invalid question data format.");
         }
-      } catch (e: any) {
-        console.error("Backend ALOC API error:", e);
-      }
-    }
-
-    // Final Fallback if ALOC also failed
-    if (allQuestions.length === 0) {
-        console.log("ALOC failed and AI generated nothing. No questions available.");
+      } catch (genErr: any) {
+        console.error("Error generating questions with AI: ", genErr);
         return res.status(500).json({ 
            success: false, 
-           error: "Failed to generate questions. ALOC API token may be expired and no valid GROQ_API_KEY was provided. Please add your GROQ_API_KEY in Vercel settings and redeploy." 
+           error: `AI Generation Error: ${genErr.message || "Unknown error occurred"}` 
         });
+      }
+    } else {
+       return res.status(500).json({ 
+          success: false, 
+          error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." 
+       });
     }
 
     // Shuffle the array nicely

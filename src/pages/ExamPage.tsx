@@ -125,17 +125,14 @@ export default function ExamPage() {
           }
         } catch (genErr: any) {
           console.error("Error fetching questions from API: ", genErr);
-          if (genErr.message && genErr.message.includes("API_KEY")) {
-             alert(genErr.message);
-          }
+          // If the API failed explicitly, don't try database if we wanted the API
+          throw new Error(genErr.message);
         }
 
-        // If ALOC API fails or returns nothing, fallback to Firestore DB questions
-        if (qList.length === 0) {
-          console.log("No questions from ALOC/API, falling back to Firestore");
+        // Only reach here if fetch succeeded but returned no questions somehow, or DB fetch was meant to happen
+        if (!qList || qList.length === 0) {
+          console.log("No questions from API, trying Firestore");
           try {
-             // Let's only fetch a small subset or everything? Fetching all might be heavy if db is large, 
-             // but we will do our best.
              const snapshot = await getDocs(collection(db, "questions"));
              qList = snapshot.docs.map((doc) => ({
                id: doc.id,
@@ -153,8 +150,7 @@ export default function ExamPage() {
          }
         
         if (qList.length === 0) {
-          // Fallback if db is also empty and ALOC API fails
-          throw new Error("We couldn't generate questions right now. The API limit might be reached or no valid API Key was provided. Please try again later or add your GROQ_API_KEY in Vercel.");
+          throw new Error("We couldn't generate questions right now. The API limit might be reached or no valid GROQ_API_KEY was provided.");
         }
 
         setQuestions(qList);
