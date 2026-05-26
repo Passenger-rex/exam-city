@@ -62,7 +62,7 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
 app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
     const { subject = "english", year = "any", type = "standard", bank = "public" } = req.query;
-    const limitNum = type === "micro" ? 5 : 10;
+    const limitNum = type === "micro" ? 5 : 40;
     const isPro = bank === "premium";
     
     let allQuestions: any[] = [];
