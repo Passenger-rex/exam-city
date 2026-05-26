@@ -188,17 +188,17 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
 });
 
 function startStaticServer() {
+  if (process.env.VERCEL || process.env.NETLIFY) return; // Do not serve static files in serverless environments
+  
   const distPath = path.join(process.cwd(), "dist");
   app.use(express.static(distPath));
   app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   });
 
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Static server running on http://localhost:${PORT}`);
-    });
-  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Static server running on http://localhost:${PORT}`);
+  });
 }
 
 // API 404 Not Found Handler
@@ -219,7 +219,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 });
 
 // Vite middleware for development or fallback
-if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL && !process.env.NETLIFY) {
   const vitePkg = "vi" + "te";
   import(vitePkg)
     .then(({ createServer: createViteServer }) => {

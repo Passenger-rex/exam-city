@@ -104,6 +104,10 @@ export default function ExamPage() {
           try {
              json = JSON.parse(text);
           } catch(e) {
+             const isHtml = text.trim().startsWith("<");
+             if (isHtml) {
+                 throw new Error(`Server configuration error (Failed to load API). Please ensure Vercel/Netlify serverless functions are configured correctly. Details: ${text.slice(0, 100)}...`);
+             }
              throw new Error(`Invalid JSON from server (${res.status}): ${text.slice(0, 100)}`);
           }
           
