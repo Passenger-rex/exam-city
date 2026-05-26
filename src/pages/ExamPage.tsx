@@ -154,7 +154,7 @@ export default function ExamPage() {
         
         if (qList.length === 0) {
           // Fallback if db is also empty and ALOC API fails
-          throw new Error("We couldn't generate questions right now. The API limit might be reached or no valid GROQ_API_KEY was provided. Please try again later or add your API key.");
+          throw new Error("We couldn't generate questions right now. The API limit might be reached or no valid API Key was provided. Please try again later or add your GEMINI_API_KEY in Vercel.");
         }
 
         setQuestions(qList);
