@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { db, auth } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { updateEmail, updatePassword } from "firebase/auth";
 import {
   ArrowLeft,
@@ -11,6 +11,9 @@ import {
   Lock,
   CheckCircle2,
   AlertCircle,
+  Share2,
+  Users,
+  Award
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 
@@ -24,6 +27,8 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  const [referralCount, setReferralCount] = useState(0);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -37,6 +42,11 @@ export default function ProfilePage() {
             if (userDoc.exists()) {
               setName(userDoc.data().name || "");
             }
+            
+            const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
+            const refSnap = await getDocs(refQ);
+            setReferralCount(refSnap.size);
+
           } catch (err) {
             console.error("Error fetching user data:", err);
           } finally {
@@ -241,6 +251,64 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
+            
+            <div className="mt-10 pt-8 border-t border-outline-variant/30">
+               <div className="bg-primary/5 border border-primary/20 rounded-[20px] p-6 sm:p-8 relative overflow-hidden group hover:border-primary/40 transition-colors">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl -mt-10 -mr-10"></div>
+                  <div className="relative z-10">
+                     <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl sm:text-2xl font-bold font-headline-md flex items-center gap-2 text-on-surface">
+                           <Award className="w-6 h-6 text-primary" /> Invite & Earn Premium
+                        </h2>
+                        <div className="bg-surface px-4 py-1.5 rounded-full border border-primary/30 flex items-center gap-2 font-bold text-sm text-primary shadow-sm">
+                           <Users className="w-4 h-4" /> {referralCount} / 3 Referred
+                        </div>
+                     </div>
+                     <p className="text-on-surface-variant font-medium mb-6 text-sm">
+                        Share Exam City with your friends! Once 3 friends sign up using your unique link, your account will be automatically upgraded to Premium for free.
+                     </p>
+                     
+                     <div className="space-y-2">
+                        <label className="text-xs font-bold text-primary uppercase tracking-widest pl-1">Your Unique Invite Link</label>
+                        <div className="flex gap-2">
+                           <input 
+                              type="text" 
+                              readOnly 
+                              value={`https://examcity.netlify.app/signup?ref=${auth.currentUser?.uid}`} 
+                              className="flex-1 bg-surface border border-outline-variant/60 rounded-xl px-4 py-3 text-sm font-medium text-on-surface outline-none"
+                           />
+                           <button 
+                              onClick={() => {
+                                 navigator.clipboard.writeText(`https://examcity.netlify.app/signup?ref=${auth.currentUser?.uid}`);
+                                 setMessage("Referral link copied to clipboard!");
+                              }}
+                              className="bg-primary text-white p-3 rounded-xl hover:bg-primary/90 transition-all font-bold flex shrink-0 shadow-sm active:scale-95"
+                           >
+                              <Share2 className="w-5 h-5 sm:mr-2" />
+                              <span className="hidden sm:inline">Copy Link</span>
+                           </button>
+                        </div>
+                     </div>
+                     
+                     {referralCount >= 3 && (
+                        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-600 border border-green-500/20 text-xs font-bold rounded-full">
+                           <CheckCircle2 className="w-4 h-4" /> You've achieved Premium status!
+                        </div>
+                     )}
+                     
+                     {referralCount < 3 && (
+                        <div className="mt-6">
+                           <div className="w-full bg-surface h-3 rounded-full overflow-hidden border border-outline-variant/30">
+                              <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${(referralCount / 3) * 100}%` }}></div>
+                           </div>
+                           <div className="text-right mt-1.5 text-xs font-bold text-on-surface-variant">
+                              {3 - referralCount} more to go!
+                           </div>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            </div>
           </div>
         </motion.div>
       </main>

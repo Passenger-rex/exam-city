@@ -61,7 +61,7 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
 // Questions generator API Endpoint
 app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
-    const { subject = "english", year = "any", type = "standard", bank = "public" } = req.query;
+    const { subject = "english", year = "any", type = "standard", bank = "public", topic = "" } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
     const isPro = bank === "premium";
     
@@ -83,8 +83,13 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       } else {
         yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
       }
+      
+      let topicInstruction = "";
+      if (typeof topic === "string" && topic.trim().length > 0) {
+        topicInstruction = `The questions MUST specifically test knowledge on the topic of "${topic}".`;
+      }
 
-      const prompt = `Surf online to find and return exactly ${limitNum} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
+      const prompt = `Surf online to find and return exactly ${limitNum} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} ${topicInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
       IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
       {
          "subject": "${subject}",

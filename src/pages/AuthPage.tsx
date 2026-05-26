@@ -31,6 +31,8 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(location.pathname === "/login");
+  const urlParams = new URLSearchParams(location.search);
+  const refCode = urlParams.get("ref");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,6 +99,21 @@ export default function AuthPage() {
           role: "user",
           createdAt: serverTimestamp(),
         });
+        
+        // Handle Referral
+        if (refCode) {
+           try {
+              const { addDoc, collection } = await import("firebase/firestore");
+              await addDoc(collection(db, "referrals"), {
+                 referrerId: refCode,
+                 referredId: userCredential.user.uid,
+                 createdAt: serverTimestamp()
+              });
+           } catch(e) {
+              console.error("Failed to add referral record", e);
+           }
+        }
+
         await handleAuthSuccess(userCredential.user.uid);
       }
     } catch (err: any) {
@@ -141,6 +158,25 @@ export default function AuthPage() {
         },
         { merge: true },
       );
+      
+      // Handle Referral (Only iff this is a new signup ideally, but for now we just try adding it if refCode exists, maybe they are logging in for the first time)
+      if (refCode) {
+         try {
+            const { addDoc, collection, query, where, getDocs } = await import("firebase/firestore");
+            // Check if already referred to prevent duplicate refs on every Google sign in
+            const q = query(collection(db, "referrals"), where("referredId", "==", result.user.uid));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+               await addDoc(collection(db, "referrals"), {
+                  referrerId: refCode,
+                  referredId: result.user.uid,
+                  createdAt: serverTimestamp()
+               });
+            }
+         } catch(e) {
+            console.error("Failed to add referral record", e);
+         }
+      }
 
       await handleAuthSuccess(result.user.uid);
     } catch (err: any) {

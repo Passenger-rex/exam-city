@@ -35,6 +35,8 @@ export default function ExamPage() {
   const bankParam = searchParams.get("bank") || "public";
   const subjectParam = searchParams.get("subject") || "english";
   const printParam = searchParams.get("print") === "true";
+  const topicParam = searchParams.get("topic") || "";
+  const strictParam = searchParams.get("strict") === "true";
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -44,6 +46,8 @@ export default function ExamPage() {
   const [timeLeft, setTimeLeft] = useState(typeParam === "micro" ? 300000 : 3600000); // 5 mins / 1 hour
   const [showGrid, setShowGrid] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [strictStarted, setStrictStarted] = useState(false);
+  const [warnings, setWarnings] = useState(0);
 
   // We should not use sessionStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
   const stateKey = printParam ? "offline_print_only" : `exam_state_${subjectParam}_${yearParam}_${typeParam}`;
@@ -98,7 +102,7 @@ export default function ExamPage() {
         }
 
         try {
-          const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}`);
+          const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}&topic=${encodeURIComponent(topicParam)}`);
           const text = await res.text();
           let json;
           try {
@@ -200,11 +204,38 @@ export default function ExamPage() {
   // Countdown timer effect
   useEffect(() => {
     if (loading || submitting || printParam || timeLeft <= 0) return;
+    if (strictParam && !strictStarted) return; // wait till strict mode started
+    
     const timer = setInterval(() => {
       setTimeLeft((prev) => Math.max(0, prev - 1000));
     }, 1000);
     return () => clearInterval(timer);
-  }, [loading, submitting, printParam, timeLeft]);
+  }, [loading, submitting, printParam, timeLeft, strictParam, strictStarted]);
+
+  // Handle Strict Mode Tab Switching Detection
+  useEffect(() => {
+    if (!strictParam || !strictStarted || submitting || loading || printParam) return;
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+         setWarnings(prev => {
+            const nextWarnings = prev + 1;
+            if (nextWarnings >= 2) {
+               alert("Strict Mode Violation! You left the exam tab multiple times. Your exam is being automatically submitted.");
+               handleSubmit();
+            } else {
+               alert("Strict Mode Warning: You left the exam area. If you do this again, your exam will be automatically submitted!");
+            }
+            return nextWarnings;
+         });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [strictParam, strictStarted, submitting, loading, printParam]);
 
   // Handle timer reaching zero
   useEffect(() => {
@@ -386,6 +417,33 @@ export default function ExamPage() {
           </div>
        </div>
     );
+  }
+
+  if (strictParam && !strictStarted && !loading) {
+     return (
+       <div className="min-h-screen bg-surface-dim flex items-center justify-center p-6">
+         <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} className="bg-surface max-w-lg w-full rounded-[2rem] p-8 sm:p-10 border border-outline-variant/50 shadow-2xl text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+               <AlertCircle className="w-10 h-10 text-red-600" />
+            </div>
+            <h1 className="text-3xl font-extrabold font-headline-md mb-4 text-on-surface">Strict Mode Enabled</h1>
+            <p className="text-on-surface-variant font-medium mb-8">
+               You are about to start a monitored exam session. If you switch tabs, minimize the window, or leave the page, you will receive a warning. A second violation will automatically submit your exam.
+            </p>
+            <button 
+              onClick={() => {
+                 setStrictStarted(true);
+                 if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch((err)=>console.log("Could not enter fullscreen"));
+                 }
+              }}
+              className="w-full py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 active:scale-95 transition-all shadow-lg shadow-red-500/25"
+            >
+              I Understand, Start Exam
+            </button>
+         </motion.div>
+       </div>
+     );
   }
 
   return (

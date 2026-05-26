@@ -22,6 +22,8 @@ export function ExamConfigModal({
   const [bankType, setBankType] = useState<"public" | "premium">("public");
   
   const [subject, setSubject] = useState<string>("english");
+  const [topic, setTopic] = useState<string>("");
+  const [strictMode, setStrictMode] = useState<boolean>(false);
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [searchSubject, setSearchSubject] = useState("");
   
@@ -52,7 +54,12 @@ export function ExamConfigModal({
       navigate("/checkout");
       return;
     }
-    navigate(`/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}`);
+    
+    let url = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}`;
+    if (topic.trim()) url += `&topic=${encodeURIComponent(topic.trim())}`;
+    if (strictMode) url += `&strict=true`;
+    
+    navigate(url);
   };
 
   if (!isOpen) return null;
@@ -133,6 +140,18 @@ export function ExamConfigModal({
             </AnimatePresence>
           </div>
 
+          {/* Target Topic */}
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-on-surface">Specific Topic <span className="text-on-surface-variant font-normal text-xs">(Optional)</span></label>
+            <input 
+              type="text" 
+              placeholder="e.g. Algebra, Organic Chemistry"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="w-full p-3.5 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
+            />
+          </div>
+
           {/* Year Slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -171,7 +190,7 @@ export function ExamConfigModal({
           <div className="grid sm:grid-cols-2 gap-6">
             {/* Exam Mode */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-on-surface">Exam Mode</label>
+              <label className="text-sm font-bold text-on-surface">Exam Mode & Strict Rules</label>
               <div className="grid grid-cols-1 gap-2 p-1.5 bg-surface-dim rounded-xl border border-outline-variant/40">
                 <button
                   onClick={() => setExamType("standard")}
@@ -187,6 +206,19 @@ export function ExamConfigModal({
                   <span className="text-sm font-bold mb-0.5">Micro</span>
                   <span className="text-[11px] font-medium opacity-80">5 Questions</span>
                 </button>
+                
+                <div className="pt-2 mt-1 border-t border-outline-variant/30 px-1 pb-1">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${strictMode ? "bg-red-500 border-red-500" : "border-outline-variant group-hover:border-outline"}`}>
+                      {strictMode && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={strictMode} onChange={(e) => setStrictMode(e.target.checked)} />
+                    <div>
+                      <div className="text-sm font-bold text-on-surface">Strict Mode</div>
+                      <div className="text-[10px] text-on-surface-variant font-medium leading-tight mt-0.5">Auto-submits if you switch tabs</div>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
 

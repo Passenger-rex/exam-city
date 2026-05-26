@@ -49,11 +49,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     const userRef = doc(db, "users", user.uid);
     const unsubscribeProfile = onSnapshot(
       userRef,
-      (docSnap) => {
+      async (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
+          let currentTier = data.tier || "free";
+          
+          // Check Referrals
+          try {
+             const { collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
+             const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
+             const refSnap = await getDocs(refQ);
+             if (refSnap.size >= 3 && currentTier !== "pro") {
+                // Auto-upgrade to Pro!
+                await updateDoc(userRef, { tier: "pro", proReason: "referrals" });
+                currentTier = "pro";
+             }
+          } catch(e) {
+             console.error("Error checking referrals:", e);
+          }
+          
           setProfile({
-            tier: data.tier || "free",
+            tier: currentTier,
             testsTakenThisMonth: Number(data.examCount || 0),
           });
         } else {
