@@ -84,7 +84,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
         yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
       }
 
-      const prompt = `Surf online to find and return exactly ${limitNum} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving.
+      const prompt = `Surf online to find and return exactly ${limitNum} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
       IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
       {
          "subject": "${subject}",
@@ -106,6 +106,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
           response_format: { type: "json_object" },
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
+           max_tokens: 8000,
         });
 
         let jsonStr = response.choices[0].message.content?.trim() || "{}";

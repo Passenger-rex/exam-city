@@ -14,7 +14,7 @@ An intelligent, AI-powered mock examination platform tailored for WAEC, JAMB, an
 
 ## 🌐 Live Demo
 
-You can view the live application here: [https://exam-city.vercel.app](https://exam-city.vercel.app)
+You can view the live application here: [https://examcity.netlify.app/](https://examcity.netlify.app/)
 
 ## 🛠️ Tech Stack
 
