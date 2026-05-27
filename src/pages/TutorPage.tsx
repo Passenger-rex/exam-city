@@ -176,11 +176,11 @@ export default function TutorPage() {
                           <Bot className="w-5 h-5" />
                        </div>
                     )}
-                    <div className={`p-4 sm:p-5 rounded-3xl text-[15px] font-sans leading-relaxed tracking-wide ${m.role === 'model' ? 'bg-surface border border-outline-variant/40 text-on-surface rounded-bl-sm shadow-sm' : 'bg-gradient-to-tr from-primary to-primary/90 text-white rounded-br-sm shadow-md'}`}>
+                    <div className={`p-4 sm:p-5 rounded-3xl text-sm font-bold font-sans leading-normal tracking-wide ${m.role === 'model' ? 'bg-surface border border-outline-variant/40 text-on-surface rounded-bl-sm shadow-sm' : 'bg-gradient-to-tr from-primary to-primary/90 text-white rounded-br-sm shadow-md'}`}>
                        {m.role === 'user' ? (
-                          <p className="whitespace-pre-wrap">{m.text}</p>
+                          <p className="whitespace-pre-wrap font-bold">{m.text}</p>
                        ) : (
-                          <div className="markdown-body prose prose-sm max-w-none prose-p:font-normal prose-headings:font-medium prose-strong:font-semibold text-on-surface font-normal">
+                          <div className="markdown-body prose prose-sm max-w-none prose-p:font-bold prose-headings:font-bold prose-strong:font-extrabold text-on-surface font-bold">
                              <Markdown>{m.text}</Markdown>
                           </div>
                        )}
@@ -213,7 +213,7 @@ export default function TutorPage() {
                    onChange={e => setInputValue(e.target.value)}
                    onKeyDown={e => e.key === 'Enter' && handleSend()}
                    placeholder={isListening ? "Listening..." : "Ask a question or request a study plan..."}
-                   className={`w-full bg-surface-dim/50 border border-outline-variant/60 pl-5 pr-14 py-4 rounded-full text-[15px] font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60 ${isListening ? "border-red-500/50 bg-red-500/5 ring-2 ring-red-500/20" : ""}`}
+                   className={`w-full bg-surface-dim/50 border border-outline-variant/60 pl-5 pr-14 py-4 rounded-full text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60 ${isListening ? "border-red-500/50 bg-red-500/5 ring-2 ring-red-500/20" : ""}`}
                 />
                 
                 <button
