@@ -217,7 +217,7 @@ export default function ReviewPage() {
                     {idx + 1}
                   </div>
                   <h3 
-                    className="text-lg sm:text-xl font-bold font-headline-md leading-relaxed"
+                    className="text-base sm:text-lg lg:text-xl font-bold font-headline-md leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: q.question_html || q.question_text }}
                   />
                 </div>
@@ -255,7 +255,7 @@ export default function ReviewPage() {
                           className={`p-4 rounded-2xl border-2 flex justify-between items-center ${bgClass}`}
                         >
                           <span 
-                            className={`text-lg font-medium ${textClass}`}
+                            className={`text-sm sm:text-base font-medium ${textClass}`}
                             dangerouslySetInnerHTML={{ __html: val }}
                           />
                           {isActualCorrect && (
@@ -279,7 +279,7 @@ export default function ReviewPage() {
                         Explanation
                       </h4>
                       <div 
-                        className="text-on-surface-variant font-medium text-lg leading-relaxed"
+                        className="text-on-surface-variant font-medium text-sm sm:text-base leading-relaxed"
                         dangerouslySetInnerHTML={{ __html: q.explanation }}
                       />
                     </div>

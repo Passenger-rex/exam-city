@@ -266,6 +266,9 @@ body {
   .hover-jelly:hover {
     animation: jelly 0.5s;
   }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
   
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

@@ -130,7 +130,7 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      <nav className="bg-surface/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 border-b border-outline-variant/50">
+      <nav className="bg-surface/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 border-b border-outline-variant/50 hidden md:block">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <Logo />
           <div className="flex items-center gap-4 sm:gap-6">
@@ -168,7 +168,34 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <nav className="md:hidden bg-surface/90 backdrop-blur-md px-5 py-3 flex justify-between items-center shadow-sm sticky top-0 z-40 border-b border-outline-variant/50">
+        <Logo />
+        <div className="flex items-center gap-3">
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit ${userProfile.tier === "pro" ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-surface-dim text-on-surface-variant border border-outline-variant/50"}`}>
+             {userProfile.tier === "pro" ? <><Zap className="w-2.5 h-2.5" /> PRO</> : "FREE"}
+          </span>
+        </div>
+      </nav>
+
+      {/* Mobile Bottom Navigation Navbar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant/50 flex justify-around items-center py-2 px-2 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+         <button onClick={() => { /* home */ }} className="flex flex-col items-center p-2 text-primary">
+            <BookOpen className="w-6 h-6 mb-1" />
+            <span className="text-[10px] font-bold">Home</span>
+         </button>
+         <button onClick={() => setShowConfigModal(true)} className="flex flex-col items-center p-2 text-on-surface-variant hover:text-primary transition-colors">
+            <div className="w-10 h-10 -mt-6 bg-primary text-white rounded-full flex items-center justify-center shadow-lg border-4 border-surface">
+               <Zap className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold mt-1">Start</span>
+         </button>
+         <button onClick={() => navigate("/profile")} className="flex flex-col items-center p-2 text-on-surface-variant hover:text-primary transition-colors">
+            <User className="w-6 h-6 mb-1" />
+            <span className="text-[10px] font-bold">Profile</span>
+         </button>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-10 pb-28 md:pb-10">
         <AnimatePresence>
           {showConfigModal && (
             <ExamConfigModal

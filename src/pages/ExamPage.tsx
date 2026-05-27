@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { db, auth } from "../firebase";
 import {
@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   Send,
   Volume2,
+  X,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 
@@ -49,13 +50,13 @@ export default function ExamPage() {
   const [strictStarted, setStrictStarted] = useState(false);
   const [warnings, setWarnings] = useState(0);
 
-  // We should not use sessionStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
+  // We should not use localStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
   const stateKey = printParam ? "offline_print_only" : `exam_state_${subjectParam}_${yearParam}_${typeParam}`;
 
   useEffect(() => {
     const fetchQuestions = async () => {
       if (!printParam) {
-        const savedStateStr = sessionStorage.getItem(stateKey);
+        const savedStateStr = localStorage.getItem(stateKey);
         if (savedStateStr) {
           try {
             const savedState = JSON.parse(savedStateStr);
@@ -176,17 +177,23 @@ export default function ExamPage() {
   useEffect(() => {
     if (loading || questions.length === 0) return;
     if (!printParam) {
-       sessionStorage.setItem(stateKey, JSON.stringify({
-         questions,
-         answers,
-         currentIndex,
-         timeLeft
-       }));
+       const saveData = () => {
+         localStorage.setItem(stateKey, JSON.stringify({
+           questions,
+           answers,
+           currentIndex,
+           timeLeft
+         }));
+       };
+       saveData(); // Save instantly on change
+       const intervalId = setInterval(saveData, 30000); // 30s periodic auto-save
+       return () => clearInterval(intervalId);
     } else {
        // It's print mode. Wait a bit for DOM to render then trigger print
-       setTimeout(() => {
+       const timer = setTimeout(() => {
           window.print();
        }, 500);
+       return () => clearTimeout(timer);
     }
   }, [questions, answers, currentIndex, timeLeft, stateKey, loading, printParam]);
 
@@ -212,6 +219,9 @@ export default function ExamPage() {
     return () => clearInterval(timer);
   }, [loading, submitting, printParam, timeLeft, strictParam, strictStarted]);
 
+  const submitRef = useRef<() => void>(() => {});
+  useEffect(() => { submitRef.current = handleSubmit; });
+
   // Handle Strict Mode Tab Switching Detection
   useEffect(() => {
     if (!strictParam || !strictStarted || submitting || loading || printParam) return;
@@ -222,7 +232,7 @@ export default function ExamPage() {
             const nextWarnings = prev + 1;
             if (nextWarnings >= 2) {
                alert("Strict Mode Violation! You left the exam tab multiple times. Your exam is being automatically submitted.");
-               handleSubmit();
+               submitRef.current();
             } else {
                alert("Strict Mode Warning: You left the exam area. If you do this again, your exam will be automatically submitted!");
             }
@@ -241,7 +251,7 @@ export default function ExamPage() {
   useEffect(() => {
     if (timeLeft === 0 && !submitting && !loading && !printParam && questions.length > 0) {
       alert("Time is up! Submitting your exam automatically.\nGood luck!");
-      handleSubmit();
+      submitRef.current();
     }
   }, [timeLeft, submitting, loading, printParam, questions.length]);
 
@@ -254,7 +264,11 @@ export default function ExamPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    sessionStorage.removeItem(stateKey);
+    localStorage.removeItem(stateKey);
+    // Auto remove strict mode after submitting
+    if (strictParam && document.fullscreenElement) {
+      document.exitFullscreen().catch(err => console.log("Could not exit fullscreen", err));
+    }
 
     let score = 0;
     questions.forEach((q) => {
@@ -419,17 +433,31 @@ export default function ExamPage() {
     );
   }
 
-  if (strictParam && !strictStarted && !loading) {
+  if (strictParam && !strictStarted && !loading && !printParam) {
      return (
-       <div className="min-h-screen bg-surface-dim flex items-center justify-center p-6">
-         <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} className="bg-surface max-w-lg w-full rounded-[2rem] p-8 sm:p-10 border border-outline-variant/50 shadow-2xl text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-               <AlertCircle className="w-10 h-10 text-red-600" />
+       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+         <motion.div 
+           initial={{opacity:0, scale:0.95}} 
+           animate={{opacity:1, scale:1}} 
+           className="bg-surface w-[300px] rounded-2xl p-6 shadow-2xl flex flex-col items-center relative"
+         >
+            <button
+              onClick={() => navigate(-1)}
+              className="absolute top-3 right-3 p-1.5 text-on-surface-variant hover:bg-surface-dim rounded-full transition-colors"
+              aria-label="Close"
+            >
+               <X className="w-5 h-5" />
+            </button>
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mt-1">
+               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
-            <h1 className="text-3xl font-extrabold font-headline-md mb-4 text-on-surface">Strict Mode Enabled</h1>
-            <p className="text-on-surface-variant font-medium mb-8">
-               You are about to start a monitored exam session. If you switch tabs, minimize the window, or leave the page, you will receive a warning. A second violation will automatically submit your exam.
+            
+            <h1 className="text-lg font-bold font-headline-md text-on-surface mb-3">Strict Mode</h1>
+            
+            <p className="text-xs text-on-surface-variant leading-relaxed mb-6 text-justify px-1">
+              You are about to start a monitored exam session. If you switch tabs or leave the page you will receive a warning. A <strong>second violation</strong> will submit your exam.
             </p>
+
             <button 
               onClick={() => {
                  setStrictStarted(true);
@@ -437,9 +465,9 @@ export default function ExamPage() {
                     document.documentElement.requestFullscreen().catch((err)=>console.log("Could not enter fullscreen"));
                  }
               }}
-              className="w-full py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 active:scale-95 transition-all shadow-lg shadow-red-500/25"
+              className="w-full py-3 text-sm bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 active:scale-95 transition-all shadow-md shadow-red-600/20"
             >
-              I Understand, Start Exam
+              Accept & Begin
             </button>
          </motion.div>
        </div>
@@ -447,23 +475,41 @@ export default function ExamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dim font-body-md text-on-surface flex flex-col h-screen overflow-hidden">
-      <nav className="bg-surface px-6 py-4 shadow-sm z-50 border-b border-outline-variant/30 flex justify-between items-center shrink-0">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-surface md:bg-surface-dim font-body-md text-on-surface flex flex-col h-screen overflow-hidden">
+      <nav className="bg-surface px-4 sm:px-6 py-3 sm:py-4 shadow-sm z-50 border-b border-outline-variant/30 flex justify-between items-center shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button 
+            onClick={() => { if(window.confirm("Are you sure you want to leave the exam?")) navigate(-1); }}
+            className="md:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
           <Logo />
           <div className="hidden md:flex items-center gap-2 pl-4 ml-4 border-l border-outline-variant/50">
             <span className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest">{subjectParam}</span>
+            {topicParam && (
+              <>
+                <span className="w-1 h-1 bg-outline rounded-full"></span>
+                <span className="text-sm font-semibold text-primary/80 uppercase tracking-widest">{topicParam}</span>
+              </>
+            )}
             <span className="w-1 h-1 bg-outline rounded-full"></span>
             <span className="text-sm font-semibold text-on-surface-variant">{yearParam}</span>
+            {strictParam && (
+              <>
+                <span className="w-1 h-1 bg-outline rounded-full"></span>
+                <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 rounded-full uppercase tracking-wider">Strict</span>
+              </>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button 
             onClick={() => setShowGrid(!showGrid)}
-            className="lg:hidden p-2 rounded-lg bg-surface-dim text-on-surface-variant hover:text-primary transition-colors"
+            className="lg:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors"
             aria-label="Toggle Exam Overview"
           >
-            <LayoutGrid className="w-5 h-5" />
+            <LayoutGrid className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <motion.div
             animate={
@@ -522,10 +568,10 @@ export default function ExamPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="bg-surface p-5 sm:p-8 md:p-10 rounded-[20px] sm:rounded-[28px] border border-outline-variant/40 shadow-sm"
+              className="bg-surface py-5 px-4 sm:p-8 md:p-10 border-b sm:border border-outline-variant/20 sm:rounded-[28px] sm:shadow-sm"
             >
               <h1 
-                className="text-lg sm:text-2xl md:text-3xl font-headline-md font-bold mb-6 sm:mb-8 md:mb-10 text-on-surface leading-snug prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl break-words w-full"
+                className="text-base sm:text-lg md:text-2xl font-headline-md font-bold mb-5 sm:mb-8 md:mb-10 text-on-surface leading-relaxed prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl break-words w-full"
                 dangerouslySetInnerHTML={{ __html: currentQ?.question_html || currentQ?.question_text }}
               />
 
@@ -547,7 +593,7 @@ export default function ExamPage() {
                     return (
                       <label
                         key={key}
-                        className={`w-full text-left p-4 sm:p-5 md:p-6 flex gap-3 sm:gap-4 lg:gap-5 items-start rounded-xl sm:rounded-2xl border-2 transition-all group cursor-pointer ${isSelected ? "border-primary bg-primary/5 text-primary shadow-sm" : "border-outline-variant/40 hover:bg-surface-dim hover:border-outline-variant/80 bg-surface"}`}
+                        className={`w-full text-left p-4 sm:p-5 md:p-6 flex gap-3 sm:gap-4 lg:gap-5 items-start rounded-xl sm:rounded-2xl border-b sm:border-2 transition-all group cursor-pointer ${isSelected ? "border-primary bg-primary/5 text-primary sm:shadow-sm" : "border-outline-variant/30 hover:bg-surface-dim bg-surface"}`}
                       >
                         <input
                            type="radio"
@@ -557,17 +603,20 @@ export default function ExamPage() {
                            onChange={() => handleSelect(key)}
                            className="hidden"
                         />
-                        <div
-                          className={`mt-0.5 sm:mt-1 shrink-0 w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center transition-colors font-bold text-xs sm:text-sm ${isSelected ? "border-primary bg-primary text-white" : "border-outline-variant text-on-surface-variant group-hover:border-outline"}`}
-                        >
-                          {isSelected ? (
-                             <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                          ) : (
-                             key.toUpperCase()
-                          )}
+                        <div className="flex flex-col items-center gap-1 sm:gap-2 shrink-0 pt-0.5">
+                          <span className={`text-[10px] sm:hidden font-bold uppercase ${isSelected ? "text-primary" : "text-on-surface-variant"}`}>{key}</span>
+                          <div 
+                            className={`mt-0.5 sm:mt-1 shrink-0 w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center transition-colors font-bold text-xs sm:text-sm ${isSelected ? "border-primary bg-primary text-white" : "border-outline-variant text-on-surface-variant group-hover:border-outline"}`}
+                          >
+                            {isSelected ? (
+                               <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                            ) : (
+                               <span className="hidden sm:inline">{key.toUpperCase()}</span>
+                            )}
+                          </div>
                         </div>
                         <div
-                          className={`text-[15px] sm:text-base md:text-lg font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
+                          className={`text-[15px] sm:text-[15px] md:text-base font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full pt-1 sm:pt-0 ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
                           dangerouslySetInnerHTML={{ __html: val }}
                         />
                       </label>
@@ -577,33 +626,63 @@ export default function ExamPage() {
               </div>
             </motion.div>
 
-            <div className="mt-6 sm:mt-8 flex justify-between items-center gap-3">
+            {/* Fixed Mobile Bottom Action Bar */}
+            <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-surface/90 backdrop-blur-md border-t border-outline-variant/30 flex justify-between items-center z-40 lg:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-safe">
               <button
                 onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentIndex === 0}
-                className="px-4 sm:px-6 py-3 sm:py-3.5 font-bold text-on-surface hover:bg-surface border border-outline-variant/50 rounded-2xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-2"
+                className="px-4 py-3 font-bold text-on-surface hover:bg-surface-dim border border-outline-variant/50 rounded-xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-2 shadow-sm"
               >
-                <ChevronLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
+                <ChevronLeft className="w-5 h-5" />
               </button>
+              
+              <div className="flex-1 px-4 text-center">
+                 <span className="text-xs sm:text-sm font-bold text-on-surface-variant uppercase tracking-widest bg-surface-dim px-3 py-1.5 rounded-full border border-outline-variant/30 inline-flex items-center">
+                    {currentIndex + 1} <span className="opacity-50 mx-1">/</span> {questions.length}
+                 </span>
+              </div>
 
-              {currentIndex < questions.length - 1 ? (
+              {currentIndex === questions.length - 1 ? (
                 <button
-                  onClick={() =>
-                    setCurrentIndex((prev) =>
-                      Math.min(questions.length - 1, prev + 1),
-                    )
-                  }
-                  className="flex-1 sm:flex-none justify-center px-6 sm:px-8 py-3 sm:py-3.5 bg-on-surface text-surface font-bold rounded-2xl hover:bg-on-surface/90 transition-all active:scale-95 shadow-lg shadow-on-surface/20 flex items-center gap-2"
+                  onClick={submitRef.current}
+                  className="px-5 sm:px-6 py-3 font-bold bg-primary text-white hover:bg-primary/90 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(129,51,255,0.39)] flex items-center gap-2 active:scale-95"
                 >
-                  Continue <ChevronRight className="w-5 h-5" />
+                  <span className="hidden sm:inline">Submit Test</span>
+                  <span className="sm:hidden">Submit</span> <Send className="w-4 h-4 ml-1" />
                 </button>
               ) : (
                 <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="flex-1 sm:flex-none justify-center px-6 sm:px-8 py-3 sm:py-3.5 bg-primary text-on-primary font-bold rounded-2xl hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2"
+                  onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+                  className="px-4 py-3 font-bold bg-on-surface text-surface hover:bg-on-surface/90 rounded-xl transition-colors shadow-sm flex items-center gap-2 active:scale-95"
                 >
-                  {submitting ? "Submitting..." : "Submit Exam"} <Send className="w-4 h-4" />
+                  <span className="hidden sm:inline">Next Question</span>
+                  <span className="sm:hidden">Next</span> <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Desktop Inline Actions */}
+            <div className="hidden lg:flex mt-8 justify-between items-center gap-3">
+              <button
+                onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                disabled={currentIndex === 0}
+                className="px-6 py-3.5 font-bold text-on-surface hover:bg-surface border border-outline-variant/50 rounded-2xl transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-2"
+              >
+                <ChevronLeft className="w-5 h-5" /> Previous Question
+              </button>
+              {currentIndex === questions.length - 1 ? (
+                <button
+                  onClick={submitRef.current}
+                  className="px-8 py-3.5 font-bold bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all shadow-[0_4px_14px_0_rgba(129,51,255,0.39)] flex items-center gap-2"
+                >
+                  Submit Test <Send className="w-5 h-5 ml-1" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+                  className="px-6 py-3.5 font-bold bg-on-surface text-surface hover:bg-on-surface/90 rounded-2xl transition-colors flex items-center gap-2"
+                >
+                  Next Question <ChevronRight className="w-5 h-5" />
                 </button>
               )}
             </div>

@@ -21,7 +21,7 @@ export function ExamConfigModal({
   const [examType, setExamType] = useState<"standard" | "micro">("standard");
   const [bankType, setBankType] = useState<"public" | "premium">("public");
   
-  const [subject, setSubject] = useState<string>("english");
+  const [subject, setSubject] = useState<string>("Mathematics");
   const [topic, setTopic] = useState<string>("");
   const [strictMode, setStrictMode] = useState<boolean>(false);
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
@@ -30,10 +30,13 @@ export function ExamConfigModal({
   const [years, setYears] = useState<number[]>([]);
 
   const subjectsList = [
-    "accounting", "biology", "chemistry", "civicedu", "commerce", 
-    "crk", "currentaffairs", "economics", "english", "englishlit", 
-    "geography", "government", "history", "insurance", "irk", 
-    "mathematics", "physics"
+    "Accounting", "Agricultural Science", "Basic Science", "Basic Technology", 
+    "Biology", "Business Studies", "Chemistry", "Civic Education", "Commerce", 
+    "Computer Studies", "CRK", "Current Affairs", "Economics", "English", 
+    "English Literature", "Fine Art", "French", "Further Mathematics", 
+    "Geography", "Government", "Hausa", "History", "Home Economics", "Igbo",
+    "Insurance", "IRK", "Mathematics", "Music", "Physical Education", 
+    "Physics", "Technical Drawing", "Yoruba"
   ];
 
   useEffect(() => {
@@ -74,7 +77,7 @@ export function ExamConfigModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: "100%", scale: 0.95 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="bg-surface w-full sm:max-w-[560px] md:max-w-[640px] max-h-[90dvh] flex flex-col relative rounded-t-[1.5rem] sm:rounded-3xl shadow-2xl overflow-hidden font-sans"
+        className="bg-surface w-full sm:max-w-[600px] md:max-w-[720px] max-h-[85dvh] flex flex-col relative rounded-t-[1.5rem] sm:rounded-3xl shadow-2xl overflow-hidden font-sans"
       >
         {/* Header */}
         <div className="p-4 sm:p-5 md:p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface shrink-0">
@@ -92,52 +95,74 @@ export function ExamConfigModal({
         {/* Scrollable Content */}
         <div className="overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar p-4 sm:p-5 md:p-6 space-y-6 md:space-y-8">
           
-          {/* Subject Dropdown */}
-          <div className="space-y-2 relative">
-            <label className="text-sm font-bold text-on-surface">Subject</label>
-            <button
-              onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
-              className="w-full flex items-center justify-between p-3.5 bg-surface-dim border border-outline-variant/60 rounded-xl active:bg-surface-container-high transition-colors"
-            >
-              <span className="font-bold capitalize text-on-surface">{subject}</span>
-              <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform ${isSubjectDropdownOpen ? "rotate-180" : ""}`} />
-            </button>
-            
-            <AnimatePresence>
-              {isSubjectDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-surface border border-outline-variant/60 rounded-xl shadow-xl z-20 overflow-hidden flex flex-col"
+          <div className="grid sm:grid-cols-2 gap-6">
+            {/* Subject Dropdown */}
+            <div className="space-y-2 relative">
+              <label className="text-sm font-bold text-on-surface">Subject</label>
+              <button
+                onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
+                className="w-full flex items-center justify-between p-3 bg-surface-dim border border-outline-variant/60 rounded-xl active:bg-surface-container-high transition-colors text-sm"
+              >
+                <span className="font-bold capitalize text-on-surface">{subject}</span>
+                <ChevronDown className={`w-4 h-4 text-on-surface-variant transition-transform ${isSubjectDropdownOpen ? "rotate-180" : ""}`} />
+              </button>
+              
+              <AnimatePresence>
+                {isSubjectDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-surface border border-outline-variant/60 rounded-xl shadow-xl z-20 overflow-hidden flex flex-col"
+                  >
+                    <div className="p-2 border-b border-outline-variant/30 flex items-center gap-2 bg-surface">
+                      <Search className="w-4 h-4 text-on-surface-variant shrink-0 ml-1" />
+                      <input 
+                        type="text" 
+                        placeholder="Search subject..."
+                        value={searchSubject}
+                        onChange={(e) => setSearchSubject(e.target.value)}
+                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60 py-1"
+                      />
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1">
+                      {filteredSubjects.length > 0 ? filteredSubjects.map(s => (
+                        <button
+                          key={s}
+                          onClick={() => { setSubject(s); setIsSubjectDropdownOpen(false); }}
+                          className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium capitalize text-left transition-colors ${subject === s ? "bg-primary/10 text-primary" : "text-on-surface hover:bg-surface-dim"}`}
+                        >
+                          {s}
+                          {subject === s && <Check className="w-4 h-4" />}
+                        </button>
+                      )) : (
+                        <div className="p-4 text-center text-sm text-on-surface-variant">No subjects found</div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Target Year */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-on-surface">Target Year</label>
+              <div className="relative">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none text-on-surface font-semibold text-sm appearance-none pr-10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 cursor-pointer"
                 >
-                  <div className="p-2 border-b border-outline-variant/30 flex items-center gap-2 bg-surface">
-                    <Search className="w-4 h-4 text-on-surface-variant shrink-0 ml-1" />
-                    <input 
-                      type="text" 
-                      placeholder="Search subject..."
-                      value={searchSubject}
-                      onChange={(e) => setSearchSubject(e.target.value)}
-                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60 py-1"
-                    />
-                  </div>
-                  <div className="max-h-[240px] overflow-y-auto custom-scrollbar p-1">
-                    {filteredSubjects.length > 0 ? filteredSubjects.map(s => (
-                      <button
-                        key={s}
-                        onClick={() => { setSubject(s); setIsSubjectDropdownOpen(false); }}
-                        className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium capitalize text-left transition-colors ${subject === s ? "bg-primary/10 text-primary" : "text-on-surface hover:bg-surface-dim"}`}
-                      >
-                        {s}
-                        {subject === s && <Check className="w-4 h-4" />}
-                      </button>
-                    )) : (
-                      <div className="p-4 text-center text-sm text-on-surface-variant">No subjects found</div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <option value="any">Mixed</option>
+                  {years.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Target Topic */}
@@ -148,43 +173,8 @@ export function ExamConfigModal({
               placeholder="e.g. Algebra, Organic Chemistry"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full p-3.5 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
+              className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
             />
-          </div>
-
-          {/* Year Slider */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-on-surface">Target Year</label>
-              <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                {selectedYear === "any" ? "Mixed" : selectedYear}
-              </span>
-            </div>
-            <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar snap-x">
-              <button
-                onClick={() => setSelectedYear("any")}
-                className={`snap-start shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-                  selectedYear === "any" 
-                    ? "bg-on-surface text-surface border-on-surface shadow-md" 
-                    : "bg-surface border-outline-variant/60 text-on-surface hover:bg-surface-dim"
-                }`}
-              >
-                Any Year
-              </button>
-              {years.map((y) => (
-                <button
-                  key={y}
-                  onClick={() => setSelectedYear(String(y))}
-                  className={`snap-start shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-                    selectedYear === String(y) 
-                      ? "bg-on-surface text-surface border-on-surface shadow-md" 
-                      : "bg-surface border-outline-variant/60 text-on-surface hover:bg-surface-dim"
-                  }`}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-6">
@@ -264,7 +254,7 @@ export function ExamConfigModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 md:p-6 bg-surface border-t border-outline-variant/30 shrink-0">
+        <div className="p-4 sm:p-5 md:p-6 bg-surface border-t border-outline-variant/30 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] pb-safe rounded-b-[1.5rem] sm:rounded-b-3xl">
           {showPremiumGate && (
             <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-600 shrink-0" />
