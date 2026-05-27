@@ -13,9 +13,9 @@ import AdminPage from "./pages/AdminPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import CheckoutPage from "./pages/CheckoutPage";
+import TutorPage from "./pages/TutorPage";
 import { PageTransition } from "./components/PageTransition";
 import { UserProvider } from "./UserContext";
-import { FloatingChatbot } from "./components/FloatingChatbot";
 
 import { SplashScreen } from "./components/SplashScreen";
 
@@ -90,6 +90,14 @@ function AnimatedRoutes() {
           }
         />
         <Route
+          path="/tutor"
+          element={
+            <PageTransition>
+              <TutorPage />
+            </PageTransition>
+          }
+        />
+        <Route
           path="/admin"
           element={
             <PageTransition>
@@ -108,7 +116,6 @@ export default function App() {
       <BrowserRouter>
         <SplashScreen />
         <AnimatedRoutes />
-        <FloatingChatbot />
       </BrowserRouter>
     </UserProvider>
   );

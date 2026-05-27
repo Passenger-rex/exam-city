@@ -25,6 +25,7 @@ import {
   ArrowRight,
   User,
   Zap,
+  Bot
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
@@ -144,7 +145,7 @@ export default function Dashboard() {
                     console.error("Sign out error", error);
                     setIsSigningOut(false);
                   }
-                }, 600);
+                }, 1000);
               }}
               disabled={isSigningOut}
               className="text-on-surface-variant font-semibold text-sm hover:text-error transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -174,6 +175,27 @@ export default function Dashboard() {
           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 w-fit ${userProfile.tier === "pro" ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-surface-dim text-on-surface-variant border border-outline-variant/50"}`}>
              {userProfile.tier === "pro" ? <><Zap className="w-2.5 h-2.5" /> PRO</> : "FREE"}
           </span>
+          <button
+            onClick={async () => {
+              setIsSigningOut(true);
+              setTimeout(async () => {
+                try {
+                  await auth.signOut();
+                } catch (error) {
+                  console.error("Sign out error", error);
+                  setIsSigningOut(false);
+                }
+              }, 1000);
+            }}
+            disabled={isSigningOut}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-dim text-on-surface-variant hover:text-error transition-colors border border-outline-variant/30"
+          >
+            {isSigningOut ? (
+               <div className="w-3.5 h-3.5 border-[1.5px] border-on-surface-variant border-t-transparent rounded-full animate-spin" />
+            ) : (
+               <LogOut className="w-4 h-4" />
+            )}
+          </button>
         </div>
       </nav>
 
@@ -249,9 +271,10 @@ export default function Dashboard() {
                 <Award className="w-4 h-4 text-amber-500" /> Upgrade
               </button>
             )}
+            {/* Study coach button moved to floating widget */}
             <button
               onClick={() => setShowConfigModal(true)}
-              className="px-8 py-3.5 bg-primary text-white font-semibold text-sm rounded-2xl hover:bg-primary/90 transition-all active:scale-[0.98] whitespace-nowrap shadow-[0_4px_14px_0_rgba(129,51,255,0.39)]"
+              className="px-8 py-3.5 bg-primary text-white font-semibold text-sm rounded-2xl hover:bg-primary/90 transition-all active:scale-[0.98] whitespace-nowrap shadow-[0_4px_14px_0_rgba(129,51,255,0.39)] flex items-center justify-center gap-2"
             >
               Start Mock Exam
             </button>
@@ -382,6 +405,24 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Floating Study Coach */}
+      <motion.button
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => navigate("/tutor")}
+        className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-50 p-4 md:px-6 md:py-4 bg-surface text-on-surface font-bold text-sm rounded-full shadow-2xl shadow-primary/20 border border-outline-variant/60 flex items-center gap-3 group backdrop-blur-xl hover:border-primary/50 transition-all overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-primary group-hover:animate-pulse" />
+          </div>
+          <span className="hidden md:inline mr-2 tracking-wide">Study Coach</span>
+        </div>
+      </motion.button>
     </div>
   );
 }
