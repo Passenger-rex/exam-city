@@ -27,6 +27,30 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 
+const AuthBackground = React.memo(() => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center z-0">
+    <motion.div
+      animate={{
+        scale: [1, 1.1, 1],
+        rotate: [0, 45, 0],
+        opacity: [0.15, 0.25, 0.15],
+      }}
+      transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      className="absolute -top-32 -right-32 w-[600px] h-[600px] bg-primary rounded-full blur-[120px]"
+    />
+    <motion.div
+      animate={{
+        scale: [1, 1.2, 1],
+        rotate: [0, -45, 0],
+        opacity: [0.1, 0.2, 0.1],
+      }}
+      transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+      className="absolute -bottom-24 -left-24 w-[700px] h-[700px] bg-secondary rounded-full blur-[140px]"
+    />
+    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+CjxjaXJjbGUgY3g9IjEiIGN5PSIxIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+Cjwvc3ZnPg==')] opacity-50" />
+  </div>
+));
+
 export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -197,27 +221,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center relative overflow-hidden font-body-md w-full p-4 sm:p-8">
       {/* Immersive Background */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            rotate: [0, 45, 0],
-            opacity: [0.15, 0.25, 0.15],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-32 -right-32 w-[600px] h-[600px] bg-primary rounded-full blur-[120px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, -45, 0],
-            opacity: [0.1, 0.2, 0.1],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -bottom-24 -left-24 w-[700px] h-[700px] bg-secondary rounded-full blur-[140px]"
-        />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+CjxjaXJjbGUgY3g9IjEiIGN5PSIxIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+Cjwvc3ZnPg==')] opacity-50" />
-      </div>
+      <AuthBackground />
 
       <button
         onClick={() => navigate("/")}
