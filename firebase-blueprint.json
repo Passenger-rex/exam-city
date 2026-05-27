@@ -11,6 +11,10 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "Users collection"
+    },
+    "/tutor_sessions/{sessionId}": {
+      "schema": "TutorSession",
+      "description": "AI Tutor Chat history sessions"
     }
   },
   "entities": {
@@ -53,6 +57,18 @@
         "total": { "type": "number" },
         "answers": { "type": "object" },
         "createdAt": { "type": "string" }
+      }
+    },
+    "TutorSession": {
+      "title": "TutorSession",
+      "description": "AI Tutor TutorSession chat record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "messages": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       }
     }
   }

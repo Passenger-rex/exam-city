@@ -90,6 +90,7 @@ export default function Dashboard() {
             highest: Math.round(highestScore),
           });
         }
+
       } catch (err: any) {
         console.error("Error fetching exams:", err);
         setError("Error fetching exam results: " + err.message);
@@ -389,7 +390,7 @@ export default function Dashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button
-                              onClick={() => navigate(`/review/${exam.id}`)}
+                               onClick={() => navigate(`/review/${exam.id}`)}
                               className="px-4 py-2 bg-surface-dim text-primary font-bold text-[13px] rounded-lg group-hover:bg-primary group-hover:text-on-primary transition-colors flex items-center gap-1 ml-auto"
                             >
                               Review <ArrowRight className="w-3 h-3" />
