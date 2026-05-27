@@ -13,9 +13,18 @@ import {
   AlertCircle,
   Share2,
   Users,
-  Award
+  Award,
+  Calendar,
+  Zap
 } from "lucide-react";
 import { Logo } from "../components/Logo";
+
+interface ReferredUser {
+  id: string;
+  email: string;
+  createdAt: Date;
+  tier: "free" | "pro";
+}
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -29,6 +38,7 @@ export default function ProfilePage() {
   const [password, setPassword] = useState("");
   
   const [referralCount, setReferralCount] = useState(0);
+  const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -46,6 +56,15 @@ export default function ProfilePage() {
             const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
             const refSnap = await getDocs(refQ);
             setReferralCount(refSnap.size);
+            
+            const usersData: ReferredUser[] = refSnap.docs.map(doc => ({
+              id: doc.id,
+              email: doc.data().referredEmail || 'Anonymous User',
+              createdAt: doc.data().createdAt?.toDate() || new Date(),
+              tier: doc.data().upgradeStatus || 'free'
+            }));
+            
+            setReferredUsers(usersData.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
 
           } catch (err) {
             console.error("Error fetching user data:", err);
@@ -256,15 +275,15 @@ export default function ProfilePage() {
                <div className="bg-primary/5 border border-primary/20 rounded-[20px] p-6 sm:p-8 relative overflow-hidden group hover:border-primary/40 transition-colors">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl -mt-10 -mr-10"></div>
                   <div className="relative z-10">
-                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl sm:text-2xl font-bold font-headline-md flex items-center gap-2 text-on-surface">
-                           <Award className="w-6 h-6 text-primary" /> Invite & Earn Premium
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2 mb-4">
+                        <h2 className="text-xl sm:text-2xl font-bold font-headline-md flex items-center gap-2 text-on-surface text-left">
+                           <Award className="w-6 h-6 text-primary shrink-0" /> Invite & Earn Premium
                         </h2>
-                        <div className="bg-surface px-4 py-1.5 rounded-full border border-primary/30 flex items-center gap-2 font-bold text-sm text-primary shadow-sm">
-                           <Users className="w-4 h-4" /> {referralCount} / 3 Referred
+                        <div className="bg-surface px-4 py-1.5 rounded-full border border-primary/30 flex items-center gap-2 font-bold text-sm text-primary shadow-sm w-fit">
+                           <Users className="w-4 h-4 shrink-0" /> {referralCount} / 3 Referred
                         </div>
                      </div>
-                     <p className="text-on-surface-variant font-medium mb-6 text-sm">
+                     <p className="text-on-surface-variant font-medium mb-6 text-sm text-left">
                         Share Exam City with your friends! Once 3 friends sign up using your unique link, your account will be automatically upgraded to Premium for free.
                      </p>
                      
@@ -307,6 +326,48 @@ export default function ProfilePage() {
                         </div>
                      )}
                   </div>
+               </div>
+
+               <div className="mt-10 pt-8 border-t border-outline-variant/30">
+                 <h2 className="text-xl font-bold font-headline-md flex items-center gap-2 text-on-surface mb-6">
+                    <Users className="w-5 h-5 text-primary" /> Your Referrals
+                 </h2>
+                 {referredUsers.length === 0 ? (
+                    <div className="bg-surface border border-outline-variant/30 rounded-xl p-8 flex flex-col items-center justify-center text-center text-on-surface-variant">
+                       <Users className="w-10 h-10 mb-3 opacity-20" />
+                       <p className="font-medium">You haven't referred anyone yet.</p>
+                       <p className="text-sm opacity-80 mt-1">Share your link above to get started!</p>
+                    </div>
+                 ) : (
+                    <div className="space-y-3">
+                       {referredUsers.map((user) => (
+                          <div key={user.id} className="bg-surface border border-outline-variant/40 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary/30 transition-colors">
+                             <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                   <User className="w-5 h-5" />
+                                </div>
+                                <div>
+                                   <div className="font-bold text-sm text-on-surface">{user.email}</div>
+                                   <div className="text-xs text-on-surface-variant flex items-center gap-1 mt-0.5">
+                                      <Calendar className="w-3 h-3" /> Joined {user.createdAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                   </div>
+                                </div>
+                             </div>
+                             <div className="shrink-0 flex sm:justify-end">
+                                {user.tier === 'pro' ? (
+                                   <span className="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                                      <Zap className="w-3 h-3" /> PRO
+                                   </span>
+                                ) : (
+                                   <span className="px-2.5 py-1 bg-surface-dim text-on-surface-variant border border-outline-variant/50 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                                      FREE
+                                   </span>
+                                )}
+                             </div>
+                          </div>
+                       ))}
+                    </div>
+                 )}
                </div>
             </div>
           </div>

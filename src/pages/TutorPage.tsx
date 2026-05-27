@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft } from "lucide-react";
+import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, Mic, MicOff } from "lucide-react";
 import { useUser } from "../UserContext";
 import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +13,10 @@ export default function TutorPage() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -22,6 +25,50 @@ export default function TutorPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        if (event.error === 'not-allowed') {
+          setMicPermissionDenied(true);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputValue((prev) => (prev ? prev + " " : "") + transcript);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      setMicPermissionDenied(true); // Or we could add a new state for browserNotSupported, but reusing this banner is fine for now
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      recognitionRef.current?.start();
+    }
+  };
 
   // If not logged in, optionally redirect or show a message
   if (!user) {
@@ -103,6 +150,17 @@ export default function TutorPage() {
           </div>
        </header>
 
+       {micPermissionDenied && (
+         <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-3 shrink-0">
+           <div className="max-w-4xl mx-auto text-sm text-red-600 font-medium flex justify-between items-center">
+             <span>Microphone access was denied or speech recognition is not supported by your browser.</span>
+             <button onClick={() => setMicPermissionDenied(false)} className="p-1 hover:bg-red-500/10 rounded-lg">
+               <X className="w-4 h-4" />
+             </button>
+           </div>
+         </div>
+       )}
+
        {/* Messages */}
        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-surface-dim/30 flex flex-col custom-scrollbar scroll-smooth">
           <div className="max-w-4xl mx-auto w-full flex flex-col gap-6">
@@ -118,11 +176,11 @@ export default function TutorPage() {
                           <Bot className="w-5 h-5" />
                        </div>
                     )}
-                    <div className={`p-4 sm:p-5 rounded-3xl text-[15px] leading-relaxed ${m.role === 'model' ? 'bg-surface border border-outline-variant/40 text-on-surface rounded-bl-sm shadow-sm' : 'bg-gradient-to-tr from-primary to-primary/90 text-white rounded-br-sm shadow-md'}`}>
+                    <div className={`p-4 sm:p-5 rounded-3xl text-[15px] font-sans leading-relaxed tracking-wide ${m.role === 'model' ? 'bg-surface border border-outline-variant/40 text-on-surface rounded-bl-sm shadow-sm' : 'bg-gradient-to-tr from-primary to-primary/90 text-white rounded-br-sm shadow-md'}`}>
                        {m.role === 'user' ? (
-                          <p className="font-medium whitespace-pre-wrap">{m.text}</p>
+                          <p className="whitespace-pre-wrap">{m.text}</p>
                        ) : (
-                          <div className="markdown-body prose prose-sm max-w-none text-on-surface">
+                          <div className="markdown-body prose prose-sm max-w-none prose-p:font-normal prose-headings:font-medium prose-strong:font-semibold text-on-surface font-normal">
                              <Markdown>{m.text}</Markdown>
                           </div>
                        )}
@@ -148,16 +206,23 @@ export default function TutorPage() {
        {/* Input */}
        <div className="p-4 sm:p-6 bg-surface border-t border-outline-variant/20 shrink-0">
           <div className="max-w-4xl mx-auto w-full flex gap-3 items-center relative">
-              <div className="flex-1 relative">
+              <div className="flex-1 relative flex items-center">
                 <input
                    type="text"
                    value={inputValue}
                    onChange={e => setInputValue(e.target.value)}
                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                   placeholder="Ask a question or request a study plan..."
-                   className="w-full bg-surface-dim/50 border border-outline-variant/60 pl-5 pr-12 py-4 rounded-full text-[15px] font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60"
+                   placeholder={isListening ? "Listening..." : "Ask a question or request a study plan..."}
+                   className={`w-full bg-surface-dim/50 border border-outline-variant/60 pl-5 pr-14 py-4 rounded-full text-[15px] font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60 ${isListening ? "border-red-500/50 bg-red-500/5 ring-2 ring-red-500/20" : ""}`}
                 />
-                <Sparkles className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/40 pointer-events-none" />
+                
+                <button
+                  onClick={toggleListening}
+                  className={`absolute right-3 p-2 rounded-full transition-colors ${isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-primary/60 hover:text-primary hover:bg-primary/10"}`}
+                  aria-label={isListening ? "Stop listening" : "Start listening"}
+                >
+                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </button>
               </div>
               <button
                  onClick={handleSend}
