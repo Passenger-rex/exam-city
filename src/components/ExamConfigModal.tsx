@@ -8,6 +8,7 @@ interface ExamConfigModalProps {
   onClose: () => void;
   userTier: "free" | "pro";
   testsTakenThisMonth: number;
+  isDemo?: boolean;
 }
 
 export function ExamConfigModal({
@@ -15,6 +16,7 @@ export function ExamConfigModal({
   onClose,
   userTier,
   testsTakenThisMonth,
+  isDemo = false,
 }: ExamConfigModalProps) {
   const navigate = useNavigate();
   const [selectedYear, setSelectedYear] = useState<string>("any");
@@ -284,7 +286,7 @@ export function ExamConfigModal({
               )}
             </button>
             
-            {((userTier === "pro") || (userTier === "free" && localStorage.getItem('hasUsedFreePdf') !== 'true')) && !showPremiumGate && (
+            {!isDemo && ((userTier === "pro") || (userTier === "free" && localStorage.getItem('hasUsedFreePdf') !== 'true')) && !showPremiumGate && (
               <button
                 onClick={() => {
                    if (userTier === "free") {

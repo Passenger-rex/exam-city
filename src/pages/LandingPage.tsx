@@ -59,6 +59,7 @@ export default function LandingPage() {
         onClose={() => setShowConfig(false)} 
         userTier="free" 
         testsTakenThisMonth={0} 
+        isDemo={true}
       />
       {/* Header */}
       <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isHeaderVisible ? "translate-y-0" : "-translate-y-full"}`}>
