@@ -76,6 +76,32 @@ export default function ExamPage() {
         }
       }
 
+      const isUploadedExam = new URLSearchParams(window.location.search).get("uploaded_exam") === "true";
+      if (isUploadedExam) {
+        try {
+          const stored = sessionStorage.getItem("customUploadedExam");
+          if (stored) {
+            const data = JSON.parse(stored);
+            const qList = data.map((item: any) => ({
+              id: String(item.id || Math.random()),
+              question_html: item.question,
+              options: item.option || { a: "", b: "", c: "", d: "" },
+              correct_answer: item.answer || "a",
+              subject: "Uploaded Study Material",
+              explanation: item.solution || "",
+              year: item.examyear || "Uploaded",
+              isPremium: true,
+              image: item.image || null
+            }));
+            setQuestions(qList);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to load uploaded exam questions from store", e);
+        }
+      }
+
       try {
         let qList: any[] = [];
         
@@ -383,7 +409,7 @@ export default function ExamPage() {
              </div>
              <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{subjectParam} MOCK EXAMINATION</h1>
              <p className="text-sm font-semibold uppercase tracking-widest mt-2 text-gray-800">Exam City Assessment Series</p>
-             <p className="text-sm italic mt-1 text-gray-600">Year: {yearParam} • Format: {typeParam === 'micro' ? 'Micro-test' : 'Standard'}</p>
+             <p className="text-sm italic mt-1 text-gray-600">Year: {yearParam} • Format: {typeParam === 'micro' ? 'Mini Mock' : 'Full Mock'}</p>
              <div className="absolute -bottom-1 left-0 right-0 h-[1px] bg-black"></div>
           </div>
           

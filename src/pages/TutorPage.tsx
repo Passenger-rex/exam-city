@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, Mic, MicOff, History, Plus, Trash2, Clock, Edit2, Check, Award } from "lucide-react";
+import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image } from "lucide-react";
 import { useUser } from "../UserContext";
 import Markdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
@@ -73,10 +73,7 @@ export default function TutorPage() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   // Session History State
   const { profile } = useUser();
@@ -88,6 +85,125 @@ export default function TutorPage() {
   const [editTitleValue, setEditTitleValue] = useState("");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  // File Upload States
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isFileUploading, setIsFileUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const resultString = reader.result as string;
+        const base64Data = resultString.split(",")[1];
+        resolve(base64Data);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert("File size cannot exceed 10MB.");
+        return;
+      }
+      setSelectedFile(file);
+      setUploadError("");
+    }
+  };
+
+  const handleProcessFile = async (action: "tutor" | "exam") => {
+    if (!selectedFile) return;
+    
+    setIsFileUploading(true);
+    setIsLoading(true);
+    setUploadError("");
+    
+    if (profile?.tier !== "pro" && auth.currentUser) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const queriesUsedToday = profile?.lastTutorQueryDate === todayStr ? (profile?.tutorQueriesUsed || 0) : 0;
+      if (queriesUsedToday >= 5) {
+        setShowUpgradeModal(true);
+        setIsFileUploading(false);
+        setIsLoading(false);
+        return;
+      }
+    }
+    
+    try {
+      const base64Data = await fileToBase64(selectedFile);
+      
+      const res = await fetch("/api/process-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileBase64: base64Data,
+          mimeType: selectedFile.type || "application/octet-stream",
+          fileName: selectedFile.name,
+          action: action,
+          message: action === "tutor" ? "Summarize this file and list 5 important conceptual questions we can study." : ""
+        })
+      });
+      
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to process study material.");
+      }
+      
+      if (action === "tutor") {
+        const userMsgText = `Uploaded file "${selectedFile.name}" to study.`;
+        const newUserMessage = { role: "user" as const, text: userMsgText };
+        const responseMsg = { role: "model" as const, text: data.text };
+        
+        const finalMessages = [...messages, newUserMessage, responseMsg];
+        setMessages(finalMessages);
+        setSelectedFile(null);
+        
+        if (user) {
+          try {
+            if (currentSessionId) {
+              const docRef = doc(db, "tutor_sessions", currentSessionId);
+              await updateDoc(docRef, {
+                messages: finalMessages,
+                updatedAt: new Date()
+              });
+            } else {
+              const newSessionRef = await addDoc(collection(db, "tutor_sessions"), {
+                userId: user.uid,
+                title: `Study of ${selectedFile.name}`,
+                messages: finalMessages,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              });
+              setCurrentSessionId(newSessionRef.id);
+              navigate(`/tutor?session=${newSessionRef.id}`, { replace: true });
+            }
+          } catch (fErr) {
+            console.error("Failed to sync file session:", fErr);
+          }
+        }
+      } else if (action === "exam") {
+        if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+          sessionStorage.setItem("customUploadedExam", JSON.stringify(data.questions));
+          setSelectedFile(null);
+          navigate("/exam?uploaded_exam=true&type=standard&bank=premium");
+        } else {
+          throw new Error("No questions were generated from the uploaded content.");
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setUploadError(err.message || "An error occurred while uploading. Please ensure file content is readable.");
+    } finally {
+      setIsFileUploading(false);
+      setIsLoading(false);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -96,89 +212,7 @@ export default function TutorPage() {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        if (event.error === 'not-allowed') {
-          setMicPermissionDenied(true);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue((prev) => (prev ? prev + " " : "") + transcript);
-      };
-
-      recognitionRef.current = recognition;
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, []);
-
-  const requestMicrophonePermission = async () => {
-    try {
-      setMicPermissionDenied(false);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop());
-      
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onerror = (event: any) => {
-          console.error('Speech recognition error', event.error);
-          if (event.error === 'not-allowed') {
-            setMicPermissionDenied(true);
-          }
-          setIsListening(false);
-        };
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInputValue((prev) => (prev ? prev + " " : "") + transcript);
-        };
-        recognitionRef.current = recognition;
-        recognition.start();
-      } else {
-        alert("Speech recognition is not fully supported in this browser environment. Please make sure microphone access is enabled in your system preferences.");
-      }
-    } catch (err) {
-      console.error("Microphone permission denied:", err);
-      setMicPermissionDenied(true);
-    }
-  };
-
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      requestMicrophonePermission();
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
-      try {
-        recognitionRef.current?.start();
-      } catch (e) {
-        console.error("Failed to start speech recognition directly, requesting media prompt:", e);
-        requestMicrophonePermission();
-      }
-    }
-  };
 
   const handleRenameConfirm = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -648,28 +682,6 @@ export default function TutorPage() {
              </div>
           </header>
 
-          {micPermissionDenied && (
-            <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-3 shrink-0">
-              <div className="max-w-4xl mx-auto text-sm text-red-600 font-medium flex justify-between items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0"></span>
-                  <span>Microphone access was denied or speech recognition is not supported. Click Connect to grant device access.</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button 
-                    onClick={requestMicrophonePermission} 
-                    className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors shadow-sm"
-                  >
-                    Connect
-                  </button>
-                  <button onClick={() => setMicPermissionDenied(false)} className="p-1 hover:bg-red-500/10 rounded-lg">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-surface-dim/30 flex flex-col custom-scrollbar scroll-smooth">
              <div className="max-w-4xl mx-auto w-full flex flex-col gap-6">
@@ -733,24 +745,93 @@ export default function TutorPage() {
                    </div>
                 );
              })()}
+
+             {/* File Preview Card */}
+             {selectedFile && (
+                <div className="max-w-4xl mx-auto w-full mb-3 bg-white hover:shadow-md border border-outline-variant/50 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200 shadow-sm text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      {selectedFile.type.startsWith("image/") ? (
+                        <Image className="w-5 h-5" />
+                      ) : (
+                        <FileText className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-on-surface truncate max-w-[250px] sm:max-w-sm">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-[11px] text-on-surface-variant/60 font-semibold uppercase tracking-wider mt-0.5 font-mono">
+                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleProcessFile("tutor")}
+                      disabled={isLoading}
+                      className="flex-1 sm:flex-none py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/15 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl font-bold text-xs cursor-pointer text-center"
+                    >
+                      {isFileUploading ? "Analyzing..." : "Generate Questions"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleProcessFile("exam")}
+                      disabled={isLoading}
+                      className="flex-1 sm:flex-none py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Generate Mock Exam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      disabled={isLoading}
+                      className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
+                      title="Remove file"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+             )}
+              
+             {uploadError && (
+               <div className="max-w-4xl mx-auto w-full mb-3 text-red-600 text-xs font-semibold px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-left">
+                 {uploadError}
+               </div>
+             )}
+
              <div className="max-w-4xl mx-auto w-full flex gap-2 sm:gap-3 items-center relative">
                  <div className="flex-1 relative flex items-center">
+                   {/* Hidden File Input */}
+                   <input
+                     type="file"
+                     ref={fileInputRef}
+                     onChange={handleFileChange}
+                     accept=".pdf,.docx,.doc,image/*"
+                     className="hidden"
+                   />
+                   
+                   {/* Paperclip Button */}
+                   <button
+                     type="button"
+                     onClick={() => fileInputRef.current?.click()}
+                     className="absolute left-3.5 p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200 cursor-pointer z-10"
+                     title="Upload pdf, document or image"
+                   >
+                     <Paperclip className="w-5 h-5" />
+                   </button>
+
                    <input
                       type="text"
                       value={inputValue}
                       onChange={e => setInputValue(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSend()}
-                      placeholder={isListening ? "Listening..." : "Ask a question or request a study plan..."}
-                      className={`w-full bg-surface-dim/50 border border-outline-variant/60 pl-5 pr-14 py-4 rounded-full text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60 ${isListening ? "border-red-500/50 bg-red-500/5 ring-2 ring-red-500/20" : ""}`}
+                      placeholder="Ask questions or upload docs/images to generate questions..."
+                      className="w-full bg-surface-dim/50 border border-outline-variant/60 pl-12 pr-5 py-4 rounded-full text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60"
                    />
-                   
-                   <button
-                     onClick={toggleListening}
-                     className={`absolute right-3 p-2 rounded-full transition-colors ${isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-primary/60 hover:text-primary hover:bg-primary/10"}`}
-                     aria-label={isListening ? "Stop listening" : "Start listening"}
-                   >
-                     {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                   </button>
                  </div>
                  <button
                     onClick={handleSend}
@@ -809,6 +890,8 @@ export default function TutorPage() {
            </div>
          )}
        </AnimatePresence>
+
+
     </div>
   );
 }

@@ -32,14 +32,93 @@ export function ExamConfigModal({
   const [years, setYears] = useState<number[]>([]);
 
   const subjectsList = [
-    "Accounting", "Agricultural Science", "Basic Science", "Basic Technology", 
-    "Biology", "Business Studies", "Chemistry", "Civic Education", "Commerce", 
-    "Computer Studies", "CRK", "Current Affairs", "Economics", "English", 
-    "English Literature", "Fine Art", "French", "Further Mathematics", 
-    "Geography", "Government", "Hausa", "History", "Home Economics", "Igbo",
-    "Insurance", "IRK", "Mathematics", "Music", "Physical Education", 
-    "Physics", "Technical Drawing", "Yoruba"
+    "Accounting", "Agricultural Science", "Anatomy", "Basic Science", "Basic Technology", 
+    "Biochemistry", "Biology", "Biotechnology", "Botany", "Business Studies", 
+    "Chemical Engineering", "Chemistry", "Civic Education", "Civil Engineering", 
+    "Clinical Biochemistry", "Clinical Immunology", "Commerce", "Community Medicine", 
+    "Computer Engineering", "CRK", "Current Affairs", "Dermatology", "Economics", 
+    "Electrical Engineering", "Embryology", "English", "English Literature", 
+    "ENT", "Fine Art", "Fluid Mechanics", "Food Science", "French", 
+    "Further Mathematics", "Genetics", "Geography", "Geology", "Geophysics", 
+    "Hausa", "Hematology", "History", "Home Economics", "Igbo", "Insurance", 
+    "Internal Medicine", "IRK", "Mathematics", "Mechanical Engineering", "Medical Biochemistry", 
+    "Medical Histology", "Medical Microbiology", "Medical Parasitology", "Medicine", 
+    "Meteorology", "Microbiology", "Molecular Biology", "Neuroanatomy", "Obstetrics and Gynecology", 
+    "Ophthalmology", "Pathology", "Pediatrics", "Petroleum Engineering", "Pharmacology", 
+    "Physical Education", "Physics", "Physiology", "Psychiatry", "Radiology", 
+    "Statistics", "Strength of Materials", "Structural Engineering", "Surgery", 
+    "Technical Drawing", "Thermodynamics", "Yoruba", "Zoology"
   ];
+
+  const subjectTopicsMap: Record<string, string[]> = {
+    // Medical
+    "Anatomy": ["Gross Anatomy", "Histology Core", "Embryology Base", "Neuroanatomy Intro", "Musculoskeletal System", "Cardiovascular Anatomy"],
+    "Medical Histology": ["Epithelial Tissue", "Connective Tissue", "Muscle Tissue", "Nervous Tissue", "Respiratory Histology", "Organ Histology"],
+    "Embryology": ["Gametogenesis", "Fertilization", "Cleavage & Gastrulation", "Organogenesis", "Notochord Development", "Placental Development"],
+    "Neuroanatomy": ["Cerebral Cortex", "Brainstem & Cranial Nerves", "Spinal Cord Pathways", "Cerebellum", "Limbic System & Ventricles"],
+    "Obstetrics and Gynecology": ["Prenatal Care", "Labor & Delivery Stages", "Gestational Disorders", "Ovarian Cycle", "Uterine Diseases", "Menopause"],
+    "Pediatrics": ["Neonatal Medicine", "Childhood Milestones", "Pediatric Infections", "Congenital Heart Anomalies", "Immunization Schedules"],
+    "Pathology": ["Cellular Injury & Cell Death", "Acute & Chronic Inflammation", "Hemodynamic Disorders", "Neoplasia & Tumor Biology", "Systemic Pathology"],
+    "Pharmacology": ["Pharmacokinetics", "Pharmacodynamics", "Autonomic Nervous System Drugs", "Cardiovascular Pharmacology", "Antibiotics & Chemotherapies", "Neuropharmacology"],
+    "Physiology": ["Cardiovascular Physiology", "Respiratory Mechanics", "Renal & Acid-Base Physiology", "Neurophysiology", "Endocrine Physiology"],
+    "Medical Biochemistry": ["Enzymology", "Glycolysis & Krebs Cycle", "Lipid Metabolism", "Protein Synthesis & Translation", "DNA Replication"],
+    "Surgery": ["Generary Surgery Principles", "Orthopedics", "Neurosurgery", "Trauma & Emergency", "Anesthesia Basics", "Wound Healing"],
+    "Internal Medicine": ["Cardiology", "Pulmonology", "Gastroenterology", "Endocrinology", "Rheumatology", "Infectious Diseases", "Nephrology", "Neurology"],
+    "Medical Microbiology": ["Bacteriology", "Virology", "Mycology", "Diagnostic Techniques", "Antibiotic Resistance"],
+    "Hematology": ["Anemia Types", "Coagulation Disorders", "Leukemia & Lymphoma", "Blood Transfusion", "Bone Marrow Physiology"],
+    "Community Medicine": ["Epidemiology", "Biostatistics", "Environmental Health", "Health Management", "Primary Health Care"],
+    
+    // Engineering
+    "Civil Engineering": ["Structural Analysis", "Geotechnical Engineering", "Transportation", "Water Resources", "Environmental Engineering"],
+    "Mechanical Engineering": ["Machine Design", "Thermodynamics", "Manufacturing Processes", "Control Systems", "Mechatronics"],
+    "Electrical Engineering": ["Circuit Theory", "Power Systems", "Electronics", "Signal Processing", "Electromagnetic Fields"],
+    "Chemical Engineering": ["Mass Transfer", "Heat Transfer", "Chemical Reaction Engineering", "Process Control", "Separation Processes"],
+    "Petroleum Engineering": ["Reservoir Engineering", "Drilling Technology", "Production Engineering", "Well Logging", "Petrophysics"],
+    "Computer Engineering": ["Computer Architecture", "Digital Logic Design", "Microprocessors", "Embedded Systems", "Operating Systems"],
+    "Thermodynamics": ["First Law", "Second Law", "Entropy", "Power Cycles", "Refrigeration Systems"],
+    "Fluid Mechanics": ["Fluid Statics", "Bernoulli's Equation", "Viscous Flow", "Turbomachinery", "Boundary Layer"],
+    "Strength of Materials": ["Stress & Strain", "Torsion", "Bending Moments", "Deflection of Beams", "Column Buckling"],
+    
+    // Sciences
+    "Biology": ["Cell Biology", "Genetics", "Ecology", "Evolutionary Biology", "Plant Physiology"],
+    "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Thermodynamics", "Chemical Bonding", "Acids & Bases"],
+    "Physics": ["Mechanics", "Electromagnetism", "Thermodynamics", "Quantum Physics", "Wave Optics"],
+    "Mathematics": ["Algebra", "Euclidean Geometry", "Trigonometry", "Statistics & Probability", "Calculus Principles"],
+    "Microbiology": ["Microbial Genetics", "Industrial Microbiology", "Immunology", "Environmental Microbiology"],
+    "Biochemistry": ["Metabolism", "Enzymology", "Cell Signaling", "Molecular Biology Techniques"],
+    "Genetics": ["Mendelian Genetics", "Molecular Genetics", "Population Genetics", "Cytogenetics"],
+    "Geology": ["Mineralogy", "Petrology", "Structural Geology", "Stratigraphy", "Paleontology"],
+    "Further Mathematics": ["Calculus", "Vectors", "Matrices", "Complex Numbers", "Probability Distributions"],
+    "Statistics": ["Probability Theory", "Inferential Statistics", "Regression Analysis", "Design of Experiments"],
+    "Dermatology": ["Skin Anatomy", "Bacterial Infections", "Fungal Infections", "Parasitic Infestations", "Acne & Rosacea", "Skin Malignancies"],
+    "Psychiatry": ["Psychosis", "Mood Disorders", "Anxiety Disorders", "Personality Disorders", "Child Psychiatry", "Psychopharmacology"],
+    "Radiology": ["X-ray Principles", "CT Imaging", "MRI Physics", "Ultrasound Basics", "Nuclear Medicine", "Radiation Safety"],
+    "Ophthalmology": ["Refractive Errors", "Cataract", "Glaucoma", "Retinal Diseases", "Uveitis", "Ocular Trauma"],
+    "ENT": ["Otology", "Rhinology", "Laryngology", "Head & Neck Surgery", "Pediatric Otolaryngology"],
+    "Molecular Biology": ["DNA Replication", "Transcription & RNA Processing", "Translation & Protein Folding", "Gene Regulation", "Recombinant DNA Tech"],
+    "Biotechnology": ["Genomics", "Proteomics", "Bioinformatics", "Environmental Biotech", "Plant Biotechnology"],
+    "Botany": ["Plant Anatomy", "Photosynthesis", "Plant Reproduction", "Systematics", "Plant Ecology"],
+    "Zoology": ["Invertebrate Biology", "Vertebrate Anatomy", "Animal Physiology", "Ethology", "Comparative Anatomy"],
+    "Meteorology": ["Atmospheric Thermodynamics", "Synoptic Meteorology", "Climatology", "Cloud Physics", "Dynamic Meteorology"],
+    "English": ["Reading Comprehension", "Lexis and Structure", "Sentence Interpretation", "Antonyms & Synonyms", "Oral English"],
+    "Accounting": ["Principles of Accounting", "Ledger Accounts", "Final Accounts", "Partnership Accounts", "Company Accounts"],
+    "Agricultural Science": ["Soil Science", "Crop Production", "Animal Husbandry", "Agricultural Economics", "Farm Tools"],
+    "Basic Science": ["Living & Non-Living Things", "Matter & Energy", "The Human Body", "Environment", "Reproductive Health"],
+    "Basic Technology": ["General Woodwork", "Metalwork", "Energy & Power", "Building Technology", "Technical Drawing Intro"],
+    "Business Studies": ["Office Practice", "Commerce Principles", "Bookkeeping", "Keyboarding", "Entrepreneurship"],
+    "Civic Education": ["Human Rights", "Rule of Law", "Nationalism", "Citizenship", "Community Service"],
+    "Commerce": ["Home Trade", "Foreign Trade", "Banking & Finance", "Insurance", "Advertising"],
+    "CRK": ["Creation", "The Exodus", "The Prophets", "Life of Jesus", "The Early Church"],
+    "IRK": ["Fundamentals of Islam", "Hadith", "Sharia Law", "History of Islam", "Islamic Ethics"],
+    "Home Economics": ["Food & Nutrition", "Clothing & Textiles", "Home Management", "Child Development", "Consumer Education"],
+    "Physical Education": ["Athletics", "Team Sports", "Health Education", "Physical Fitness", "First Aid"],
+    "Technical Drawing": ["Geometrical Construction", "Orthographic Projection", "Isometric Drawing", "Machine Drawing", "Architectural Drawing"],
+    "Yoruba": ["Asa Yoruba", "Litireso Yoruba", "Ise Yoruba", "Girama Yoruba", "Aroko"],
+    "Igbo": ["Agumagu Igbo", "Omenala Igbo", "Ito Igbo", "Utasusu Igbo"],
+    "Hausa": ["Al'adun Hausa", "Adabin Hausa", "Harshen Hausa", "Aroko Hausa"],
+    "Geography": ["Map Work", "Climatology", "Human Geography", "Economic Geography", "Regional Geography of Nigeria"],
+    "Economics": ["Microeconomics", "Macroeconomics", "International Trade", "Development Economics", "Monetary Policy"]
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -177,6 +256,29 @@ export function ExamConfigModal({
               onChange={(e) => setTopic(e.target.value)}
               className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
             />
+            {subjectTopicsMap[subject] && (
+              <div className="mt-2 text-left">
+                <div className="text-[10px] font-extrabold text-on-surface-variant/85 uppercase tracking-wider mb-1.5">
+                  Suggested Topics for {subject}:
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
+                  {subjectTopicsMap[subject].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTopic(t)}
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                        topic === t 
+                          ? "bg-primary text-white border-primary shadow-sm"
+                          : "bg-surface-dim hover:bg-surface-container text-on-surface border-outline-variant/50"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-6">
@@ -188,14 +290,14 @@ export function ExamConfigModal({
                   onClick={() => setExamType("standard")}
                   className={`flex flex-col items-start p-3 rounded-lg transition-all ${examType === "standard" ? "bg-surface shadow-sm text-on-surface border border-outline-variant/60" : "text-on-surface-variant hover:text-on-surface border border-transparent"}`}
                 >
-                  <span className="text-sm font-bold mb-0.5">Standard</span>
+                  <span className="text-sm font-bold mb-0.5">Full Mock</span>
                   <span className="text-[11px] font-medium opacity-80">40 Questions</span>
                 </button>
                 <button
                   onClick={() => setExamType("micro")}
                   className={`flex flex-col items-start p-3 rounded-lg transition-all ${examType === "micro" ? "bg-surface shadow-sm text-on-surface border border-outline-variant/60" : "text-on-surface-variant hover:text-on-surface border border-transparent"}`}
                 >
-                  <span className="text-sm font-bold mb-0.5">Micro</span>
+                  <span className="text-sm font-bold mb-0.5">Mini Mock</span>
                   <span className="text-[11px] font-medium opacity-80">5 Questions</span>
                 </button>
                 
@@ -227,7 +329,6 @@ export function ExamConfigModal({
                   </div>
                   <div>
                     <div className={`text-sm font-bold ${bankType === "public" ? "text-emerald-900" : "text-on-surface"}`}>Standard</div>
-                    <div className={`text-[11px] mt-0.5 font-medium ${bankType === "public" ? "text-emerald-700/80" : "text-on-surface-variant"}`}>JAMB Past Questions</div>
                   </div>
                 </button>
                 
@@ -242,7 +343,6 @@ export function ExamConfigModal({
                     <div className={`text-sm font-bold flex items-center gap-1.5 ${bankType === "premium" ? "text-amber-900" : "text-on-surface"}`}>
                       Premium
                     </div>
-                    <div className={`text-[11px] mt-0.5 font-medium ${bankType === "premium" ? "text-amber-700/80" : "text-on-surface-variant"}`}>Generative mock exams</div>
                   </div>
                   {userTier === "free" && (
                     <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[9px] uppercase font-bold px-2 py-0.5 rounded-bl-lg">

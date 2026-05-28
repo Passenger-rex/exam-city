@@ -1,7 +1,5 @@
 {
   "name": "AceMock",
   "description": "A platform for unlimited mock exams, past questions, and analytics with real-time timers and pro subscription support.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "requestFramePermissions": []
 }
