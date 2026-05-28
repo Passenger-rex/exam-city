@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { Check, Shield, Lock, ChevronLeft, Zap, ArrowRight, Star } from "lucide-react";
+import { Check, Shield, Lock, ChevronLeft, Zap, ArrowRight, Star, Users, User } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
@@ -14,13 +14,14 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [transactionId, setTransactionId] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<"individual" | "group">("individual");
 
   const flutterwaveKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || "";
 
   const config = {
     public_key: flutterwaveKey || "FLWPUBK_TEST-SANDBOXDEMOKEY-X",
     tx_ref: Date.now().toString(),
-    amount: 1500,
+    amount: selectedPlan === "group" ? 3500 : 1500,
     currency: "NGN",
     payment_options: "card,mobilemoney,ussd",
     customer: {
@@ -29,8 +30,10 @@ export default function CheckoutPage() {
       name: user?.displayName || "User",
     },
     customizations: {
-      title: "Pro Subscription",
-      description: "Payment for Pro Subscription",
+      title: selectedPlan === "group" ? "Study Group Premium" : "Pro Lifetime Subscription",
+      description: selectedPlan === "group" 
+        ? "Lifetime Group Access for 5 students tied to one account" 
+        : "Lifetime Individual access to high-tier AI capabilities",
       logo: "https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg",
     },
   };
@@ -55,7 +58,14 @@ export default function CheckoutPage() {
           setLoading(true);
           try {
             const userRef = doc(db, "users", user.uid);
-            await setDoc(userRef, { tier: "pro" }, { merge: true });
+            await setDoc(userRef, { 
+              tier: "pro",
+              proType: selectedPlan,
+              groupAdminUid: user.uid,
+              // Group plan holds up to 5 members (admin + 4 companions)
+              groupMaxUsers: 5,
+              groupMembers: selectedPlan === "group" ? [] : null
+            }, { merge: true });
             
             closePaymentModal();
             setTransactionId(response.transaction_id + "");
@@ -104,11 +114,11 @@ export default function CheckoutPage() {
              </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-on-surface-variant font-medium">Amount Paid</span>
-              <span className="font-bold text-lg">₦1,500</span>
+              <span className="font-bold text-lg">₦{(selectedPlan === "group" ? 3500 : 1500).toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-on-surface-variant font-medium">Subscription</span>
-              <span className="font-bold text-primary">Pro Access</span>
+              <span className="font-bold text-primary">{selectedPlan === "group" ? "Study Group Premium" : "Individual Lifetime Access"}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-on-surface-variant font-medium">Transaction ID</span>
@@ -184,6 +194,71 @@ export default function CheckoutPage() {
 
             <div className="h-px w-full bg-outline-variant/40 my-8" />
 
+            {/* Plan Selector */}
+            <div className="mb-10">
+              <h3 className="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-wider">Choose subscription plan</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Individual Plan */}
+                <div 
+                  onClick={() => setSelectedPlan("individual")}
+                  className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${selectedPlan === "individual" ? "bg-primary/[0.03] border-primary shadow-sm" : "bg-surface border-outline-variant/60 hover:bg-surface-dim"}`}
+                >
+                  {selectedPlan === "individual" && (
+                    <span className="absolute top-3 right-3 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
+                      <Check className="w-3 h-3" />
+                    </span>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`p-2 rounded-lg ${selectedPlan === "individual" ? "bg-primary/10 text-primary" : "bg-surface-dim text-on-surface-variant"}`}>
+                        <User className="w-4 h-4" />
+                      </div>
+                      <span className="font-bold text-sm text-on-surface">Individual Pro</span>
+                    </div>
+                    <p className="text-xs text-on-surface-variant/80 font-medium leading-relaxed mb-6">
+                      Lifetime private coaching and ultimate diagnostic exams just for you.
+                    </p>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-auto">
+                    <span className="text-2xl font-black text-on-surface">₦1,500</span>
+                    <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase">one-time</span>
+                  </div>
+                </div>
+
+                {/* Group Plan */}
+                <div 
+                  onClick={() => setSelectedPlan("group")}
+                  className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${selectedPlan === "group" ? "bg-primary/[0.03] border-primary shadow-md" : "bg-surface border-outline-variant/60 hover:bg-surface-dim"}`}
+                >
+                  <span className="absolute -top-3 left-4 bg-amber-500 text-white text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider animate-pulse shadow-sm">
+                    Best Value
+                  </span>
+                  {selectedPlan === "group" && (
+                    <span className="absolute top-3 right-3 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
+                      <Check className="w-3 h-3" />
+                    </span>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`p-2 rounded-lg ${selectedPlan === "group" ? "bg-primary/10 text-primary" : "bg-surface-dim text-on-surface-variant"}`}>
+                        <Users className="w-4 h-4" />
+                      </div>
+                    <span className="font-bold text-sm text-on-surface">Study Group Premium</span>
+                    </div>
+                    <p className="text-xs text-on-surface-variant/80 font-medium leading-relaxed mb-6">
+                      Link and share premium access with up to 5 student accounts under a single plan.
+                    </p>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-auto">
+                    <span className="text-2xl font-black text-on-surface">₦3,500</span>
+                    <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase">one-time</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
             {/* Payment Section */}
             <div className="space-y-5">
               <h3 className="text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">Payment Details</h3>
@@ -192,13 +267,13 @@ export default function CheckoutPage() {
               <button 
                 onClick={handleUpgrade}
                 disabled={loading || userLoading}
-                className="w-full h-14 bg-primary text-on-primary font-semibold text-base rounded-xl hover:bg-primary/95 transition-all shadow-sm flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full h-14 bg-primary text-on-primary font-bold text-base rounded-xl hover:bg-primary/95 transition-all shadow-sm flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading || userLoading ? (
                   <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    Pay ₦1,500
+                    Pay ₦{selectedPlan === "group" ? "3,500" : "1,500"}
                     <ArrowRight className="w-4 h-4 ml-1" />
                   </>
                 )}
@@ -232,14 +307,16 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                    <h3 className="font-semibold text-base mb-0.5 text-on-surface">Pro Subscription</h3>
-                   <p className="text-on-surface-variant text-sm">Lifetime access</p>
+                   <p className="text-on-surface-variant text-sm">
+                     {selectedPlan === "group" ? "Study Group (5 slots)" : "Individual Plan"}
+                   </p>
                 </div>
               </div>
               
               <div className="space-y-3 font-medium mb-6 pb-6 border-b border-outline-variant/30 text-sm">
                 <div className="flex justify-between items-center text-on-surface-variant">
                    <span>Subtotal</span>
-                   <span className="text-on-surface">₦1,500</span>
+                   <span className="text-on-surface">₦{selectedPlan === "group" ? "3,500" : "1,500"}</span>
                 </div>
                 <div className="flex justify-between items-center text-on-surface-variant">
                    <span>Taxes & Fees</span>
@@ -251,7 +328,7 @@ export default function CheckoutPage() {
                 <span className="text-sm font-semibold text-on-surface-variant">Total</span>
                 <div className="flex items-baseline gap-1 text-on-surface">
                    <span className="text-sm font-medium text-on-surface-variant">NGN</span>
-                   <span className="text-3xl font-bold tracking-tight">₦1,500</span>
+                   <span className="text-3xl font-bold tracking-tight">₦{selectedPlan === "group" ? "3,500" : "1,500"}</span>
                 </div>
               </div>
               
@@ -259,8 +336,9 @@ export default function CheckoutPage() {
                 <h4 className="text-xs font-semibold text-on-surface uppercase tracking-wider mb-3">Includes:</h4>
                 {[
                   "Unlimited premium exams",
-                  "Advanced analytics",
-                  "Ad-free experience",
+                  "Advanced AI recommendations",
+                  "Ad-free premium simulator",
+                  selectedPlan === "group" ? "Tie 4 friend accounts to your subscription" : "Personal study metric indicators",
                 ].map((feat, i) => (
                   <div key={i} className="flex items-center gap-2.5 text-on-surface-variant text-sm">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />

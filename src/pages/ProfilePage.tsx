@@ -26,6 +26,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { useUser } from "../UserContext";
 
 interface ReferredUser {
   id: string;
@@ -36,6 +37,7 @@ interface ReferredUser {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { profile } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -48,6 +50,13 @@ export default function ProfilePage() {
   const [referralCount, setReferralCount] = useState(0);
   const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([]);
 
+  // Study Group Premium Buddy management states
+  const [groupEmailInput, setGroupEmailInput] = useState("");
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupError, setGroupError] = useState("");
+  const [groupMessage, setGroupMessage] = useState("");
+  const [groupMembersList, setGroupMembersList] = useState<string[]>([]);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -59,6 +68,7 @@ export default function ProfilePage() {
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
               setName(userDoc.data().name || "");
+              setGroupMembersList(userDoc.data().groupMembers || []);
             }
 
             const refQ = query(
@@ -150,6 +160,61 @@ export default function ProfilePage() {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddGroupMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+    const targetEmail = groupEmailInput.trim().toLowerCase();
+    if (!targetEmail) return;
+
+    if (groupMembersList.includes(targetEmail)) {
+      setGroupError("This buddy is already in your group!");
+      return;
+    }
+
+    if (groupMembersList.length >= 4) { // Admin + 4 companions = 5 total accounts!
+      setGroupError("Group limit reached (Max 5 people including yourself).");
+      return;
+    }
+
+    setGroupSaving(true);
+    setGroupError("");
+    setGroupMessage("");
+
+    try {
+      const updatedList = [...groupMembersList, targetEmail];
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      await setDoc(userDocRef, { groupMembers: updatedList }, { merge: true });
+      
+      setGroupMembersList(updatedList);
+      setGroupEmailInput("");
+      setGroupMessage("Study buddy added successfully!");
+    } catch (err: any) {
+      setGroupError("Could not add study buddy: " + err.message);
+    } finally {
+      setGroupSaving(false);
+    }
+  };
+
+  const handleRemoveGroupMember = async (memberEmail: string) => {
+    if (!auth.currentUser) return;
+    setGroupSaving(true);
+    setGroupError("");
+    setGroupMessage("");
+
+    try {
+      const updatedList = groupMembersList.filter(email => email !== memberEmail);
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      await setDoc(userDocRef, { groupMembers: updatedList }, { merge: true });
+      
+      setGroupMembersList(updatedList);
+      setGroupMessage("Study buddy removed successfully.");
+    } catch (err: any) {
+      setGroupError("Could not remove buddy: " + err.message);
+    } finally {
+      setGroupSaving(false);
     }
   };
 
@@ -295,12 +360,12 @@ export default function ProfilePage() {
                       & Earn Premium
                     </h2>
                     <div className="bg-surface px-4 py-1.5 rounded-full border border-primary/30 flex items-center gap-2 font-bold text-sm text-primary shadow-sm w-fit sm:mx-0">
-                      <Users className="w-4 h-4 shrink-0" /> {referralCount} / 3
+                      <Users className="w-4 h-4 shrink-0" /> {referralCount} / 5
                       Referred
                     </div>
                   </div>
                   <p className="text-on-surface-variant font-medium mb-6 text-sm text-left">
-                    Share Exam City with your friends! Once 3 friends sign up
+                    Share Exam City with your friends! Once 5 friends sign up
                     using your unique link, your account will be automatically
                     upgraded to Premium for free.
                   </p>
@@ -331,7 +396,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                   {referralCount >= 3 && (
+                   {referralCount >= 5 && (
                     <div className="mt-4 flex justify-start">
                       <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-600 border border-green-500/20 text-xs font-bold rounded-full">
                         <CheckCircle2 className="w-4 h-4" /> You've achieved
@@ -340,16 +405,16 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  {referralCount < 3 && (
+                  {referralCount < 5 && (
                     <div className="mt-6">
                       <div className="w-full bg-surface h-3 rounded-full overflow-hidden border border-outline-variant/30">
                         <div
                           className="h-full bg-primary transition-all rounded-full"
-                          style={{ width: `${(referralCount / 3) * 100}%` }}
+                          style={{ width: `${(referralCount / 5) * 100}%` }}
                         ></div>
                       </div>
                       <div className="text-left sm:text-right mt-1.5 text-xs font-bold text-on-surface-variant">
-                        {3 - referralCount} more to go!
+                        {5 - referralCount} more to go!
                       </div>
                     </div>
                   )}
@@ -411,6 +476,128 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+
+              {/* Study Group Premium Panel */}
+              {profile?.tier === "pro" && profile?.proType === "group" && (
+                <div className="mt-10 pt-8 border-t border-outline-variant/30">
+                  <div className="bg-amber-500/5 border border-amber-500/15 rounded-[20px] p-6 sm:p-8 relative overflow-hidden">
+                    <div className="relative z-10">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2 mb-4">
+                        <h2 className="text-xl sm:text-2xl font-bold font-headline-md flex items-center gap-2 text-on-surface">
+                          <Users className="w-6 h-6 text-amber-500" /> Study Group Premium
+                        </h2>
+                        <div className="bg-surface px-4 py-1.5 rounded-full border border-amber-500/30 flex items-center gap-2 font-bold text-sm text-amber-600 shadow-sm">
+                          {groupMembersList.length + 1} / 5 Slots Used
+                        </div>
+                      </div>
+                      <p className="text-on-surface-variant font-medium mb-6 text-sm text-left">
+                        As the administrator of this Study Group Premium subscription, you can invite up to **4 other students** to share your premium features at no extra cost. Both you and your buddies get lifetime access!
+                      </p>
+
+                      {groupError && (
+                        <div className="bg-error/10 border border-error/20 text-error p-3.5 rounded-xl text-xs font-semibold mb-4 text-left">
+                          {groupError}
+                        </div>
+                      )}
+
+                      {groupMessage && (
+                        <div className="bg-green-500/10 border border-green-500/20 text-green-600 p-3.5 rounded-xl text-xs font-semibold mb-4 text-left">
+                          {groupMessage}
+                        </div>
+                      )}
+
+                      {/* Add Member Form */}
+                      <form onSubmit={handleAddGroupMember} className="flex gap-2 mb-6">
+                        <input
+                          type="email"
+                          required
+                          value={groupEmailInput}
+                          onChange={(e) => setGroupEmailInput(e.target.value)}
+                          placeholder="buddy@example.com"
+                          className="flex-1 bg-surface border border-outline-variant/60 rounded-xl px-4 py-3 text-xs sm:text-sm font-medium text-on-surface outline-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={groupSaving || groupMembersList.length >= 4}
+                          className="bg-amber-500 hover:bg-amber-600 text-white px-5 rounded-xl text-xs sm:text-sm font-bold transition-all hover:scale-105 active:scale-95 shadow-sm disabled:opacity-50 disabled:scale-100"
+                        >
+                          Add Buddy
+                        </button>
+                      </form>
+
+                      {/* Members List */}
+                      <div className="space-y-2 text-left">
+                        <h4 className="text-xs font-bold text-amber-600 uppercase tracking-widest pl-1 mb-2">Group Members</h4>
+                        <div className="bg-surface border border-outline-variant/30 rounded-xl divide-y divide-outline-variant/30">
+                          {/* Admin Slot */}
+                          <div className="p-3.5 flex items-center justify-between text-xs sm:text-sm font-medium">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-6 h-6 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-[10px]">
+                                Admin
+                              </div>
+                              <span className="text-on-surface">{auth.currentUser?.email} (You)</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded-full">
+                              Subscription Owner
+                            </span>
+                          </div>
+
+                          {/* Buddy Slots */}
+                          {groupMembersList.map((buddyEmail, i) => (
+                            <div key={i} className="p-3.5 flex items-center justify-between text-xs sm:text-sm font-medium">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-6 h-6 rounded-full bg-surface-dim border border-outline-variant/40 text-on-surface-variant flex items-center justify-center font-bold text-[10px]">
+                                  {i + 2}
+                                </div>
+                                <span className="text-on-surface">{buddyEmail}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGroupMember(buddyEmail)}
+                                disabled={groupSaving}
+                                className="text-xs font-bold text-red-500 hover:text-red-600 px-2.5 py-1 hover:bg-red-500/10 rounded-lg transition-all"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+
+                          {/* Empty Slots */}
+                          {Array.from({ length: 4 - groupMembersList.length }).map((_, i) => (
+                            <div key={i} className="p-3.5 flex items-center justify-between text-xs sm:text-sm font-medium text-on-surface-variant/40 italic">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-6 h-6 rounded-full bg-surface-dim/40 border border-outline-variant/10 flex items-center justify-center font-bold text-[10px] not-italic">
+                                  {groupMembersList.length + i + 2}
+                                </div>
+                                <span>Empty Slot - Invite a study buddy</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Companion Status Panel */}
+              {profile?.tier === "pro" && profile?.proType === "companion" && (
+                <div className="mt-10 pt-8 border-t border-outline-variant/30">
+                  <div className="bg-primary/5 border border-primary/20 rounded-[20px] p-6 sm:p-8 text-left">
+                    <h2 className="text-xl font-bold font-headline-md flex items-center gap-2 text-on-surface mb-3">
+                      <Zap className="w-5 h-5 text-primary animate-pulse" /> Shared Study Group Premium
+                    </h2>
+                    <p className="text-sm text-on-surface-variant leading-relaxed">
+                      Your account is running **Premium features completely free** because you are a registered group member of an active **Study Group Premium** plan! Enjoy lifetime coaching and exam prep!
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold">
+                      <CheckCircle2 className="w-4 h-4" /> Active shared membership
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </motion.div>

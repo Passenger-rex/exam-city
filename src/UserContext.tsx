@@ -5,6 +5,11 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 interface UserProfile {
   tier: "free" | "pro";
   testsTakenThisMonth: number;
+  proType?: "individual" | "group" | "companion" | "referrals";
+  groupAdminUid?: string | null;
+  groupMembers?: string[] | null;
+  tutorQueriesUsed?: number;
+  lastTutorQueryDate?: string | null;
 }
 
 interface UserContextType {
@@ -53,24 +58,50 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         if (docSnap.exists()) {
           const data = docSnap.data();
           let currentTier = data.tier || "free";
+          let userProType = data.proType || "individual";
+          let groupAdminUid = data.groupAdminUid || null;
+          let groupMembers = data.groupMembers || null;
           
           // Check Referrals
           try {
              const { collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
              const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
              const refSnap = await getDocs(refQ);
-             if (refSnap.size >= 3 && currentTier !== "pro") {
+             if (refSnap.size >= 5 && currentTier !== "pro") {
                 // Auto-upgrade to Pro!
-                await updateDoc(userRef, { tier: "pro", proReason: "referrals" });
+                await updateDoc(userRef, { tier: "pro", proType: "referrals" });
                 currentTier = "pro";
+                userProType = "referrals";
              }
           } catch(e) {
              console.error("Error checking referrals:", e);
+          }
+
+          // If NOT explicitly pro, check if we are in someone else's Study Group
+          if (currentTier !== "pro" && user.email) {
+             try {
+                const { collection, query, where, getDocs } = await import("firebase/firestore");
+                const groupsQ = query(collection(db, "users"), where("groupMembers", "array-contains", user.email.toLowerCase().trim()));
+                const groupsSnap = await getDocs(groupsQ);
+                if (!groupsSnap.empty) {
+                   currentTier = "pro";
+                   userProType = "companion";
+                   const adminData = groupsSnap.docs[0].data();
+                   groupAdminUid = groupsSnap.docs[0].id;
+                }
+             } catch (e) {
+                console.error("Error looking up shared groups:", e);
+             }
           }
           
           setProfile({
             tier: currentTier,
             testsTakenThisMonth: Number(data.examCount || 0),
+            proType: userProType,
+            groupAdminUid,
+            groupMembers,
+            tutorQueriesUsed: Number(data.tutorQueriesUsed || 0),
+            lastTutorQueryDate: data.lastTutorQueryDate || null,
           });
         } else {
           setProfile({ tier: "free", testsTakenThisMonth: 0 });
