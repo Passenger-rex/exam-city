@@ -290,14 +290,14 @@ export function ExamConfigModal({
                   onClick={() => setExamType("standard")}
                   className={`flex flex-col items-start p-3 rounded-lg transition-all ${examType === "standard" ? "bg-surface shadow-sm text-on-surface border border-outline-variant/60" : "text-on-surface-variant hover:text-on-surface border border-transparent"}`}
                 >
-                  <span className="text-sm font-bold mb-0.5">Full Mock</span>
+                  <span className="text-sm font-bold mb-0.5">Mock Exam</span>
                   <span className="text-[11px] font-medium opacity-80">40 Questions</span>
                 </button>
                 <button
                   onClick={() => setExamType("micro")}
                   className={`flex flex-col items-start p-3 rounded-lg transition-all ${examType === "micro" ? "bg-surface shadow-sm text-on-surface border border-outline-variant/60" : "text-on-surface-variant hover:text-on-surface border border-transparent"}`}
                 >
-                  <span className="text-sm font-bold mb-0.5">Mini Mock</span>
+                  <span className="text-sm font-bold mb-0.5">Quick Study</span>
                   <span className="text-[11px] font-medium opacity-80">5 Questions</span>
                 </button>
                 

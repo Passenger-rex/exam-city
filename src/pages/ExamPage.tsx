@@ -409,7 +409,7 @@ export default function ExamPage() {
              </div>
              <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{subjectParam} MOCK EXAMINATION</h1>
              <p className="text-sm font-semibold uppercase tracking-widest mt-2 text-gray-800">Exam City Assessment Series</p>
-             <p className="text-sm italic mt-1 text-gray-600">Year: {yearParam} • Format: {typeParam === 'micro' ? 'Mini Mock' : 'Full Mock'}</p>
+             <p className="text-sm italic mt-1 text-gray-600">Year: {yearParam} • Format: {typeParam === 'micro' ? 'Quick Study' : 'Mock Exam'}</p>
              <div className="absolute -bottom-1 left-0 right-0 h-[1px] bg-black"></div>
           </div>
           

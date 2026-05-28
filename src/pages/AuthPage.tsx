@@ -4,7 +4,8 @@ import { auth, db } from "../firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   updateProfile,
@@ -189,6 +190,53 @@ export default function AuthPage() {
   const [message, setMessage] = useState("");
   const [initialEmail, setInitialEmail] = useState("");
 
+  React.useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // Process logic for new user or returning user
+          await setDoc(
+            doc(db, "users", result.user.uid),
+            {
+              name: result.user.displayName || "Google User",
+              email: result.user.email,
+              role: "user",
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+
+          // Handle Referral (using stored refCode or check URL)
+          const storedRef = sessionStorage.getItem("pendingRefCode");
+          const finalRef = refCode || storedRef;
+
+          if (finalRef) {
+            try {
+              const q = query(collection(db, "referrals"), where("referredId", "==", result.user.uid));
+              const snap = await getDocs(q);
+              if (snap.empty) {
+                await addDoc(collection(db, "referrals"), {
+                  referrerId: finalRef,
+                  referredId: result.user.uid,
+                  createdAt: serverTimestamp()
+                });
+              }
+            } catch (e) {
+              console.error("Failed to add referral record", e);
+            }
+            sessionStorage.removeItem("pendingRefCode");
+          }
+
+          await handleAuthSuccess(result.user.uid);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      }
+    };
+    checkRedirect();
+  }, [auth]);
+
   const handleAuthSuccess = async (userId: string) => {
     const demoDataStr = sessionStorage.getItem("demoResult");
     if (demoDataStr) {
@@ -233,13 +281,16 @@ export default function AuthPage() {
           email,
           password,
         );
-        await updateProfile(userCredential.user, { displayName: name });
-        await setDoc(doc(db, "users", userCredential.user.uid), {
-          name,
-          email,
-          role: "user",
-          createdAt: serverTimestamp(),
-        });
+        
+        await Promise.all([
+          updateProfile(userCredential.user, { displayName: name }),
+          setDoc(doc(db, "users", userCredential.user.uid), {
+            name,
+            email,
+            role: "user",
+            createdAt: serverTimestamp(),
+          })
+        ]);
         
         // Handle Referral
         if (refCode) {
@@ -294,44 +345,13 @@ export default function AuthPage() {
     setError("");
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-
-      // We should make sure user doc exists
-      await setDoc(
-        doc(db, "users", result.user.uid),
-        {
-          name: result.user.displayName || "Google User",
-          email: result.user.email,
-          role: "user",
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-      
-      // Handle Referral
+      // Store refCode in session to persist across redirect
       if (refCode) {
-         try {
-            const q = query(collection(db, "referrals"), where("referredId", "==", result.user.uid));
-            const snap = await getDocs(q);
-            if (snap.empty) {
-               await addDoc(collection(db, "referrals"), {
-                  referrerId: refCode,
-                  referredId: result.user.uid,
-                  createdAt: serverTimestamp()
-               });
-            }
-         } catch(e) {
-            console.error("Failed to add referral record", e);
-         }
+        sessionStorage.setItem("pendingRefCode", refCode);
       }
-
-      await handleAuthSuccess(result.user.uid);
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      if (err.code === "auth/popup-blocked") {
-        setError("Popup blocked by browser. Please allow popups for this site, or try another tab/login method.");
-      } else {
-        setError(err.message);
-      }
+      setError(err.message);
     }
   };
 
