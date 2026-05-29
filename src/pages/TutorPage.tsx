@@ -189,12 +189,13 @@ export default function TutorPage() {
         }
       } else if (action === "exam") {
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+          const examSubject = data.subject || "Uploaded Study Material";
           sessionStorage.setItem("customUploadedExam", JSON.stringify({
-             subject: data.subject || "Uploaded Study Material",
+             subject: examSubject,
              questions: data.questions
           }));
           setSelectedFile(null);
-          navigate("/exam?uploaded_exam=true&type=standard&bank=premium");
+          navigate(`/exam?uploaded_exam=true&type=standard&bank=premium&subject=${encodeURIComponent(examSubject)}`);
         } else {
           throw new Error("No questions were generated from the uploaded content.");
         }

@@ -45,6 +45,69 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
   }
 });
 
+// ALOC Past Questions API Helper
+async function fetchAlocQuestions(subject: string, limit: number, year?: string, type?: string): Promise<any[] | null> {
+  const token = process.env.VITE_ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8";
+  if (!token) return null;
+  
+  // Normalize subject name to match ALOC subjects
+  const subLower = String(subject).toLowerCase().trim();
+  let alocSubject = "";
+  if (subLower.includes("mathematics") || subLower === "math" || subLower === "further mathematics") alocSubject = "mathematics";
+  else if (subLower.includes("english")) alocSubject = "english";
+  else if (subLower.includes("biology")) alocSubject = "biology";
+  else if (subLower.includes("chemistry")) alocSubject = "chemistry";
+  else if (subLower.includes("physics")) alocSubject = "physics";
+  else if (subLower.includes("economics")) alocSubject = "economics";
+  else if (subLower.includes("geography")) alocSubject = "geography";
+  else if (subLower.includes("government")) alocSubject = "government";
+  else if (subLower.includes("literature")) alocSubject = "english literature";
+  else if (subLower.includes("crk") || subLower.includes("christian")) alocSubject = "crk";
+  else if (subLower.includes("irk") || subLower.includes("islamic")) alocSubject = "irk";
+  else if (subLower.includes("commerce")) alocSubject = "commerce";
+  else if (subLower.includes("accounting") || subLower.includes("financial")) alocSubject = "accounting";
+  else if (subLower.includes("agric")) alocSubject = "agricultural science";
+  else if (subLower.includes("civic")) alocSubject = "civic education";
+
+  if (!alocSubject) {
+    console.log(`[ALOC API] Subject "${subject}" is not a direct match for ALOC past questions API database.`);
+    return null;
+  }
+
+  try {
+    // Fetch a larger set (80) so that we have enough diversity, random selection, and topic keyword coverage
+    let url = `https://questions.aloc.com.ng/v1/qp/questions?subject=${alocSubject}&limit=80`;
+    
+    if (year && year !== "any" && year !== "random") {
+      url += `&year=${year}`;
+    }
+    
+    console.log(`[ALOC API] Fetching from endpoint: ${url}`);
+    
+    const cleanToken = token.replace(/^["']+|["']+$/g, "").trim();
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+      "AccessToken": cleanToken
+    };
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.warn(`[ALOC API] Request failed with status ${res.status}`);
+      return null;
+    }
+
+    const jsonHistory: any = await res.json();
+    if (jsonHistory && jsonHistory.data && Array.isArray(jsonHistory.data) && jsonHistory.data.length > 0) {
+      console.log(`[ALOC API] Successfully retrieved ${jsonHistory.data.length} questions for subject '${alocSubject}'`);
+      return jsonHistory.data;
+    }
+    return null;
+  } catch (err: any) {
+    console.error("[ALOC API] Failed fetching questions:", err.message || err);
+    return null;
+  }
+}
+
 // Questions generator API Endpoint
 app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
@@ -52,36 +115,118 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
     const limitNum = type === "micro" ? 5 : 40;
     
     let allQuestions: any[] = [];
+    let responseSubject = typeof topic === "string" && topic.trim().length > 0 
+      ? `${subject} - ${topic.trim()}` 
+      : String(subject);
 
-    let yearInstruction = "";
-    if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
-      yearInstruction = "Assign a random past year to each question.";
-    } else {
-      yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
-    }
-    
-    let topicInstruction = "";
-    if (typeof topic === "string" && topic.trim().length > 0) {
-      topicInstruction = `The questions MUST specifically test knowledge on the topic of "${topic}".`;
+    // Normalize subject name
+    const subjectStr = String(subject).trim();
+    const topicStr = typeof topic === "string" ? topic.trim() : "";
+
+    // Try fetching from ALOC if requested, or if subject is matching Nigerian WAEC/UTME subjects
+    let fetchedAloc: any[] | null = null;
+    const isAlocEligible = ["mathematics", "english", "biology", "chemistry", "physics", "economics", "geography", "government", "literature", "crk", "irk", "commerce", "accounting", "agric", "civic"]
+      .some(s => subjectStr.toLowerCase().includes(s));
+
+    if (isAlocEligible) {
+      console.log(`[ALOC Past Questions] Checking ALOC API for subject: ${subjectStr}`);
+      fetchedAloc = await fetchAlocQuestions(subjectStr, limitNum, String(year));
     }
 
-    const prompt = `Generate exactly ${limitNum} highly professional, challenging, and college/institute-level mock exam multiple choice questions for the subject: "${subject}". ${yearInstruction} ${topicInstruction} The questions MUST match the rigor of professional certification exams, university-level assessments, or medical/clinical board exams in Nigerian, UK, Australian, or US styles. Do NOT generate overly simple, basic, or repetitive questions. Prioritize authentic complex questions that require critical thinking, multi-step problem solving, or clinical reasoning (especially for medical, nursing, pharmacology, or scientific subjects). Use modern scientific naming conventions, precise terminology, and strict IUPAC nomenclature. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
-    IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
-    {
-       "subject": "${subject}",
-       "data": [
-          {
-             "id": "q1",
-             "question": "question text here",
-             "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
-             "answer": "a",
-             "solution": "step by step solution",
-             "examyear": "2024"
-          }
-       ]
-    }`;
-    
-    try {
+    if (fetchedAloc && fetchedAloc.length > 0) {
+      // Map ALOC questions keys to match our exact required schema
+      const mappedAloc = fetchedAloc.map((item: any) => {
+        const optionsRaw = item.option || item.options || {};
+        const cleanOptions: Record<string, string> = {
+          a: optionsRaw.a || optionsRaw.A || "",
+          b: optionsRaw.b || optionsRaw.B || "",
+          c: optionsRaw.c || optionsRaw.C || "",
+          d: optionsRaw.d || optionsRaw.D || ""
+        };
+
+        let cleanAnswer = "a";
+        if (typeof item.answer === "string") {
+          cleanAnswer = item.answer.toLowerCase().trim();
+        }
+
+        return {
+          id: String(item.id || Math.random()),
+          question: item.question || "",
+          option: cleanOptions,
+          answer: cleanAnswer,
+          solution: item.solution || item.explanation || "No explanation provided.",
+          examyear: item.examyear || item.year || "Past Question"
+        };
+      });
+
+      // If they passed a specific topic, filter the ALOC past questions by matching keywords
+      if (topicStr.length > 0) {
+        const subTopicLower = topicStr.toLowerCase();
+        console.log(`[ALOC Filter] Filtering ALOC questions by keyword: "${subTopicLower}"`);
+        const topicFiltered = mappedAloc.filter(q => {
+          const contentStr = `${q.question} ${Object.values(q.option).join(" ")} ${q.solution}`.toLowerCase();
+          return contentStr.includes(subTopicLower);
+        });
+
+        if (topicFiltered.length >= limitNum) {
+          console.log(`[ALOC Filter] Success: Found ${topicFiltered.length} authentic questions covering topic "${topicStr}"`);
+          allQuestions = topicFiltered;
+        } else if (topicFiltered.length > 0) {
+          console.log(`[ALOC Filter] Partial: Found ${topicFiltered.length} questions matching topic, padding with general ${subjectStr} questions`);
+          allQuestions = [...topicFiltered, ...mappedAloc.filter(q => !topicFiltered.includes(q))];
+        } else {
+          // No direct matches on ALOC for this highly specific topic - fall back to generate rigorous, bespoke questions!
+          console.log(`[ALOC Filter] No matching ALOC questions for topic "${topicStr}". Falling back to AI model to generate high-rigidity questions.`);
+          fetchedAloc = null;
+        }
+      } else {
+        allQuestions = mappedAloc;
+      }
+    }
+
+    // AI Fallback Question Generation (or when no ALOC questions exist)
+    if (!fetchedAloc || allQuestions.length === 0) {
+      let yearInstruction = "";
+      if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
+        yearInstruction = "Assign a random past year designation (e.g. 2018, 2021) to each question.";
+      } else {
+        yearInstruction = `All questions should be set or adapted for the past year ${year}.`;
+      }
+      
+      let topicInstruction = "";
+      if (topicStr.length > 0) {
+        topicInstruction = `The questions MUST test highly specific, advanced academic knowledge on the topic of "${topicStr}".`;
+      }
+
+      const prompt = `Generate exactly ${limitNum} exceptionally difficult, intellectually rigorous, and upper-division university/certification-grade mock exam multiple choice questions for the subject: "${subjectStr}". 
+      ${yearInstruction} 
+      ${topicInstruction}
+      
+      The questions MUST:
+      1. Be highly challenging, representing very hard high-level college, prestigious professional institute-level, or professional board-level styles (Nigerian, UK, Australian, or US style).
+      2. Test complex problem solving, high-level analytical skills, clinical decision making, multi-step calculations, or deep theoretical reasoning.
+      3. Be far more advanced than basic memory recall. Include detailed scenarios, algebraic formulas, chemical reactions, or clinical history vignettes where appropriate.
+      4. Use precise modern nomenclature (such as IUPAC for Chemistry), strict scientific/academic terminology, and absolute technical accuracy.
+      5. Have highly plausible and sophisticated distractors (incorrect options) that require careful analysis and cannot be easily eliminated.
+      
+      Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
+      
+      IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted matching this schema:
+      {
+         "subject": "${responseSubject}",
+         "data": [
+            {
+               "id": "q1",
+               "question": "question HTML or text here",
+               "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
+               "answer": "a",
+               "solution": "step by step solution",
+               "examyear": "2024"
+            }
+         ]
+      }`;
+
+      console.log(`[AI Generation] Dispatching request for extremely challenging questions of ${subjectStr} (Topic: ${topicStr || "None"})`);
       const content = await executeAIFallback(
         [{ role: "user", content: prompt }],
         { isJson: true }
@@ -94,26 +239,23 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
          jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
       }
       const json = JSON.parse(jsonStr);
+      if (json.subject) {
+         responseSubject = String(json.subject);
+      }
       if (json.data && Array.isArray(json.data) && json.data.length > 0) {
         allQuestions = [...json.data];
       } else {
          throw new Error("AI returned empty or invalid question data format.");
       }
-    } catch (genErr: any) {
-      console.error("Error generating questions with AI: ", genErr);
-      return res.status(500).json({ 
-         success: false, 
-         error: `AI Generation Error: ${genErr.message || "Unknown error occurred"}` 
-      });
     }
 
-    // Shuffle the array nicely
+    // Shuffle and randomize the questions array
     for (let i = allQuestions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
     }
 
-    res.json({ success: true, subject, data: allQuestions.slice(0, limitNum) });
+    res.json({ success: true, subject: responseSubject, data: allQuestions.slice(0, limitNum) });
   } catch (err: any) {
     console.error("Questions endpoint error:", err);
     res.status(500).json({ success: false, error: err.message });
@@ -177,13 +319,13 @@ app.post("/api/process-file", async (req, res) => {
         res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
         const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded image named: "${fileName}".
-        First, deduce the subject/topic of the exam from the file name "${fileName}".
-        Ensure that the questions reflect rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter shown. Avoid overly simple or basic questions.
-        The generated questions MUST be perfectly synced with the actual content of the image. The questions must retrieve or test analytical understanding, complex problem solving, or clinical reasoning of the image details. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source.
+        First, deduce the specific subject name of the exam from the file name "${fileName}" and the visual content of the image. The deduced subject should be precise (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Thermodynamics", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
+        Ensure that the questions reflect very hard, rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter and topics shown. Avoid overly simple, trivial, or basic questions.
+        The generated questions MUST be perfectly synced and linked with the actual topics, concepts, and content of the image. The questions must test clinical reasoning, critical thinking, or multi-step problem solving. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All questions on standard / premium must test very hard high-level concepts and specific topics from the document.
         
         You must return your output strictly in JSON format matching this schema:
         {
-           "subject": "The deducted subject based on fileName",
+           "subject": "The deduced precise subject based on the filename and image content",
            "questions": [
               {
                  "id": "uq1",
@@ -283,19 +425,19 @@ app.post("/api/process-file", async (req, res) => {
         res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
         const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded file named: "${fileName}".
-        First, deduce the subject/topic of the exam from the file title "${fileName}".
+        First, deduce the specific subject name of the exam from the file title "${fileName}" and the content of the file. The deduced subject should be highly precise and clear (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Thermodynamics", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
         Below is the content of the file:
         
         --- FILE CONTENT START ---
         ${extractedText.substring(0, 35000)}
         --- FILE CONTENT END ---
         
-        Ensure that the questions reflect rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter covered in this document. Avoid overly simple or basic questions.
-        The generated questions MUST be perfectly synced with the topics, facts, and subject of the document content provided above. The questions must retrieve or test analytical understanding, complex problem solving, or clinical reasoning of the document details. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source.
+        Ensure that the questions reflect very hard, rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter covered in this document. Avoid overly simple, trivial, or basic questions.
+        The generated questions MUST be perfectly synced and linked with the specific topics, facts, concepts, and subject of the document content provided above. The questions must test clinical reasoning, deep analytical understanding, or complex problem-solving. Each question should test a clear and distinct high-level topic or concept from the content. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All standard / premium questions must represent very hard high-level college and institute-style assessments.
         
         You must return your output strictly in JSON format matching this schema:
         {
-           "subject": "The deducted subject based on fileName and file content",
+           "subject": "The deduced precise subject based on the filename and file content",
            "questions": [
               {
                  "id": "uq1",

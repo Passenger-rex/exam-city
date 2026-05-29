@@ -51,7 +51,9 @@ export default function ExamPage() {
   const [warnings, setWarnings] = useState(0);
 
   // We should not use localStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
-  const stateKey = printParam ? "offline_print_only" : `exam_state_${subjectParam}_${yearParam}_${typeParam}`;
+  const stateKey = printParam 
+    ? "offline_print_only" 
+    : `exam_state_${subjectParam}_${topicParam ? encodeURIComponent(topicParam) + '_' : ''}${yearParam}_${typeParam}`;
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -113,20 +115,45 @@ export default function ExamPage() {
         let targetSubject = subjectParam;
 
         if (typeParam === "micro" && auth.currentUser) {
-          // Find weakest from DB
-          const resultsQ = query(
-            collection(db, "exam_results"),
-            where("userId", "==", auth.currentUser.uid)
-          );
-          const resultsSnap = await getDocs(resultsQ);
-          if (!resultsSnap.empty) {
-            const allResults = resultsSnap.docs.map(d => d.data());
-            allResults.sort((a: any, b: any) => {
-              if (!a.createdAt || !b.createdAt) return 0;
-              return b.createdAt.toMillis() - a.createdAt.toMillis();
-            });
-            // Approximate weakest subject (could be improved)
-            targetSubject = "mathematics";
+          if (subjectParam === "weakest" || subjectParam === "recommend") {
+             // Find weakest from DB
+             const resultsQ = query(
+               collection(db, "exam_results"),
+               where("userId", "==", auth.currentUser.uid)
+             );
+             const resultsSnap = await getDocs(resultsQ);
+             if (!resultsSnap.empty) {
+               const allResults = resultsSnap.docs.map(d => d.data());
+               const subjectStats: Record<string, { totalScore: number; totalQuestions: number }> = {};
+               allResults.forEach((resOnCheck: any) => {
+                 const sub = resOnCheck.subject || "Unknown";
+                 if (sub && sub !== "Unknown") {
+                   if (!subjectStats[sub]) {
+                     subjectStats[sub] = { totalScore: 0, totalQuestions: 0 };
+                   }
+                   subjectStats[sub].totalScore += (resOnCheck.score || 0);
+                   subjectStats[sub].totalQuestions += (resOnCheck.total || 1);
+                 }
+               });
+
+               let weakestSub = "";
+               let lowestRatio = 1.1;
+               Object.keys(subjectStats).forEach(subKey => {
+                 const ratio = subjectStats[subKey].totalScore / subjectStats[subKey].totalQuestions;
+                 if (ratio < lowestRatio) {
+                   lowestRatio = ratio;
+                   weakestSub = subKey;
+                 }
+               });
+
+               if (weakestSub) {
+                 targetSubject = weakestSub;
+               } else {
+                 targetSubject = "mathematics";
+               }
+             } else {
+               targetSubject = "mathematics";
+             }
           }
           if (timeLeft > 300000) setTimeLeft(300000); // 5 mins
         }
@@ -178,6 +205,13 @@ export default function ExamPage() {
                ...doc.data(),
              }));
              
+             if (targetSubject && targetSubject !== "any") {
+               const subLower = targetSubject.toLowerCase().trim();
+               qList = qList.filter((q) => {
+                 const qSub = (q.subject || "").toLowerCase().trim();
+                 return qSub.includes(subLower) || subLower.includes(qSub);
+               });
+             }
              if (yearParam !== "any") {
                qList = qList.filter((q) => q.year == yearParam);
              }
@@ -201,7 +235,7 @@ export default function ExamPage() {
       }
     };
     fetchQuestions();
-  }, [bankParam, typeParam, yearParam, subjectParam, stateKey]);
+  }, [bankParam, typeParam, yearParam, subjectParam, stateKey, topicParam]);
 
   useEffect(() => {
     if (loading || questions.length === 0) return;
@@ -411,7 +445,22 @@ export default function ExamPage() {
 
   if (printParam) {
     return (
-       <div className="min-h-screen bg-white text-black p-10 font-serif print:p-0 print:m-0 max-w-4xl mx-auto">
+       <div className="min-h-screen bg-white text-black p-10 font-serif print:p-0 print:m-0 max-w-4xl mx-auto relative z-10">
+          {/* Watermark Background - Repeats on every physical page when printing due to position: fixed */}
+          <div className="fixed inset-0 pointer-events-none flex flex-col justify-around items-center select-none opacity-[0.035] print:opacity-[0.025] -z-10 overflow-hidden mix-blend-multiply">
+             {[1, 2, 3].map((i) => (
+               <div key={i} className="flex flex-col items-center rotate-[-30deg] transform scale-125 my-14">
+                  <div className="flex items-center gap-2">
+                    <span className="font-sans font-black uppercase tracking-[0.1em] text-[65px] text-gray-400">exam city</span>
+                    <svg className="text-gray-400 w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+                       <polyline points="21 4 9 20 2 12" />
+                    </svg>
+                  </div>
+                  <span className="font-sans font-bold tracking-[0.3em] text-[10px] uppercase mt-1 text-gray-500">Authentic Assessment Series</span>
+               </div>
+             ))}
+          </div>
+
           {/* Header */}
           <div className="text-center mb-10 pb-6 border-b-[3px] border-black relative">
              <div className="flex justify-center items-center gap-3">
@@ -419,7 +468,10 @@ export default function ExamPage() {
              </div>
              <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{displaySubject} MOCK EXAMINATION</h1>
              <p className="text-sm font-semibold uppercase tracking-widest mt-2 text-gray-800">Exam City Assessment Series</p>
-             <p className="text-sm italic mt-1 text-gray-600">Year: {yearParam} • Format: {typeParam === 'micro' ? 'Quick Study' : 'Mock Exam'}</p>
+             <p className="text-sm italic mt-1 text-gray-600">
+                Year: {yearParam} • Format: {typeParam === 'micro' ? 'Quick Study' : 'Mock Exam'}
+                {topicParam && ` • Topic: ${topicParam}`}
+             </p>
              <div className="absolute -bottom-1 left-0 right-0 h-[1px] bg-black"></div>
           </div>
           

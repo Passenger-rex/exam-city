@@ -395,7 +395,9 @@ export function ExamConfigModal({
                    if (userTier === "free") {
                       localStorage.setItem('hasUsedFreePdf', 'true');
                    }
-                   navigate(`/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`);
+                   let printUrl = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`;
+                   if (topic.trim()) printUrl += `&topic=${encodeURIComponent(topic.trim())}`;
+                   navigate(printUrl);
                 }}
                 className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center gap-1.5"
               >
