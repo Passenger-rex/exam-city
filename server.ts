@@ -4,14 +4,14 @@ import dotenv from "dotenv";
 dotenv.config({ override: true });
 
 import { OpenAI } from "openai";
-import { GoogleGenAI, Type } from "@google/genai";
 
 // Firebase-admin was removed as all firestore operations are client-driven via Firebase Web SDK
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Exam Grading endpoint has been removed as grading is handled client-side
 // Upgrade endpoint removed since it's handled via Flutterwave webhook and client-side setup
@@ -36,7 +36,6 @@ app.post(["/api/explain", "/explain"], async (req, res) => {
     const model = "llama-3.3-70b-versatile";
 
     const openai = new OpenAI({ apiKey, baseURL });
-    
     const prompt = `Provide a detailed, step-by-step explanation for the following question, specifically addressing why the user's answer is incorrect and why the actual correct answer is right.
     
 Question: ${question}
@@ -54,8 +53,7 @@ Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-
     res.json({ success: true, explanation: response.choices[0].message.content });
   } catch (error: any) {
      console.error("AI Explain Error:", error);
-     const msg = error.message || "Unknown error";
-     res.status(500).json({ success: false, error: `Explain API Error: ${msg}. If on Vercel, check GROQ_API_KEY.` });
+     res.status(500).json({ success: false, error: `Explain API Error: ${error.message || "Unknown error"}` });
   }
 });
 
@@ -64,18 +62,10 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
     const { subject = "english", year = "any", type = "standard", bank = "public", topic = "" } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
-    const isPro = bank === "premium";
     
     let allQuestions: any[] = [];
     
-    // If public bank, try ALOC API first for real past questions
-    const topicStr = typeof topic === "string" ? topic.trim() : "";
-    if (bank === "public" && topicStr.length === 0) {
-       const alocQuestions = await fetchFromAloc(String(subject), limitNum);
-       if (alocQuestions && alocQuestions.length > 0) {
-          allQuestions = alocQuestions;
-       }
-    }
+    // ALOC fetch has been removed in favor of strictly generating college/professional level questions via AI.
 
     // Fallback to Generative AI if no questions yet
     if (allQuestions.length === 0) {
@@ -100,7 +90,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
           topicInstruction = `The questions MUST specifically test knowledge on the topic of "${topic}".`;
         }
 
-        const prompt = `Surf online (e.g. from sources like ALOC, MySchool, Pass.ng) to find and return exactly ${limitNum} real, accurate, and challenging past questions for West African Examinations Council (WAEC), Joint Admissions and Matriculation Board (JAMB) or National Examinations Council (NECO) for the subject: "${subject}". ${yearInstruction} ${topicInstruction} The difficulty MUST strictly match the rigor of standard Senior Secondary Certification Examination (SSCE) or University Tertiary Matriculation Examination (UTME). DO NOT generate overly simple questions; retrieve authentic complex questions that require critical thinking or multi-step problem solving. Use modern scientific naming conventions and strict IUPAC nomenclature (especially for Chemistry questions). Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
+        const prompt = `Generate exactly ${limitNum} highly professional, challenging, and college/institute-level mock exam multiple choice questions for the subject: "${subject}". ${yearInstruction} ${topicInstruction} The questions MUST match the rigor of professional certification exams, university-level assessments, or medical/clinical board exams in Nigerian, UK, Australian, or US styles. Do NOT generate overly simple, basic, or repetitive questions. Prioritize authentic complex questions that require critical thinking, multi-step problem solving, or clinical reasoning (especially for medical, nursing, pharmacology, or scientific subjects). Use modern scientific naming conventions, precise terminology, and strict IUPAC nomenclature. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
         IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
         {
            "subject": "${subject}",
@@ -147,7 +137,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       } else {
          return res.status(500).json({ 
             success: false, 
-            error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." 
+            error: "GROQ_API_KEY is missing." 
          });
       }
     }
@@ -165,51 +155,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
   }
 });
 
-async function fetchFromAloc(subject: string, limit: number) {
-  const token = process.env.VITE_ALOC_ACCESS_TOKEN || "ALOC-78bfe77b49fb3e407bf8";
-  const alocSubject = subject.toLowerCase().replace(/\s+/g, "_");
-  
-  // Mapping some common subjects to ALOC naming
-  const mapping: Record<string, string> = {
-    "crk": "christian_religious_knowledge",
-    "irk": "islamic_religious_knowledge",
-    "english": "english_language",
-    "maths": "mathematics",
-    "further_mathematics": "further_mathematics",
-    "accounting": "financial_accounting",
-    "agricultural_science": "agricultural_science",
-    "civic_education": "civic_education"
-  };
 
-  const finalSubject = mapping[alocSubject] || alocSubject;
-  
-  try {
-    const response = await fetch(`https://questions.aloc.com.ng/api/v2/q/${limit}?subject=${finalSubject}`, {
-      headers: { 
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "AccessToken": token 
-      }
-    });
-
-    if (!response.ok) return null;
-    const json: any = await response.json();
-    
-    if (json && json.data && Array.isArray(json.data)) {
-      return json.data.map((q: any) => ({
-        id: q.id || Math.random().toString(),
-        question: q.question,
-        option: q.option || { a: q.a, b: q.b, c: q.c, d: q.d },
-        answer: q.answer,
-        solution: q.solution || "Refer to the syllabus for detailed explanation.",
-        examyear: q.examyear || "Past Question"
-      }));
-    }
-  } catch (e) {
-    console.error("ALOC Fetch Error:", e);
-  }
-  return null;
-}
 
 // Study Coach / Chatbot Endpoint
 app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
@@ -221,7 +167,6 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
       return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
     }
     
-    // Auto-detect provider
     const baseURL = "https://api.groq.com/openai/v1";
     const model = "llama-3.3-70b-versatile";
 
@@ -246,12 +191,11 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
     res.json({ success: true, text: response.choices[0].message.content });
   } catch (error: any) {
      console.error("Chatbot Error:", error);
-     const msg = error.message ? error.message : "If you deployed to Vercel, please add your GROQ_API_KEY.";
-     res.status(500).json({ success: false, error: `Study Coach API Error: ${msg}` });
+     res.status(500).json({ success: false, error: `Study Coach API Error: ${error.message}` });
   }
 });
 
-// Process Study Material File Endpoint via Groq AI (OpenAI wrapper)
+// Process Study Material File Endpoint via Gemini
 app.post("/api/process-file", async (req, res) => {
   try {
     const { fileBase64, mimeType = "", fileName = "", action, message } = req.body;
@@ -334,7 +278,6 @@ app.post("/api/process-file", async (req, res) => {
            responseText = responseText.substring(firstBracket, lastBracket + 1);
         }
         const json = JSON.parse(responseText);
-        
         res.json({ success: true, questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
@@ -344,19 +287,21 @@ app.post("/api/process-file", async (req, res) => {
       let extractedText = "";
       if (mimeType.includes("pdf") || fileName.endsWith(".pdf")) {
         try {
-          const pdfParseModule: any = await import("pdf-parse");
-          const pdfParse = pdfParseModule.default || pdfParseModule;
+          const { createRequire } = await import("module");
+          const require = createRequire(import.meta.url);
+          const pdfParse = require("pdf-parse");
           const buffer = Buffer.from(fileBase64, "base64");
           const pdfData = await pdfParse(buffer);
           extractedText = pdfData.text || "";
         } catch (pdfErr: any) {
           console.error("PDF Extraction Error:", pdfErr);
-          throw new Error("Failed to extract readable text from PDF. " + pdfErr.message);
+          throw new Error("Failed to extract readable text from PDF. " + (pdfErr.message || pdfErr));
         }
       } else if (mimeType.includes("word") || mimeType.includes("officedocument") || fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
         try {
-          const mammothModule: any = await import("mammoth");
-          const mammoth = mammothModule.default || mammothModule;
+          const { createRequire } = await import("module");
+          const require = createRequire(import.meta.url);
+          const mammoth = require("mammoth");
           const buffer = Buffer.from(fileBase64, "base64");
           const result = await mammoth.extractRawText({ buffer });
           extractedText = result.value || "";
@@ -436,7 +381,6 @@ app.post("/api/process-file", async (req, res) => {
            responseText = responseText.substring(firstBracket, lastBracket + 1);
         }
         const json = JSON.parse(responseText);
-        
         res.json({ success: true, questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });

@@ -59,6 +59,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         if (docSnap.exists()) {
           const data = docSnap.data();
           let currentTier = data.tier || "free";
+          
+          const PRO_EMAILS = [
+            "owolekejesse@gmail.com",
+            "johnnieekundayo@gmail.com"
+          ];
+          const PRO_UIDS = [
+            "WHC5GtQVXoTTWM7wUOUd7m18IN02",
+            "c0WvsZR7N8RCRwc41ppNMDGdi4w2"
+          ];
+          
+          if ((user.email && PRO_EMAILS.includes(user.email.toLowerCase())) || PRO_UIDS.includes(user.uid)) {
+            currentTier = "pro";
+            // Update Firestore so the user gets permanent pro status across devices
+            import("firebase/firestore").then(({ updateDoc }) => {
+                updateDoc(userRef, { tier: "pro", proType: "admin_granted" }).catch(e => console.error(e));
+            });
+          }
+
           let userProType = data.proType || "individual";
           let groupAdminUid = data.groupAdminUid || null;
           let groupMembers = data.groupMembers || null;
@@ -87,7 +105,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
               // Check Referrals
               const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
               const refSnap = await getDocs(refQ);
-              if (refSnap.size >= 5) {
+              if (refSnap.size >= 12) {
                 await updateDoc(userRef, { tier: "pro", proType: "referrals" });
                 // Note: The onSnapshot will fire again from the updateDoc
                 return;

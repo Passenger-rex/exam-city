@@ -360,12 +360,12 @@ export default function ProfilePage() {
                       & Earn Premium
                     </h2>
                     <div className="bg-surface px-4 py-1.5 rounded-full border border-primary/30 flex items-center gap-2 font-bold text-sm text-primary shadow-sm w-fit sm:mx-0">
-                      <Users className="w-4 h-4 shrink-0" /> {referralCount} / 5
+                      <Users className="w-4 h-4 shrink-0" /> {referralCount} / 12
                       Referred
                     </div>
                   </div>
                   <p className="text-on-surface-variant font-medium mb-6 text-sm text-left">
-                    Share Exam City with your friends! Once 5 friends sign up
+                    Share Exam City with your friends! Once 12 friends sign up
                     using your unique link, your account will be automatically
                     upgraded to Premium for free.
                   </p>
@@ -396,7 +396,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                   {referralCount >= 5 && (
+                   {referralCount >= 12 && (
                     <div className="mt-4 flex justify-start">
                       <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-600 border border-green-500/20 text-xs font-bold rounded-full">
                         <CheckCircle2 className="w-4 h-4" /> You've achieved
@@ -405,16 +405,16 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  {referralCount < 5 && (
+                  {referralCount < 12 && (
                     <div className="mt-6">
                       <div className="w-full bg-surface h-3 rounded-full overflow-hidden border border-outline-variant/30">
                         <div
                           className="h-full bg-primary transition-all rounded-full"
-                          style={{ width: `${(referralCount / 5) * 100}%` }}
+                          style={{ width: `${(referralCount / 12) * 100}%` }}
                         ></div>
                       </div>
                       <div className="text-left sm:text-right mt-1.5 text-xs font-bold text-on-surface-variant">
-                        {5 - referralCount} more to go!
+                        {12 - referralCount} more to go!
                       </div>
                     </div>
                   )}

@@ -4,8 +4,7 @@ import { auth, db } from "../firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   updateProfile,
@@ -192,50 +191,7 @@ export default function AuthPage() {
   const [initialEmail, setInitialEmail] = useState("");
 
   React.useEffect(() => {
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // Process logic for new user or returning user
-          await setDoc(
-            doc(db, "users", result.user.uid),
-            {
-              name: result.user.displayName || "Google User",
-              email: result.user.email,
-              role: "user",
-              updatedAt: serverTimestamp(),
-            },
-            { merge: true },
-          );
-
-          // Handle Referral (using stored refCode or check URL)
-          const storedRef = sessionStorage.getItem("pendingRefCode");
-          const finalRef = refCode || storedRef;
-
-          if (finalRef) {
-            try {
-              const q = query(collection(db, "referrals"), where("referredId", "==", result.user.uid));
-              const snap = await getDocs(q);
-              if (snap.empty) {
-                await addDoc(collection(db, "referrals"), {
-                  referrerId: finalRef,
-                  referredId: result.user.uid,
-                  createdAt: serverTimestamp()
-                });
-              }
-            } catch (e) {
-              console.error("Failed to add referral record", e);
-            }
-            sessionStorage.removeItem("pendingRefCode");
-          }
-
-          await handleAuthSuccess(result.user.uid);
-        }
-      } catch (err: any) {
-        setError(err.message);
-      }
-    };
-    checkRedirect();
+    // Legacy redirect check removed
   }, [auth]);
 
   const handleAuthSuccess = async (userId: string) => {
@@ -363,13 +319,38 @@ export default function AuthPage() {
     setError("");
     try {
       const provider = new GoogleAuthProvider();
-      // Store refCode in session to persist across redirect
-      if (refCode) {
-        sessionStorage.setItem("pendingRefCode", refCode);
+      const result = await signInWithPopup(auth, provider);
+      
+      const userDocRef = doc(db, "users", result.user.uid);
+      const userSnap = await getDoc(userDocRef);
+      if (!userSnap.exists()) {
+        await setDoc(userDocRef, {
+          name: result.user.displayName || "Google User",
+          email: result.user.email,
+          role: "user",
+          createdAt: serverTimestamp(),
+        });
+        
+        if (refCode) {
+           try {
+              await addDoc(collection(db, "referrals"), {
+                 referrerId: refCode,
+                 referredId: result.user.uid,
+                 createdAt: serverTimestamp()
+              });
+           } catch(e) {
+              console.error("Failed to add referral record", e);
+           }
+        }
       }
-      await signInWithRedirect(auth, provider);
+      
+      await handleAuthSuccess(result.user.uid);
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === "auth/popup-blocked") {
+        setError("Popup blocked by browser. Please allow popups for this site, or try another tab/login method.");
+      } else {
+        setError(err.message);
+      }
     }
   };
 
