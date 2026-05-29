@@ -56,9 +56,9 @@ export default function Dashboard() {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
 
   const getExamSubject = (exam: any) => {
-    if (exam.subject) return exam.subject;
+    if (exam.subject) return String(exam.subject);
     if (exam.questions && exam.questions.length > 0) {
-      return exam.questions[0].subject || "Unknown";
+      return String(exam.questions[0].subject || "Unknown");
     }
     return "Unknown";
   };

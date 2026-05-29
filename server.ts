@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 dotenv.config({ override: true });
 
 import { OpenAI } from "openai";
+import { executeAIFallback } from "./src/ai-fallback";
 
 // Firebase-admin was removed as all firestore operations are client-driven via Firebase Web SDK
 
@@ -25,17 +26,8 @@ app.use((req, res, next) => {
 app.post(["/api/explain", "/explain"], async (req, res) => {
   try {
     const { question, options, userAnswer, correctAnswer } = req.body;
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
-    const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
-    if (!apiKey) {
-      return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
-    }
     
     // Auto-detect provider
-    const baseURL = "https://api.groq.com/openai/v1";
-    const model = "llama-3.3-70b-versatile";
-
-    const openai = new OpenAI({ apiKey, baseURL });
     const prompt = `Provide a detailed, step-by-step explanation for the following question, specifically addressing why the user's answer is incorrect and why the actual correct answer is right.
     
 Question: ${question}
@@ -45,12 +37,8 @@ Correct Answer: ${options[correctAnswer] || correctAnswer}
 
 Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-step breakdown. Use markdown to format the output nicely.`;
 
-    const response = await openai.chat.completions.create({
-      model: model,
-      messages: [{ role: "user", content: prompt }]
-    });
-
-    res.json({ success: true, explanation: response.choices[0].message.content });
+    const content = await executeAIFallback([{ role: "user", content: prompt }]);
+    res.json({ success: true, explanation: content });
   } catch (error: any) {
      console.error("AI Explain Error:", error);
      res.status(500).json({ success: false, error: `Explain API Error: ${error.message || "Unknown error"}` });
@@ -64,82 +52,59 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
     const limitNum = type === "micro" ? 5 : 40;
     
     let allQuestions: any[] = [];
+
+    let yearInstruction = "";
+    if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
+      yearInstruction = "Assign a random past year to each question.";
+    } else {
+      yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
+    }
     
-    // ALOC fetch has been removed in favor of strictly generating college/professional level questions via AI.
+    let topicInstruction = "";
+    if (typeof topic === "string" && topic.trim().length > 0) {
+      topicInstruction = `The questions MUST specifically test knowledge on the topic of "${topic}".`;
+    }
 
-    // Fallback to Generative AI if no questions yet
-    if (allQuestions.length === 0) {
-      const rawApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
-      const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
-      
-      if (apiKey) {
-        const baseURL = "https://api.groq.com/openai/v1";
-        const model = "llama-3.3-70b-versatile";
-
-        const openai = new OpenAI({ apiKey, baseURL });
-
-        let yearInstruction = "";
-        if (typeof year === "string" && (year.toLowerCase() === "random" || year.toLowerCase() === "any")) {
-          yearInstruction = "Assign a random past year to each question.";
-        } else {
-          yearInstruction = `All questions should be specifically from or adapted from the year ${year}.`;
-        }
-        
-        let topicInstruction = "";
-        if (typeof topic === "string" && topic.trim().length > 0) {
-          topicInstruction = `The questions MUST specifically test knowledge on the topic of "${topic}".`;
-        }
-
-        const prompt = `Generate exactly ${limitNum} highly professional, challenging, and college/institute-level mock exam multiple choice questions for the subject: "${subject}". ${yearInstruction} ${topicInstruction} The questions MUST match the rigor of professional certification exams, university-level assessments, or medical/clinical board exams in Nigerian, UK, Australian, or US styles. Do NOT generate overly simple, basic, or repetitive questions. Prioritize authentic complex questions that require critical thinking, multi-step problem solving, or clinical reasoning (especially for medical, nursing, pharmacology, or scientific subjects). Use modern scientific naming conventions, precise terminology, and strict IUPAC nomenclature. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
-        IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
-        {
-           "subject": "${subject}",
-           "data": [
-              {
-                 "id": "q1",
-                 "question": "question text here",
-                 "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
-                 "answer": "a",
-                 "solution": "step by step solution",
-                 "examyear": "2024"
-              }
-           ]
-        }`;
-        
-        try {
-          const response = await openai.chat.completions.create({
-            model: model,
-            response_format: { type: "json_object" },
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-             max_tokens: 8000,
-          });
-
-          let jsonStr = response.choices[0].message.content?.trim() || "{}";
-          const firstBracket = jsonStr.indexOf("{");
-          const lastBracket = jsonStr.lastIndexOf("}");
-          if (firstBracket !== -1 && lastBracket !== -1) {
-             jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
+    const prompt = `Generate exactly ${limitNum} highly professional, challenging, and college/institute-level mock exam multiple choice questions for the subject: "${subject}". ${yearInstruction} ${topicInstruction} The questions MUST match the rigor of professional certification exams, university-level assessments, or medical/clinical board exams in Nigerian, UK, Australian, or US styles. Do NOT generate overly simple, basic, or repetitive questions. Prioritize authentic complex questions that require critical thinking, multi-step problem solving, or clinical reasoning (especially for medical, nursing, pharmacology, or scientific subjects). Use modern scientific naming conventions, precise terminology, and strict IUPAC nomenclature. Keep the 'solution' field very brief (1-2 sentences maximum) so all ${limitNum} questions can be returned.
+    IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted as this schema:
+    {
+       "subject": "${subject}",
+       "data": [
+          {
+             "id": "q1",
+             "question": "question text here",
+             "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
+             "answer": "a",
+             "solution": "step by step solution",
+             "examyear": "2024"
           }
-          const json = JSON.parse(jsonStr);
-          if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-            allQuestions = [...json.data];
-          } else {
-             throw new Error("AI returned empty or invalid question data format.");
-          }
-        } catch (genErr: any) {
-          console.error("Error generating questions with AI: ", genErr);
-          return res.status(500).json({ 
-             success: false, 
-             error: `AI Generation Error: ${genErr.message || "Unknown error occurred"}` 
-          });
-        }
-      } else {
-         return res.status(500).json({ 
-            success: false, 
-            error: "GROQ_API_KEY is missing." 
-         });
+       ]
+    }`;
+    
+    try {
+      const content = await executeAIFallback(
+        [{ role: "user", content: prompt }],
+        { isJson: true }
+      );
+
+      let jsonStr = content.trim() || "{}";
+      const firstBracket = jsonStr.indexOf("{");
+      const lastBracket = jsonStr.lastIndexOf("}");
+      if (firstBracket !== -1 && lastBracket !== -1) {
+         jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
       }
+      const json = JSON.parse(jsonStr);
+      if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+        allQuestions = [...json.data];
+      } else {
+         throw new Error("AI returned empty or invalid question data format.");
+      }
+    } catch (genErr: any) {
+      console.error("Error generating questions with AI: ", genErr);
+      return res.status(500).json({ 
+         success: false, 
+         error: `AI Generation Error: ${genErr.message || "Unknown error occurred"}` 
+      });
     }
 
     // Shuffle the array nicely
@@ -156,21 +121,10 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 });
 
 
-
 // Study Coach / Chatbot Endpoint
 app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
   try {
     const { messages } = req.body; 
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
-    const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
-    if (!apiKey) {
-      return res.status(500).json({ success: false, error: "API KEY is missing. Please add GROQ_API_KEY to your Vercel Environment Variables, THEN REDEPLOY." });
-    }
-    
-    const baseURL = "https://api.groq.com/openai/v1";
-    const model = "llama-3.3-70b-versatile";
-
-    const openai = new OpenAI({ apiKey, baseURL });
     
     const formattedMessages = [
       { 
@@ -183,19 +137,16 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
       }))
     ];
     
-    const response = await openai.chat.completions.create({
-      model: model,
-      messages: formattedMessages
-    });
+    const content = await executeAIFallback(formattedMessages);
     
-    res.json({ success: true, text: response.choices[0].message.content });
+    res.json({ success: true, text: content });
   } catch (error: any) {
      console.error("Chatbot Error:", error);
      res.status(500).json({ success: false, error: `Study Coach API Error: ${error.message}` });
   }
 });
 
-// Process Study Material File Endpoint via Gemini
+// Process Study Material File Endpoint via Gemini/Groq Fallbacks
 app.post("/api/process-file", async (req, res) => {
   try {
     const { fileBase64, mimeType = "", fileName = "", action, message } = req.body;
@@ -204,40 +155,26 @@ app.post("/api/process-file", async (req, res) => {
       return res.status(400).json({ success: false, error: "File content is required." });
     }
     
-    const rawApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
-    const apiKey = rawApiKey.replace(/^["']+|["']+$/g, "").trim();
-    if (!apiKey) {
-      return res.status(500).json({ success: false, error: "GROQ_API_KEY is not configured in secrets. Please set it in Settings > Secrets." });
-    }
-    
-    const baseURL = "https://api.groq.com/openai/v1";
-    const openai = new OpenAI({ apiKey, baseURL });
-    
     const isImage = mimeType.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
     
     if (isImage) {
-      const model = "llama-3.2-11b-vision-preview";
-      
       if (action === "tutor") {
         const prompt = `You are an expert AI Study Coach. The student has uploaded an image named: "${fileName}".
         Look at this image content and fulfill their study request: "${message || "Explain the main key terms and concepts in detail."}"
         
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
         
-        const response = await openai.chat.completions.create({
-          model: model,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
-                { type: "image_url", image_url: { url: `data:${mimeType || "image/jpeg"};base64,${fileBase64}` } }
-              ]
-            }
-          ]
-        });
+        const content = await executeAIFallback([
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:${mimeType || "image/jpeg"};base64,${fileBase64}` } }
+            ]
+          }
+        ], { isVision: true });
         
-        res.json({ success: true, text: response.choices[0].message.content || "No response generated." });
+        res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
         const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded image named: "${fileName}".
         First, deduce the subject/topic of the exam from the file name "${fileName}".
@@ -259,29 +196,31 @@ app.post("/api/process-file", async (req, res) => {
            ]
         }`;
         
-        const response = await openai.chat.completions.create({
-          model: model,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: examPrompt },
-                { type: "image_url", image_url: { url: `data:${mimeType || "image/jpeg"};base64,${fileBase64}` } }
-              ]
-            }
-          ]
-        });
+        const content = await executeAIFallback([
+          {
+            role: "user",
+            content: [
+              { type: "text", text: examPrompt },
+              { type: "image_url", image_url: { url: `data:${mimeType || "image/jpeg"};base64,${fileBase64}` } }
+            ]
+          }
+        ], { isVision: true, isJson: true });
         
-        let responseText = response.choices[0].message.content || "{}";
+        let responseText = content || "{}";
         responseText = responseText.trim();
         const firstBracket = responseText.indexOf("{");
         const lastBracket = responseText.lastIndexOf("}");
         if (firstBracket !== -1 && lastBracket !== -1) {
            responseText = responseText.substring(firstBracket, lastBracket + 1);
         }
-        const json = JSON.parse(responseText);
-        res.json({ success: true, subject: json.subject || "Uploaded Study Material", questions: json.questions || [] });
+        let json: any = { subject: "Uploaded Study Material", questions: [] };
+        try {
+           json = JSON.parse(responseText);
+        } catch (e: any) {
+           console.error("Image JSON parse error:", e, responseText);
+           throw new Error("AI returned malformed JSON instead of a valid exam format.");
+        }
+        res.json({ success: true, subject: (json.subject ? String(json.subject) : "Uploaded Study Material"), questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
       }
@@ -327,8 +266,6 @@ app.post("/api/process-file", async (req, res) => {
         throw new Error("The uploaded file could not be parsed or does not contain any readable text.");
       }
       
-      const model = "llama-3.3-70b-versatile";
-      
       if (action === "tutor") {
         const textPrompt = `You are an expert AI Study Coach. The student has uploaded a study material file named: "${fileName}".
         Below is the content of the file:
@@ -341,12 +278,9 @@ app.post("/api/process-file", async (req, res) => {
         
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
         
-        const response = await openai.chat.completions.create({
-          model: model,
-          messages: [{ role: "user", content: textPrompt }]
-        });
+        const content = await executeAIFallback([{ role: "user", content: textPrompt }]);
         
-        res.json({ success: true, text: response.choices[0].message.content || "No response generated." });
+        res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
         const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded file named: "${fileName}".
         First, deduce the subject/topic of the exam from the file title "${fileName}".
@@ -374,21 +308,26 @@ app.post("/api/process-file", async (req, res) => {
            ]
         }`;
         
-        const response = await openai.chat.completions.create({
-          model: model,
-          response_format: { type: "json_object" },
-          messages: [{ role: "user", content: examPrompt }]
-        });
+        const content = await executeAIFallback(
+          [{ role: "user", content: examPrompt }],
+          { isJson: true }
+        );
         
-        let responseText = response.choices[0].message.content || "{}";
+        let responseText = content || "{}";
         responseText = responseText.trim();
         const firstBracket = responseText.indexOf("{");
         const lastBracket = responseText.lastIndexOf("}");
         if (firstBracket !== -1 && lastBracket !== -1) {
            responseText = responseText.substring(firstBracket, lastBracket + 1);
         }
-        const json = JSON.parse(responseText);
-        res.json({ success: true, subject: json.subject || "Uploaded Study Material", questions: json.questions || [] });
+        let json: any = { subject: "Uploaded Study Material", questions: [] };
+        try {
+           json = JSON.parse(responseText);
+        } catch (e: any) {
+           console.error("Text JSON parse error:", e, responseText);
+           throw new Error("AI returned malformed JSON instead of a valid exam format.");
+        }
+        res.json({ success: true, subject: (json.subject ? String(json.subject) : "Uploaded Study Material"), questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
       }

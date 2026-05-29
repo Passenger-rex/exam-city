@@ -226,6 +226,8 @@ export default function ExamPage() {
     }
   }, [questions, answers, currentIndex, timeLeft, stateKey, loading, printParam]);
 
+  const displaySubject = questions.length > 0 && questions[0].subject ? String(questions[0].subject) : String(subjectParam);
+
   // Audio Cleanup
   useEffect(() => {
     if ('speechSynthesis' in window) {
@@ -311,6 +313,7 @@ export default function ExamPage() {
           userId: auth.currentUser.uid,
           score,
           total: questions.length,
+          subject: displaySubject,
           answers, // storing answers to review later
           questions, // saving the specific questions for this test (ALOC or DB)
           createdAt: serverTimestamp(),
@@ -330,7 +333,7 @@ export default function ExamPage() {
         sessionStorage.setItem("demoResult", JSON.stringify({
           score,
           total: questions.length,
-          subject: subjectParam || "demo",
+          subject: displaySubject || "demo",
           answers,
           questions
         }));
@@ -414,7 +417,7 @@ export default function ExamPage() {
              <div className="flex justify-center items-center gap-3">
                <Logo className="text-4xl !text-black" />
              </div>
-             <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{subjectParam} MOCK EXAMINATION</h1>
+             <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{displaySubject} MOCK EXAMINATION</h1>
              <p className="text-sm font-semibold uppercase tracking-widest mt-2 text-gray-800">Exam City Assessment Series</p>
              <p className="text-sm italic mt-1 text-gray-600">Year: {yearParam} • Format: {typeParam === 'micro' ? 'Quick Study' : 'Mock Exam'}</p>
              <div className="absolute -bottom-1 left-0 right-0 h-[1px] bg-black"></div>
@@ -519,7 +522,7 @@ export default function ExamPage() {
           </button>
           <Logo />
           <div className="hidden md:flex items-center gap-2 pl-4 ml-4 border-l border-outline-variant/50">
-            <span className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest">{subjectParam}</span>
+            <span className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest">{displaySubject}</span>
             {topicParam && (
               <>
                 <span className="w-1 h-1 bg-outline rounded-full"></span>
