@@ -81,13 +81,16 @@ export default function ExamPage() {
         try {
           const stored = sessionStorage.getItem("customUploadedExam");
           if (stored) {
-            const data = JSON.parse(stored);
-            const qList = data.map((item: any) => ({
+            const parsedData = JSON.parse(stored);
+            const questionsArray = Array.isArray(parsedData) ? parsedData : parsedData.questions;
+            const subjectData = (!Array.isArray(parsedData) && parsedData.subject) ? parsedData.subject : "Uploaded Study Material";
+            
+            const qList = questionsArray.map((item: any) => ({
               id: String(item.id || Math.random()),
               question_html: item.question,
               options: item.option || { a: "", b: "", c: "", d: "" },
               correct_answer: item.answer || "a",
-              subject: "Uploaded Study Material",
+              subject: subjectData,
               explanation: item.solution || "",
               year: item.examyear || "Uploaded",
               isPremium: true,

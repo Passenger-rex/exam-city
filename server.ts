@@ -239,11 +239,14 @@ app.post("/api/process-file", async (req, res) => {
         
         res.json({ success: true, text: response.choices[0].message.content || "No response generated." });
       } else if (action === "exam") {
-        const examPrompt = `We need to generate exactly 40 high-quality, professional mock exam multiple choice questions based strictly on the uploaded image named: "${fileName}".
-        The questions must retrieve or test factual or analytical understanding of the image details. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source.
+        const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded image named: "${fileName}".
+        First, deduce the subject/topic of the exam from the file name "${fileName}".
+        Ensure that the questions reflect rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter shown. Avoid overly simple or basic questions.
+        The generated questions MUST be perfectly synced with the actual content of the image. The questions must retrieve or test analytical understanding, complex problem solving, or clinical reasoning of the image details. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source.
         
         You must return your output strictly in JSON format matching this schema:
         {
+           "subject": "The deducted subject based on fileName",
            "questions": [
               {
                  "id": "uq1",
@@ -278,7 +281,7 @@ app.post("/api/process-file", async (req, res) => {
            responseText = responseText.substring(firstBracket, lastBracket + 1);
         }
         const json = JSON.parse(responseText);
-        res.json({ success: true, questions: json.questions || [] });
+        res.json({ success: true, subject: json.subject || "Uploaded Study Material", questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
       }
@@ -289,9 +292,10 @@ app.post("/api/process-file", async (req, res) => {
         try {
           const { createRequire } = await import("module");
           const require = createRequire(import.meta.url);
-          const pdfParse = require("pdf-parse");
+          const { PDFParse } = require("pdf-parse");
           const buffer = Buffer.from(fileBase64, "base64");
-          const pdfData = await pdfParse(buffer);
+          const parser = new PDFParse({ data: buffer });
+          const pdfData = await parser.getText();
           extractedText = pdfData.text || "";
         } catch (pdfErr: any) {
           console.error("PDF Extraction Error:", pdfErr);
@@ -344,17 +348,20 @@ app.post("/api/process-file", async (req, res) => {
         
         res.json({ success: true, text: response.choices[0].message.content || "No response generated." });
       } else if (action === "exam") {
-        const examPrompt = `We need to generate exactly 40 high-quality, professional mock exam multiple choice questions based strictly on the uploaded file named: "${fileName}".
+        const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded file named: "${fileName}".
+        First, deduce the subject/topic of the exam from the file title "${fileName}".
         Below is the content of the file:
         
         --- FILE CONTENT START ---
         ${extractedText.substring(0, 35000)}
         --- FILE CONTENT END ---
         
-        The questions must retrieve or test factual or analytical understanding of the document details. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source.
+        Ensure that the questions reflect rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter covered in this document. Avoid overly simple or basic questions.
+        The generated questions MUST be perfectly synced with the topics, facts, and subject of the document content provided above. The questions must retrieve or test analytical understanding, complex problem solving, or clinical reasoning of the document details. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source.
         
         You must return your output strictly in JSON format matching this schema:
         {
+           "subject": "The deducted subject based on fileName and file content",
            "questions": [
               {
                  "id": "uq1",
@@ -381,7 +388,7 @@ app.post("/api/process-file", async (req, res) => {
            responseText = responseText.substring(firstBracket, lastBracket + 1);
         }
         const json = JSON.parse(responseText);
-        res.json({ success: true, questions: json.questions || [] });
+        res.json({ success: true, subject: json.subject || "Uploaded Study Material", questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
       }

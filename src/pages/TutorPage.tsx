@@ -122,6 +122,7 @@ export default function TutorPage() {
     setIsFileUploading(true);
     setIsLoading(true);
     setUploadError("");
+    sessionStorage.removeItem("customUploadedExam");
     
     if (profile?.tier !== "pro" && auth.currentUser) {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -188,7 +189,10 @@ export default function TutorPage() {
         }
       } else if (action === "exam") {
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
-          sessionStorage.setItem("customUploadedExam", JSON.stringify(data.questions));
+          sessionStorage.setItem("customUploadedExam", JSON.stringify({
+             subject: data.subject || "Uploaded Study Material",
+             questions: data.questions
+          }));
           setSelectedFile(null);
           navigate("/exam?uploaded_exam=true&type=standard&bank=premium");
         } else {
