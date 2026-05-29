@@ -71,9 +71,10 @@ export default function CheckoutPage() {
             setTransactionId(response.transaction_id + "");
             setPaymentSuccess(true);
             
+            // Navigate faster for "immediate" feel
             setTimeout(() => {
               navigate("/dashboard", { state: { upgradeSuccess: true } });
-            }, 4000);
+            }, 2000);
           } catch (err: any) {
             alert("Upgrade failed to save: " + err.message);
             setLoading(false);
@@ -106,7 +107,7 @@ export default function CheckoutPage() {
           </motion.div>
           <h2 className="text-4xl font-extrabold font-headline-xl text-on-surface mb-3 tracking-tight">Payment Successful</h2>
           <p className="text-on-surface-variant text-lg font-medium mb-8">
-            Welcome to the Pro tier! Let's get you started.
+            Welcome to the Pro tier! Your premium features are now active.
           </p>
           <div className="bg-surface-dim/50 rounded-2xl p-6 mb-8 text-left border border-outline-variant/50 relative overflow-hidden backdrop-blur-sm">
              <div className="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none text-emerald-900">

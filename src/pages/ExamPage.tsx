@@ -320,6 +320,10 @@ export default function ExamPage() {
 
         navigate(`/review/${resultRef.id}`);
       } else {
+        // Increment guest attempt count in localStorage for limit awareness
+        const guestCount = Number(localStorage.getItem('guestExamCount') || 0);
+        localStorage.setItem('guestExamCount', String(guestCount + 1));
+
         sessionStorage.setItem("demoResult", JSON.stringify({
           score,
           total: questions.length,

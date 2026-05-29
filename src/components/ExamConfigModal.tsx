@@ -134,10 +134,13 @@ export function ExamConfigModal({
       navigate("/checkout");
       return;
     }
-    if (userTier === "free" && testsTakenThisMonth >= 2) {
+    if (!isDemo && userTier === "free" && testsTakenThisMonth >= 2) {
       navigate("/checkout");
       return;
     }
+    
+    // Clear demo result before starting a new one to prevent conflicts
+    sessionStorage.removeItem("demoResult");
     
     let url = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}`;
     if (topic.trim()) url += `&topic=${encodeURIComponent(topic.trim())}`;
@@ -363,7 +366,7 @@ export function ExamConfigModal({
               <span className="text-xs font-semibold text-amber-900">Upgrade to Pro to unlock AI Predictive Mode.</span>
             </div>
           )}
-          {userTier === "free" && testsTakenThisMonth >= 2 && !showPremiumGate && (
+          {!isDemo && userTier === "free" && testsTakenThisMonth >= 2 && !showPremiumGate && (
             <div className="mb-3 px-3 py-2 bg-error/10 border border-error/20 rounded-lg flex items-center gap-2">
               <Lock className="w-4 h-4 text-error shrink-0" />
               <span className="text-xs font-semibold text-error">Free limit (2/month) reached.</span>
@@ -374,15 +377,15 @@ export function ExamConfigModal({
             <button
               onClick={handleStartExam}
               className={`w-full py-3.5 text-[15px] font-bold rounded-xl transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm ${
-                showPremiumGate || (userTier === "free" && testsTakenThisMonth >= 2)
+                showPremiumGate || (!isDemo && userTier === "free" && testsTakenThisMonth >= 2)
                   ? "bg-on-surface text-surface hover:bg-on-surface/90" 
                   : "bg-primary text-on-primary hover:bg-primary/90 shadow-primary/25" 
               }`}
             >
-              {showPremiumGate || (userTier === "free" && testsTakenThisMonth >= 2) ? (
+              {showPremiumGate || (!isDemo && userTier === "free" && testsTakenThisMonth >= 2) ? (
                 <>Unlock Access</>
               ) : (
-                <><Play className="w-4 h-4 fill-current" /> Initialize Exam</>
+                <><Play className="w-4 h-4 fill-current" /> {isDemo ? "Start Demo Exam" : "Initialize Exam"}</>
               )}
             </button>
             

@@ -40,7 +40,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubscribeAuth = auth.onAuthStateChanged((firebaseUser) => {
       setUser(firebaseUser);
       if (!firebaseUser) {
-        setProfile({ tier: "free", testsTakenThisMonth: 0 });
+        const guestCount = Number(localStorage.getItem('guestExamCount') || 0);
+        setProfile({ tier: "free", testsTakenThisMonth: guestCount });
         setLoading(false);
       }
     });
@@ -62,38 +63,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           let groupAdminUid = data.groupAdminUid || null;
           let groupMembers = data.groupMembers || null;
           
-          // Check Referrals
-          try {
-             const { collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
-             const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
-             const refSnap = await getDocs(refQ);
-             if (refSnap.size >= 5 && currentTier !== "pro") {
-                // Auto-upgrade to Pro!
-                await updateDoc(userRef, { tier: "pro", proType: "referrals" });
-                currentTier = "pro";
-                userProType = "referrals";
-             }
-          } catch(e) {
-             console.error("Error checking referrals:", e);
+          // Clear guest limit immediately if user is pro
+          if (currentTier === "pro") {
+            localStorage.removeItem('guestExamCount');
           }
 
-          // If NOT explicitly pro, check if we are in someone else's Study Group
-          if (currentTier !== "pro" && user.email) {
-             try {
-                const { collection, query, where, getDocs } = await import("firebase/firestore");
-                const groupsQ = query(collection(db, "users"), where("groupMembers", "array-contains", user.email.toLowerCase().trim()));
-                const groupsSnap = await getDocs(groupsQ);
-                if (!groupsSnap.empty) {
-                   currentTier = "pro";
-                   userProType = "companion";
-                   const adminData = groupsSnap.docs[0].data();
-                   groupAdminUid = groupsSnap.docs[0].id;
-                }
-             } catch (e) {
-                console.error("Error looking up shared groups:", e);
-             }
-          }
-          
+          // Initial update for responsiveness
           setProfile({
             tier: currentTier,
             testsTakenThisMonth: Number(data.examCount || 0),
@@ -103,8 +78,43 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
             tutorQueriesUsed: Number(data.tutorQueriesUsed || 0),
             lastTutorQueryDate: data.lastTutorQueryDate || null,
           });
+
+          // Secondary checks for community-based tiers (referrals/groups)
+          if (currentTier !== "pro") {
+            try {
+              const { collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
+              
+              // Check Referrals
+              const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
+              const refSnap = await getDocs(refQ);
+              if (refSnap.size >= 5) {
+                await updateDoc(userRef, { tier: "pro", proType: "referrals" });
+                // Note: The onSnapshot will fire again from the updateDoc
+                return;
+              }
+
+              // Check if we are in someone else's Study Group
+              if (user.email) {
+                const groupsQ = query(collection(db, "users"), where("groupMembers", "array-contains", user.email.toLowerCase().trim()));
+                const groupsSnap = await getDocs(groupsQ);
+                if (!groupsSnap.empty) {
+                  const adminData = groupsSnap.docs[0].data();
+                  setProfile(prev => ({
+                    ...prev,
+                    tier: "pro",
+                    proType: "companion",
+                    groupAdminUid: groupsSnap.docs[0].id
+                  }));
+                  localStorage.removeItem('guestExamCount');
+                }
+              }
+            } catch(e) {
+              console.error("Error checking secondary tiers:", e);
+            }
+          }
         } else {
-          setProfile({ tier: "free", testsTakenThisMonth: 0 });
+          const guestCount = Number(localStorage.getItem('guestExamCount') || 0);
+          setProfile({ tier: "free", testsTakenThisMonth: guestCount });
         }
         setLoading(false);
       },

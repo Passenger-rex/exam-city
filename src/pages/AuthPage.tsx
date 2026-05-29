@@ -22,7 +22,8 @@ import {
   increment, 
   query, 
   where, 
-  getDocs 
+  getDocs,
+  getDoc 
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -242,6 +243,22 @@ export default function AuthPage() {
     if (demoDataStr) {
       try {
         const demoData = JSON.parse(demoDataStr);
+        
+        // Check user tier and limits before converting demo
+        const userSnap = await getDoc(doc(db, "users", userId));
+        const userData = userSnap.data() || { tier: "free", examCount: 0 };
+        const tier = userData.tier || "free";
+        const examCount = userData.examCount || 0;
+
+        // If free and already reached limit, ignore demo result
+        if (tier === "free" && examCount >= 2) {
+          sessionStorage.removeItem("demoResult");
+          localStorage.removeItem("guestExamCount");
+          setError("Your free exam limit (2/month) has been reached. This recent result could not be saved to your dashboard. Please upgrade to Pro for unlimited access.");
+          setTimeout(() => navigate("/dashboard"), 4000);
+          return;
+        }
+
         const resultRef = await addDoc(collection(db, "exam_results"), {
           userId,
           score: demoData.score,
@@ -253,10 +270,11 @@ export default function AuthPage() {
         });
 
         await setDoc(doc(db, "users", userId), {
-          testsTakenThisMonth: increment(1)
+          examCount: increment(1)
         }, { merge: true });
 
         sessionStorage.removeItem("demoResult");
+        localStorage.removeItem("guestExamCount"); // Clear guest limit on conversion
         navigate(`/review/${resultRef.id}`);
         return;
       } catch (e) {
