@@ -6,10 +6,27 @@ interface ExecuteAIOptions {
   isVision?: boolean;
 }
 
+function isPlaceholderKey(key: string): boolean {
+  const k = key.trim().toLowerCase();
+  return (
+    k === "" ||
+    k === "gsk_" ||
+    k.includes("placeholder") ||
+    k.includes("your") ||
+    k.includes("insert") ||
+    k.includes("key_here") ||
+    k.includes("my_key") ||
+    k.includes("api_key") ||
+    k.includes("token_here") ||
+    k.includes("my_token") ||
+    k.includes("token_value")
+  );
+}
+
 export async function executeAIFallback(messages: any[], options: ExecuteAIOptions = {}) {
   const providers = [
     { name: "Groq", param: "GROQ_API_KEY", baseURL: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile", visionModel: "llama-3.2-11b-vision-preview" },
-    { name: "Gemini", param: "GEMINI_API_KEY", baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-2.0-flash", visionModel: "gemini-2.0-flash" },
+    { name: "Gemini", param: "GEMINI_API_KEY", baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-2.5-flash", visionModel: "gemini-2.5-flash" },
     { name: "Together", param: "TOGETHER_API_KEY", baseURL: "https://api.together.xyz/v1", model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", visionModel: "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo" },
     { name: "OpenRouter", param: "OPENROUTER_API_KEY", baseURL: "https://openrouter.ai/api/v1", model: "google/gemini-2.5-flash", visionModel: "google/gemini-2.5-flash" },
     { name: "OpenAI", param: "OPENAI_API_KEY", baseURL: "https://api.openai.com/v1", model: "gpt-4o-mini", visionModel: "gpt-4o-mini" },
@@ -36,41 +53,75 @@ export async function executeAIFallback(messages: any[], options: ExecuteAIOptio
     if (options.isVision && !p.visionModel) continue;
 
     const apiKey = rawKey.replace(/^["']+|["']+$/g, "").trim();
-    if (!apiKey) continue;
+    if (!apiKey || isPlaceholderKey(apiKey)) {
+      errors.push(`${p.name}: Key is configured as a placeholder/blank string.`);
+      continue;
+    }
+
+    // Special validation for Google Gemini keys to fail fast if they are obviously invalid
+    if (p.name === "Gemini" && !apiKey.startsWith("AIzaSy")) {
+      console.warn(`[AI Fallback] Skipping Gemini call: API Key does not start with 'AIzaSy'.`);
+      errors.push("Gemini: Key does not start with AIzaSy (Google key prefix requirement).");
+      continue;
+    }
 
     try {
       if (p.name === "Gemini") {
-        const ai = new GoogleGenAI({ apiKey });
+        const ai = new GoogleGenAI({
+          apiKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        });
         const modelToUse = options.isVision ? p.visionModel! : p.model;
         
-        let promptText = "";
         let systemInstructionText = "";
+        const parts: any[] = [];
+
         for (const msg of messages) {
-           if (msg.role === "system") {
-              systemInstructionText += (typeof msg.content === 'string' ? msg.content : "") + "\n";
-              continue;
-           }
-           const rolePrefix = msg.role ? `${msg.role.toUpperCase()}: ` : "";
-           if (typeof msg.content === 'string') {
-              promptText += rolePrefix + msg.content + "\n\n";
-           } else if (Array.isArray(msg.content)) {
-              promptText += rolePrefix;
-              for (const part of msg.content) {
-                 if (part.type === 'text') promptText += part.text + "\n";
+          if (msg.role === "system") {
+            systemInstructionText += (typeof msg.content === 'string' ? msg.content : "") + "\n";
+            continue;
+          }
+          
+          const rolePrefix = msg.role ? `${msg.role.toUpperCase()}: ` : "";
+          if (typeof msg.content === 'string') {
+            parts.push({ text: `${rolePrefix}${msg.content}` });
+          } else if (Array.isArray(msg.content)) {
+            parts.push({ text: rolePrefix });
+            for (const part of msg.content) {
+              if (part.type === 'text') {
+                parts.push({ text: part.text });
+              } else if (part.type === 'image_url') {
+                const url = part.image_url?.url || "";
+                if (url.startsWith("data:")) {
+                  const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+                  if (matches) {
+                    parts.push({
+                      inlineData: {
+                        mimeType: matches[1],
+                        data: matches[2]
+                      }
+                    });
+                  }
+                }
               }
-              promptText += "\n";
-           }
+            }
+          }
         }
         
         const response = await ai.models.generateContent({
-           model: modelToUse,
-           contents: promptText,
-           config: {
-              temperature: 0.7,
-              systemInstruction: systemInstructionText.trim() ? systemInstructionText.trim() : undefined,
-              responseMimeType: options.isJson ? "application/json" : "text/plain"
-           }
+          model: modelToUse,
+          contents: { parts },
+          config: {
+            temperature: 0.7,
+            systemInstruction: systemInstructionText.trim() ? systemInstructionText.trim() : undefined,
+            responseMimeType: options.isJson ? "application/json" : "text/plain"
+          }
         });
+        
         const content = response.text;
         if (content) {
           console.log(`[AI Fallback] Successfully used ${p.name}`);
@@ -88,7 +139,7 @@ export async function executeAIFallback(messages: any[], options: ExecuteAIOptio
         };
 
         if (options.isJson) {
-           requestOptions.response_format = { type: "json_object" };
+          requestOptions.response_format = { type: "json_object" };
         }
 
         const response = await client.chat.completions.create(requestOptions);
@@ -106,9 +157,11 @@ export async function executeAIFallback(messages: any[], options: ExecuteAIOptio
     }
   }
 
+  const tipMsg = "\n\n💡 TROUBLESHOOTING TIP: Please click the Settings icon in the top right menu, open \"Secrets\", and configure a valid, funded API Key (such as GEMINI_API_KEY from Google AI Studio or GROQ_API_KEY from Groq Console) without quotation marks or spaces.";
+  
   if (errors.length > 0) {
-    throw new Error("All configured AI providers failed. " + errors.join(" | "));
+    throw new Error("All configured AI providers failed.\nDetails:\n- " + errors.join("\n- ") + tipMsg);
   } else {
-    throw new Error("No API KEY is configured. Please add an API Key for Groq, Gemini, OpenRouter, Together AI, or any of the 15 supported providers in Settings > Secrets.");
+    throw new Error("No API KEY is configured. Please add an API Key for Groq, Gemini, OpenRouter, Together AI, or any of the supported providers in Settings > Secrets." + tipMsg);
   }
 }

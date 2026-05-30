@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Lock, Play, Layers, Search, Zap, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { CurriculumManager } from "../utils/CurriculumManager";
 
 interface ExamConfigModalProps {
   isOpen: boolean;
@@ -31,7 +32,54 @@ export function ExamConfigModal({
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [searchSubject, setSearchSubject] = useState("");
   
+  const [dynamicTopics, setDynamicTopics] = useState<string[]>([]);
+  const [isLoadingTopics, setIsLoadingTopics] = useState<boolean>(false);
+  const [curriculumScope, setCurriculumScope] = useState<string>("");
+  const [curriculumDifficulty, setCurriculumDifficulty] = useState<string>("");
+  
   const [years, setYears] = useState<number[]>([]);
+
+  useEffect(() => {
+    // Reset topic when subject changes to prevent carry-over
+    setTopic("");
+  }, [subject]);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Set immediate synchronous fallback/initial metadata so there is no delay
+    const initialMeta = CurriculumManager.getCurriculumMetadata(subject, difficulty);
+    setCurriculumScope(initialMeta.scope);
+    setCurriculumDifficulty(initialMeta.difficultyRating);
+    setDynamicTopics(CurriculumManager.getSubTopics(subject, difficulty));
+
+    const fetchDynamicTopics = async () => {
+      setIsLoadingTopics(true);
+      try {
+        const response = await fetch(`/api/curriculum-topics?subject=${encodeURIComponent(subject)}&level=${difficulty}`);
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const data = await response.json();
+        if (isMounted) {
+          if (data && data.success && Array.isArray(data.topics) && data.topics.length > 0) {
+            setDynamicTopics(data.topics);
+            if (data.scope) setCurriculumScope(data.scope);
+            if (data.difficultyRating) setCurriculumDifficulty(data.difficultyRating);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch curriculum dynamic topics:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoadingTopics(false);
+        }
+      }
+    };
+
+    fetchDynamicTopics();
+    return () => {
+      isMounted = false;
+    };
+  }, [subject, difficulty]);
 
   const DIFFICULTY_LEVELS = [
     { value: "standard", label: "Standard (WAEC/JAMB/NECO)" },
@@ -42,15 +90,16 @@ export function ExamConfigModal({
   ];
 
   const subjectsList = [
-    "Accounting", "Agricultural Science", "Anatomy", "Basic Science", "Basic Technology", 
+    "Accounting", "Agricultural Science", "Anatomy", "Anatomy: Extremities (Locomotor)", "Basic Science", "Basic Technology", 
     "Biochemistry", "Biology", "Biotechnology", "Botany", "Business Studies", 
+    "Cardiovascular, Blood & Lymphatics (CBD)", "Cardiovascular & Respiratory Systems (CV/RS)",
     "Chemical Engineering", "Chemistry", "Civic Education", "Civil Engineering", 
     "Clinical Biochemistry", "Clinical Immunology", "Commerce", "Community Medicine", 
     "Computer Engineering", "CRK", "Current Affairs", "Dermatology", "Economics", 
     "Electrical Engineering", "Embryology", "English", "English Literature", 
     "ENT", "Fine Art", "Fluid Mechanics", "Food Science", "French", 
     "Further Mathematics", "Genetics", "Geography", "Geology", "Geophysics", 
-    "Hausa", "Hematology", "History", "Home Economics", "Igbo", "Insurance", 
+    "Hausa", "Hematology", "History", "Home Economics", "Igbo", "Insurance", "Infectious Diseases System (IDS)",
     "Internal Medicine", "IRK", "Mathematics", "Mechanical Engineering", "Medical Biochemistry", 
     "Medical Histology", "Medical Microbiology", "Medical Parasitology", "Medicine", 
     "Meteorology", "Microbiology", "Molecular Biology", "Neuroanatomy", "Obstetrics and Gynecology", 
@@ -59,76 +108,6 @@ export function ExamConfigModal({
     "Statistics", "Strength of Materials", "Structural Engineering", "Surgery", 
     "Technical Drawing", "Thermodynamics", "Yoruba", "Zoology"
   ];
-
-  const subjectTopicsMap: Record<string, string[]> = {
-    // Medical
-    "Anatomy": ["Gross Anatomy", "Histology Core", "Embryology Base", "Neuroanatomy Intro", "Musculoskeletal System", "Cardiovascular Anatomy"],
-    "Medical Histology": ["Epithelial Tissue", "Connective Tissue", "Muscle Tissue", "Nervous Tissue", "Respiratory Histology", "Organ Histology"],
-    "Embryology": ["Gametogenesis", "Fertilization", "Cleavage & Gastrulation", "Organogenesis", "Notochord Development", "Placental Development"],
-    "Neuroanatomy": ["Cerebral Cortex", "Brainstem & Cranial Nerves", "Spinal Cord Pathways", "Cerebellum", "Limbic System & Ventricles"],
-    "Obstetrics and Gynecology": ["Prenatal Care", "Labor & Delivery Stages", "Gestational Disorders", "Ovarian Cycle", "Uterine Diseases", "Menopause"],
-    "Pediatrics": ["Neonatal Medicine", "Childhood Milestones", "Pediatric Infections", "Congenital Heart Anomalies", "Immunization Schedules"],
-    "Pathology": ["Cellular Injury & Cell Death", "Acute & Chronic Inflammation", "Hemodynamic Disorders", "Neoplasia & Tumor Biology", "Systemic Pathology"],
-    "Pharmacology": ["Pharmacokinetics", "Pharmacodynamics", "Autonomic Nervous System Drugs", "Cardiovascular Pharmacology", "Antibiotics & Chemotherapies", "Neuropharmacology"],
-    "Physiology": ["Cardiovascular Physiology", "Respiratory Mechanics", "Renal & Acid-Base Physiology", "Neurophysiology", "Endocrine Physiology"],
-    "Medical Biochemistry": ["Enzymology", "Glycolysis & Krebs Cycle", "Lipid Metabolism", "Protein Synthesis & Translation", "DNA Replication"],
-    "Surgery": ["Generary Surgery Principles", "Orthopedics", "Neurosurgery", "Trauma & Emergency", "Anesthesia Basics", "Wound Healing"],
-    "Internal Medicine": ["Cardiology", "Pulmonology", "Gastroenterology", "Endocrinology", "Rheumatology", "Infectious Diseases", "Nephrology", "Neurology"],
-    "Medical Microbiology": ["Bacteriology", "Virology", "Mycology", "Diagnostic Techniques", "Antibiotic Resistance"],
-    "Hematology": ["Anemia Types", "Coagulation Disorders", "Leukemia & Lymphoma", "Blood Transfusion", "Bone Marrow Physiology"],
-    "Community Medicine": ["Epidemiology", "Biostatistics", "Environmental Health", "Health Management", "Primary Health Care"],
-    
-    // Engineering
-    "Civil Engineering": ["Structural Analysis", "Geotechnical Engineering", "Transportation", "Water Resources", "Environmental Engineering"],
-    "Mechanical Engineering": ["Machine Design", "Thermodynamics", "Manufacturing Processes", "Control Systems", "Mechatronics"],
-    "Electrical Engineering": ["Circuit Theory", "Power Systems", "Electronics", "Signal Processing", "Electromagnetic Fields"],
-    "Chemical Engineering": ["Mass Transfer", "Heat Transfer", "Chemical Reaction Engineering", "Process Control", "Separation Processes"],
-    "Petroleum Engineering": ["Reservoir Engineering", "Drilling Technology", "Production Engineering", "Well Logging", "Petrophysics"],
-    "Computer Engineering": ["Computer Architecture", "Digital Logic Design", "Microprocessors", "Embedded Systems", "Operating Systems"],
-    "Thermodynamics": ["First Law", "Second Law", "Entropy", "Power Cycles", "Refrigeration Systems"],
-    "Fluid Mechanics": ["Fluid Statics", "Bernoulli's Equation", "Viscous Flow", "Turbomachinery", "Boundary Layer"],
-    "Strength of Materials": ["Stress & Strain", "Torsion", "Bending Moments", "Deflection of Beams", "Column Buckling"],
-    
-    // Sciences
-    "Biology": ["Cell Biology", "Genetics", "Ecology", "Evolutionary Biology", "Plant Physiology"],
-    "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Thermodynamics", "Chemical Bonding", "Acids & Bases"],
-    "Physics": ["Mechanics", "Electromagnetism", "Thermodynamics", "Quantum Physics", "Wave Optics"],
-    "Mathematics": ["Algebra", "Euclidean Geometry", "Trigonometry", "Statistics & Probability", "Calculus Principles"],
-    "Microbiology": ["Microbial Genetics", "Industrial Microbiology", "Immunology", "Environmental Microbiology"],
-    "Biochemistry": ["Metabolism", "Enzymology", "Cell Signaling", "Molecular Biology Techniques"],
-    "Genetics": ["Mendelian Genetics", "Molecular Genetics", "Population Genetics", "Cytogenetics"],
-    "Geology": ["Mineralogy", "Petrology", "Structural Geology", "Stratigraphy", "Paleontology"],
-    "Further Mathematics": ["Calculus", "Vectors", "Matrices", "Complex Numbers", "Probability Distributions"],
-    "Statistics": ["Probability Theory", "Inferential Statistics", "Regression Analysis", "Design of Experiments"],
-    "Dermatology": ["Skin Anatomy", "Bacterial Infections", "Fungal Infections", "Parasitic Infestations", "Acne & Rosacea", "Skin Malignancies"],
-    "Psychiatry": ["Psychosis", "Mood Disorders", "Anxiety Disorders", "Personality Disorders", "Child Psychiatry", "Psychopharmacology"],
-    "Radiology": ["X-ray Principles", "CT Imaging", "MRI Physics", "Ultrasound Basics", "Nuclear Medicine", "Radiation Safety"],
-    "Ophthalmology": ["Refractive Errors", "Cataract", "Glaucoma", "Retinal Diseases", "Uveitis", "Ocular Trauma"],
-    "ENT": ["Otology", "Rhinology", "Laryngology", "Head & Neck Surgery", "Pediatric Otolaryngology"],
-    "Molecular Biology": ["DNA Replication", "Transcription & RNA Processing", "Translation & Protein Folding", "Gene Regulation", "Recombinant DNA Tech"],
-    "Biotechnology": ["Genomics", "Proteomics", "Bioinformatics", "Environmental Biotech", "Plant Biotechnology"],
-    "Botany": ["Plant Anatomy", "Photosynthesis", "Plant Reproduction", "Systematics", "Plant Ecology"],
-    "Zoology": ["Invertebrate Biology", "Vertebrate Anatomy", "Animal Physiology", "Ethology", "Comparative Anatomy"],
-    "Meteorology": ["Atmospheric Thermodynamics", "Synoptic Meteorology", "Climatology", "Cloud Physics", "Dynamic Meteorology"],
-    "English": ["Reading Comprehension", "Lexis and Structure", "Sentence Interpretation", "Antonyms & Synonyms", "Oral English"],
-    "Accounting": ["Principles of Accounting", "Ledger Accounts", "Final Accounts", "Partnership Accounts", "Company Accounts"],
-    "Agricultural Science": ["Soil Science", "Crop Production", "Animal Husbandry", "Agricultural Economics", "Farm Tools"],
-    "Basic Science": ["Living & Non-Living Things", "Matter & Energy", "The Human Body", "Environment", "Reproductive Health"],
-    "Basic Technology": ["General Woodwork", "Metalwork", "Energy & Power", "Building Technology", "Technical Drawing Intro"],
-    "Business Studies": ["Office Practice", "Commerce Principles", "Bookkeeping", "Keyboarding", "Entrepreneurship"],
-    "Civic Education": ["Human Rights", "Rule of Law", "Nationalism", "Citizenship", "Community Service"],
-    "Commerce": ["Home Trade", "Foreign Trade", "Banking & Finance", "Insurance", "Advertising"],
-    "CRK": ["Creation", "The Exodus", "The Prophets", "Life of Jesus", "The Early Church"],
-    "IRK": ["Fundamentals of Islam", "Hadith", "Sharia Law", "History of Islam", "Islamic Ethics"],
-    "Home Economics": ["Food & Nutrition", "Clothing & Textiles", "Home Management", "Child Development", "Consumer Education"],
-    "Physical Education": ["Athletics", "Team Sports", "Health Education", "Physical Fitness", "First Aid"],
-    "Technical Drawing": ["Geometrical Construction", "Orthographic Projection", "Isometric Drawing", "Machine Drawing", "Architectural Drawing"],
-    "Yoruba": ["Asa Yoruba", "Litireso Yoruba", "Ise Yoruba", "Girama Yoruba", "Aroko"],
-    "Igbo": ["Agumagu Igbo", "Omenala Igbo", "Ito Igbo", "Utasusu Igbo"],
-    "Hausa": ["Al'adun Hausa", "Adabin Hausa", "Harshen Hausa", "Aroko Hausa"],
-    "Geography": ["Map Work", "Climatology", "Human Geography", "Economic Geography", "Regional Geography of Nigeria"],
-    "Economics": ["Microeconomics", "Macroeconomics", "International Trade", "Development Economics", "Monetary Policy"]
-  };
 
   useEffect(() => {
     if (isOpen) {
@@ -210,15 +189,25 @@ export function ExamConfigModal({
                     exit={{ opacity: 0, y: -10 }}
                     className="absolute top-full left-0 right-0 mt-2 bg-surface border border-outline-variant/60 rounded-xl shadow-xl z-20 overflow-hidden flex flex-col"
                   >
-                    <div className="p-2 border-b border-outline-variant/30 flex items-center gap-2 bg-surface">
+                    <div className="p-2 border-b border-outline-variant/30 flex items-center gap-2 bg-surface relative">
                       <Search className="w-4 h-4 text-on-surface-variant shrink-0 ml-1" />
                       <input 
                         type="text" 
                         placeholder="Search subject..."
                         value={searchSubject}
                         onChange={(e) => setSearchSubject(e.target.value)}
-                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60 py-1"
+                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60 py-1 pr-7"
                       />
+                      {searchSubject && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchSubject("")}
+                          className="absolute right-3 p-1 hover:bg-surface-dim rounded-full transition-colors text-on-surface-variant/70 hover:text-on-surface"
+                          aria-label="Clear search"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1">
                       {filteredSubjects.length > 0 ? filteredSubjects.map(s => (
@@ -271,28 +260,37 @@ export function ExamConfigModal({
                 onChange={(e) => setTopic(e.target.value)}
                 className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
               />
-              {subjectTopicsMap[subject] && (
+              {isLoadingTopics ? (
                 <div className="mt-2 text-left">
-                  <div className="text-[10px] font-extrabold text-on-surface-variant/85 uppercase tracking-wider mb-1.5">
-                    Suggested Topics for {subject}:
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
-                    {subjectTopicsMap[subject].map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTopic(t)}
-                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
-                          topic === t 
-                            ? "bg-primary text-white border-primary shadow-sm"
-                            : "bg-surface-dim hover:bg-surface-container text-on-surface border-outline-variant/50"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  <div className="text-[10px] font-extrabold text-on-surface-variant/85 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+                    Fetching dynamic curriculum topics for {subject}...
                   </div>
                 </div>
+              ) : (
+                dynamicTopics && dynamicTopics.length > 0 && (
+                  <div className="mt-2 text-left">
+                    <div className="text-[10px] font-extrabold text-on-surface-variant/85 uppercase tracking-wider mb-1.5">
+                      Suggested Curriculum Topics for {subject}:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
+                      {dynamicTopics.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setTopic(t)}
+                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                            topic === t 
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : "bg-surface-dim hover:bg-surface-container text-on-surface border-outline-variant/50"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
@@ -312,6 +310,16 @@ export function ExamConfigModal({
                   <ChevronDown className="w-4 h-4 text-on-surface-variant" />
                 </div>
               </div>
+              
+              {curriculumScope && (
+                <div className="mt-2.5 p-3.5 bg-primary/5 rounded-xl border border-primary/10 text-xs text-on-surface-variant flex flex-col gap-1 md:gap-1.5 animate-fadeIn">
+                  <div className="flex items-center gap-1.5 font-bold text-primary">
+                    <Layers className="w-3.5 h-3.5 animate-pulse" />
+                    <span>Scope: {curriculumDifficulty}</span>
+                  </div>
+                  <p className="leading-relaxed opacity-90">{curriculumScope}</p>
+                </div>
+              )}
             </div>
           </div>
 
