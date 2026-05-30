@@ -26,6 +26,7 @@ export function ExamConfigModal({
   const [subject, setSubject] = useState<string>("Mathematics");
   const [topic, setTopic] = useState<string>("");
   const [strictMode, setStrictMode] = useState<boolean>(false);
+  const [includePdfAnswers, setIncludePdfAnswers] = useState<boolean>(false);
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [searchSubject, setSearchSubject] = useState("");
   
@@ -390,19 +391,34 @@ export function ExamConfigModal({
             </button>
             
             {!isDemo && ((userTier === "pro") || (userTier === "free" && localStorage.getItem('hasUsedFreePdf') !== 'true')) && !showPremiumGate && (
-              <button
-                onClick={() => {
-                   if (userTier === "free") {
-                      localStorage.setItem('hasUsedFreePdf', 'true');
-                   }
-                   let printUrl = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`;
-                   if (topic.trim()) printUrl += `&topic=${encodeURIComponent(topic.trim())}`;
-                   navigate(printUrl);
-                }}
-                className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center gap-1.5"
-              >
-                Generate Offline PDF {userTier === "free" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold ml-1">1 Free Trial</span>}
-              </button>
+              <div className="flex flex-col gap-1 items-center">
+                <label className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input 
+                      type="checkbox" 
+                      checked={includePdfAnswers}
+                      onChange={(e) => setIncludePdfAnswers(e.target.checked)}
+                      className="peer appearance-none w-4 h-4 border-2 border-outline rounded bg-surface checked:bg-primary checked:border-primary transition-colors cursor-pointer"
+                    />
+                    <Check className="w-3 h-3 text-on-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
+                  </div>
+                  <span className="group-hover:text-on-surface transition-colors">Include Correct Answers (Answer Key)</span>
+                </label>
+                <button
+                  onClick={() => {
+                     if (userTier === "free") {
+                        localStorage.setItem('hasUsedFreePdf', 'true');
+                     }
+                     let printUrl = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`;
+                     if (topic.trim()) printUrl += `&topic=${encodeURIComponent(topic.trim())}`;
+                     if (includePdfAnswers) printUrl += `&answers=true`;
+                     navigate(printUrl);
+                  }}
+                  className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center gap-1.5"
+                >
+                  Generate Offline PDF {userTier === "free" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold ml-1">1 Free Trial</span>}
+                </button>
+              </div>
             )}
 
             {!showPremiumGate && userTier === "free" && testsTakenThisMonth < 2 && (

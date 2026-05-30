@@ -36,6 +36,7 @@ export default function ExamPage() {
   const bankParam = searchParams.get("bank") || "public";
   const subjectParam = searchParams.get("subject") || "english";
   const printParam = searchParams.get("print") === "true";
+  const answersParam = searchParams.get("answers") === "true";
   const topicParam = searchParams.get("topic") || "";
   const strictParam = searchParams.get("strict") === "true";
 
@@ -501,19 +502,43 @@ export default function ExamPage() {
                          </div>
                        )}
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8">
-                         {Object.entries(q.options || {}).map(([key, val]: [string, any]) => (
-                            <div key={key} className="flex gap-3 text-base">
-                               <span className="font-bold uppercase">({key})</span>
-                               <span dangerouslySetInnerHTML={{__html: val}} className="flex-1" />
-                            </div>
-                         ))}
+                         {Object.entries(q.options || {}).map(([key, val]: [string, any]) => {
+                            const isCorrect = answersParam && key === q.answer;
+                            return (
+                               <div key={key} className={`flex gap-3 text-base ${isCorrect ? 'font-bold text-green-700 bg-green-50 p-1 -m-1 rounded' : ''}`}>
+                                  <span className="font-bold uppercase">({key})</span>
+                                  <span dangerouslySetInnerHTML={{__html: val}} className="flex-1" />
+                                  {isCorrect && <span className="ml-2 text-green-600 font-extrabold">✓</span>}
+                               </div>
+                            );
+                         })}
                        </div>
+                       {answersParam && q.solution && (
+                         <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-900 rounded-r-md italic">
+                           <span className="font-bold uppercase not-italic block mb-1">Solution / Explanation:</span>
+                           <span dangerouslySetInnerHTML={{__html: q.solution}} />
+                         </div>
+                       )}
                      </div>
                    </div>
                 </div>
              ))}
           </div>
           
+          {answersParam && (
+             <div className="mt-16 pt-8 break-before-page">
+                <h2 className="text-2xl font-bold uppercase tracking-wider mb-6 text-center border-b-2 border-black pb-4">Answer Key</h2>
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 gap-4 text-center">
+                   {questions.map((q, idx) => (
+                      <div key={q.id} className="border border-gray-300 p-2 bg-gray-50 flex flex-col">
+                         <span className="font-bold text-xs text-gray-500 mb-1">Q{idx + 1}</span>
+                         <span className="font-bold uppercase text-lg">{q.answer}</span>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          )}
+
           <div className="mt-16 pt-8 border-t border-gray-300 text-center text-[10px] text-gray-500 uppercase tracking-widest print:break-before-auto">
             End of Examination Paper — Generate by Exam City
           </div>
