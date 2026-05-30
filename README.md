@@ -1,33 +1,39 @@
 # Exam City 🎓
 
-An intelligent, AI-powered mock examination platform tailored for WAEC, JAMB, and NECO candidates. Exam City provides standard past questions alongside AI-generated predictive mock exams to help students prepare effectively.
+An intelligent, AI-powered mock examination platform tailored for WAEC, JAMB, NECO candidates, and university-level or professional certification test takers. Exam City provides standard past questions alongside AI-generated predictive mock exams, providing a hyper-realistic and intellectually rigorous testing environment.
 
 ## ✨ Features
 
-- **Dual Question Banks:** Access a standard public bank of past questions and a premium AI-predictive question bank.
-- **Micro & Standard Modes:** Choose between rapid 5-question targeted sessions or full 40-question standard exams.
+- **Dual Question Banks:** Access an authentic public bank of past questions powered by the [ALOC Past Questions API](https://questions.aloc.com.ng/).
+- **AI-Powered Fallback & Rigor Engine:** Powered by Google Gemini (`@google/genai`). If a specific subject or topic isn't found in the past question database, Exam City utilizes AI to generate highly rigorous, multi-disciplinary questions.
+- **Deep Scenarios & Mixed Modalities:** The engine generates diverse question sets encompassing "clinical vignettes", "gross anatomy", "histology", "pathophysiology", and deep theoretical reasoning, guaranteeing you get well-rounded practice not basic memory recall.
+- **Micro & Standard Modes:** Choose between rapid 5-question micro-targeted sessions or full 40-question standard exams.
 - **Audio Accessibility:** Built-in Text-to-Speech (TTS) integration to read out questions and options.
 - **Real-time Grading:** Instant assessment and detailed breakdown of exam results.
 - **AI Explanations:** Powered by Google Gemini to explain incorrect answers and act as a study coach.
 - **Offline Output:** Generate and print offline PDFs of exams for physical practice.
 - **User Dashboard:** Track performance trends, total tests taken, and overall readiness. 
 
-## 🌐 Live Demo
+## 🔌 API Integrations & Data Sources
 
-You can view the live application here: [https://examcity.netlify.app/](https://examcity.netlify.app/)
+1. **ALOC API (`questions.aloc.com.ng`)** 
+   Provides real past questions for Nigerian subjects including: 
+   Mathematics, English, Biology, Chemistry, Physics, Economics, Geography, Government, Literature, CRK, IRK, Commerce, Accounting, Agric, and Civic Education.
+2. **Google Gemini (`@google/genai`)**
+   Used for dynamic question generation, rigorous fallback mechanisms, mixing clinical and normal question variants, and step-by-step explanatory coaching.
 
 ## 🛠️ Tech Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Framer Motion
-- **Backend:** Node.js, Express
+- **Backend:** Node.js, Express (Single server ESM setup with `tsx` & `esbuild`)
 - **Database & Auth:** Firebase (Firestore, Authentication)
-- **AI Integration:** Google Gemini API (`@google/genai`)
+- **APIs:** ALOC Past Question API, Google GenAI SDK
 - **Icons:** Lucide React
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-Make sure you have Node.js and npm installed on your machine.
+Make sure you have Node.js (v18+) and npm installed on your machine.
 
 ### Installation
 
@@ -47,32 +53,29 @@ Make sure you have Node.js and npm installed on your machine.
    ```bash
    cp .env.example .env
    ```
-   *Note: You will need your Firebase configuration and a Google Gemini API Key.*
+   *Required Keys:*
+   - `GEMINI_API_KEY`: Your Google Gemini API Key.
+   - `VITE_ALOC_ACCESS_TOKEN`: Your ALOC API Access Token (Defaults safely to public testing token if omitted).
+   - `VITE_FIREBASE_*`: Firebase configuration keys.
 
-4. Start the development server:
+4. Start the development server (runs both frontend Vite and Express backend on port 3000):
    ```bash
    npm run dev
    ```
 
-## 📦 Deployment (Vercel)
+## 📦 Building & Deployment
 
-This application is configured for Vercel deployment with Serverless Functions (`vercel.json` included).
+Exam City uses a single-server Express architecture capable of being deployed as a monolithic full-stack app.
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Run `vercel` to link the project.
-3. Run `vercel --prod` to deploy to production.
-Make sure to add your environment variables in the Vercel project settings!
+```bash
+npm run build
+npm run start
+```
 
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
 Feel free to check out the [issues page](https://github.com/Passenger-rex/exam-city/issues).
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## 📝 License
 

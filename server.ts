@@ -204,8 +204,8 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       
       The questions MUST:
       1. Be highly challenging, representing very hard high-level college, prestigious professional institute-level, or professional board-level styles (Nigerian, UK, Australian, or US style).
-      2. Test complex problem solving, high-level analytical skills, clinical decision making, multi-step calculations, or deep theoretical reasoning.
-      3. Be far more advanced than basic memory recall. Include detailed scenarios, algebraic formulas, chemical reactions, or clinical history vignettes where appropriate.
+      2. Ensure an exceptionally diverse mix of question subgroups! For relevant subjects (especially medical/health sciences), enforce this distribution: roughly 40% Clinical & Surgical Scenarios (highest proportion). Deeply integrate the remaining 60% across these 16 types: (1) Fundamental Theory, (2) Gross Anatomy, (3) Histology & Cytology, (4) Pathophysiology, (5) Pharmacology & Therapeutics, (6) Epidemiology & Public Health, (7) Diagnostic Imaging & Radiology, (8) Genetics & Molecular Biology, (9) Biochemistry & Metabolism, (10) Immunology & Serology, (11) Embryology & Developmental Biology, (12) Microbiology & Parasitology, (13) Behavioral Science & Psychiatry, (14) Medical Ethics & Law, (15) Biostatistics & Research, and (16) Toxicology & Forensic Pathology.
+      3. Vary the formats: combine direct high-level knowledge queries with detailed scenarios, algebraic formulas, chemical reactions, or brief vignettes.
       4. Use precise modern nomenclature (such as IUPAC for Chemistry), strict scientific/academic terminology, and absolute technical accuracy.
       5. Have highly plausible and sophisticated distractors (incorrect options) that require careful analysis and cannot be easily eliminated.
       
