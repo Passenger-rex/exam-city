@@ -111,7 +111,7 @@ async function fetchAlocQuestions(subject: string, limit: number, year?: string,
 // Questions generator API Endpoint
 app.get(["/api/questions", "/questions"], async (req, res) => {
   try {
-    const { subject = "english", year = "any", type = "standard", bank = "public", topic = "" } = req.query;
+    const { subject = "english", year = "any", type = "standard", bank = "public", topic = "", level = "standard" } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
     
     let allQuestions: any[] = [];
@@ -125,7 +125,8 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 
     // Try fetching from ALOC if requested, or if subject is matching Nigerian WAEC/UTME subjects
     let fetchedAloc: any[] | null = null;
-    const isAlocEligible = ["mathematics", "english", "biology", "chemistry", "physics", "economics", "geography", "government", "literature", "crk", "irk", "commerce", "accounting", "agric", "civic"]
+    const isStandardLevel = String(level).trim().toLowerCase() === "standard";
+    const isAlocEligible = isStandardLevel && ["mathematics", "english", "biology", "chemistry", "physics", "economics", "geography", "government", "literature", "crk", "irk", "commerce", "accounting", "agric", "civic"]
       .some(s => subjectStr.toLowerCase().includes(s));
 
     if (isAlocEligible) {
@@ -197,19 +198,39 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       if (topicStr.length > 0) {
         topicInstruction = `The questions MUST test highly specific, advanced academic knowledge on the topic of "${topicStr}".`;
       }
+      
+      let levelInstruction = "";
+      let clinicalInstruction = "3. Check all curriculums and outlines of the subject. Course and specific topics MUST be perfectly synced with the requested academic level. For medical/health sciences, limit Clinical & Surgical Scenarios to AT MOST 10-15% unless the specific topic explicitly demands it. Focus heavily on foundational theories, mechanisms, pathways, Gross Anatomy, Histology, Pathology, Physiology, and Biochemistry according to the specific outline.";
+      
+      if (level === "undergrad") {
+        levelInstruction = "2. The questions MUST align strictly with 100 - 300 Level Undergraduate Academic Standards. They should accurately reflect the rigorous foundational curriculum and official course outlines of top Nigerian Universities (e.g., UNILORIN, UNILAG, UI, OAU, Covenant University). Wait, I mean, strictly sync the course based on university curriculum.";
+        clinicalInstruction = "3. For health/medical subjects, these are PRE-CLINICAL levels. Sync strictly with pre-clinical curriculums. You MUST focus heavily (95%+) on pure basic sciences (Gross Anatomy, Embryology, Histology, Medical Biochemistry, Basic Physiology). Clinical scenario questions MUST BE EXTREMELY RARE (less than 5%) and only feature as simple clinical correlates of basic science concepts.";
+      } else if (level === "advanced") {
+        levelInstruction = "2. The questions MUST be EXTENSIVELY COMPLEX, matching 400 - 600 Level Advanced Undergraduate or Clinical standards. They should parallel the highly advanced academic and clinical curriculum guidelines of premier Nigerian Medical Schools and Teaching Hospitals (e.g., UITH, LUTH, UCH Ibadan, OAU Teaching Hospital). Sync topic to standard advanced curriculum.";
+        clinicalInstruction = "3. For health/medical subjects, balance the focus. Include about 25-35% complex clinical and surgical case scenarios based on the clinical curriculum, and dedicate the remaining 65-75% to deep Pathophysiology, Pharmacology, Microbiology, Advanced Pathology, Diagnostics, and systemic correlations.";
+      } else if (level === "postgrad") {
+        levelInstruction = "2. The questions MUST represent Postgraduate Master's and Doctoral (PhD) standards. They must require profound critical analysis, deep theoretical synthesis, advanced experimental design, and research comprehension typical of the highest graduate levels globally and in premier Nigerian institutions. Sync strictly with postgraduate course curriculums.";
+        clinicalInstruction = "3. Highly advanced theoretical integration. If medical, focus heavily on molecular mechanisms, advanced pharmacology, complex pathophysiology, detailed epidemiology, and research/evidence-based medicine.";
+      } else if (level === "professional") {
+        levelInstruction = "2. The questions MUST represent Specialist, Fellowship, or Professional Board Examination standards (e.g., highly complex clinical case studies, specialized certifications). Even an expert practitioner should need to pause and synthesize multiple concepts. Sync with professional board curriculums.";
+        clinicalInstruction = "3. For medical disciplines, complex, multi-step clinical vignettes and advanced management scenarios should make up 40-50%, with the rest testing obscure pathophysiology, rare conditions, and highly specialized mechanisms.";
+      } else {
+        levelInstruction = "2. The questions should be highly rigorous and challenging, mirroring standard entrance or qualifying exams (e.g., WAEC, JAMB, NECO standard). Sync with the designated syllabus (e.g. JAMB syllabus).";
+        clinicalInstruction = "3. Focus on standard senior secondary school / high school curriculum. Avoid overly complex post-graduate scenarios. Limit clinical contexts entirely unless it's a basic biology syllabus requirement.";
+      }
 
       const randomEntropy = Math.floor(Math.random() * 1000000000);
       
-      const prompt = `Generate exactly ${limitNum} exceptionally difficult, intellectually rigorous, and upper-division university/certification-grade mock exam multiple choice questions for the subject: "${subjectStr}". 
+      const prompt = `Generate exactly ${limitNum} novel, high-quality mock exam multiple choice questions for the subject: "${subjectStr}". 
       ${yearInstruction} 
       ${topicInstruction}
       
       The questions MUST:
-      1. Be entirely novel and highly varied. Do NOT repeat standard, common examples. Use this random entropy seed (${randomEntropy}) to guarantee unique clinical cases, scenarios, and question formulations.
-      2. Be EXTREMELY HARD AND COMPLEX. They must represent the highest-level post-graduate exams, prestigious professional institute-level, or professional board-level styles. The difficulty should be such that even an expert would need to pause, analyze, and synthesize multiple concepts.
-      3. Ensure an exceptionally diverse mix of question subgroups! For relevant subjects (especially medical/health sciences), enforce a highly balanced distribution: limit Clinical & Surgical Scenarios to AT MOST 20-25%. Deeply integrate the remaining 75-80% equally across these 16 types: (1) Fundamental Theory, (2) Gross Anatomy, (3) Histology & Cytology, (4) Pathophysiology, (5) Pharmacology & Therapeutics, (6) Epidemiology & Public Health, (7) Diagnostic Imaging & Radiology, (8) Genetics & Molecular Biology, (9) Biochemistry & Metabolism, (10) Immunology & Serology, (11) Embryology & Developmental Biology, (12) Microbiology & Parasitology, (13) Behavioral Science & Psychiatry, (14) Medical Ethics & Law, (15) Biostatistics & Research, and (16) Toxicology & Forensic Pathology.
-      4. Vary the formats: heavily lean into detailed multi-step scenarios, complex case studies, extensive data interpretation, advanced algebraic formulas, multi-stage chemical reactions, or long clinical vignettes.
-      5. Use precise modern nomenclature (such as IUPAC for Chemistry), strict scientific/academic terminology, and absolute technical accuracy.
+      1. Be entirely novel and highly varied. Do NOT repeat standard, common examples. Use this random entropy seed (${randomEntropy}) to guarantee unique question formulations.
+      ${levelInstruction}
+      ${clinicalInstruction}
+      4. Vary the formats: heavily lean into detailed multi-step problem solving, complex case studies, extensive data interpretation, advanced formulas, or multi-stage reactions as appropriate for the level.
+      5. Use precise modern nomenclature (such as IUPAC for Chemistry, Terminologia Anatomica for Anatomy), strict scientific/academic terminology, and absolute technical accuracy.
       6. Have highly plausible and sophisticated distractors (incorrect options). The distinctions between correct and incorrect options should be extremely subtle, requiring deep mastery to discern, and cannot be eliminated by simple guessing.
       
       Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
@@ -269,12 +290,23 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 // Study Coach / Chatbot Endpoint
 app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
   try {
-    const { messages } = req.body; 
+    const { messages, level = "standard" } = req.body; 
     
+    let levelPrompt = "Standard high school / WAEC level.";
+    if (level === "undergrad") levelPrompt = "100-300 Level Undergraduate level. Sync explanations and tips to standard Nigerian university foundational curriculum. Avoid over-complicating with clinical material.";
+    else if (level === "advanced") levelPrompt = "400-600 Level Advanced/Clinical level. Provide highly complex, detailed, and technically deep answers appropriate for advanced curriculums and teaching hospitals.";
+    else if (level === "postgrad") levelPrompt = "Postgraduate/Doctoral level. Provide extremely rigorous, research-focused, and theoretical answers.";
+    else if (level === "professional") levelPrompt = "Professional/Fellowship board standard. Provide complex, multi-step, expert-level clinical and analytical insights.";
+
     const formattedMessages = [
       { 
         role: "system", 
-        content: "You are a helpful Study Coach tutor. Provide study tips, mental math tricks, and clear concise explanations for specific topics. Be encouraging and concise. Answer in markdown." 
+        content: `You are an expert AI Study Coach tutor. Provide study tips, detailed explanations, and guidance for specific topics.
+        
+        CRITICAL ACADEMIC TONE AND LEVEL:
+        Adapt all your answers strictly to this level: ${levelPrompt}
+        
+        Be encouraging. Respond in Markdown.` 
       },
       ...messages.map((m: any) => ({
         role: m.role === "model" ? "assistant" : m.role,
@@ -294,10 +326,30 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
 // Process Study Material File Endpoint via Gemini/Groq Fallbacks
 app.post("/api/process-file", async (req, res) => {
   try {
-    const { fileBase64, mimeType = "", fileName = "", action, message } = req.body;
+    const { fileBase64, mimeType = "", fileName = "", action, message, level = "standard" } = req.body;
     
     if (!fileBase64) {
       return res.status(400).json({ success: false, error: "File content is required." });
+    }
+    
+    let levelInstruction = "";
+    let clinicalInstruction = "Course and specific topics MUST be perfectly synced with the requested academic level based on standard curriculums. For medical/health sciences, limit Clinical & Surgical Scenarios to AT MOST 10-15% unless the specific topic explicitly demands it. Focus heavily on foundational theories, mechanisms, pathways, Gross Anatomy, Histology, Pathology, Physiology, and Biochemistry according to the outline.";
+    
+    if (level === "undergrad") {
+      levelInstruction = "These questions MUST be at a 100 - 300 Level Undergraduate academic standard. They should accurately reflect the rigorous foundational curriculum and official course outlines of top Nigerian Universities (e.g., University of Ilorin (UNILORIN), University of Lagos (UNILAG), UI, OAU, Covenant University).";
+      clinicalInstruction = "For health/medical subjects, these are PRE-CLINICAL levels. Sync strictly with pre-clinical curriculums. You MUST focus heavily (95%+) on pure basic sciences (Gross Anatomy, Embryology, Histology, Medical Biochemistry, Basic Physiology). Clinical scenario questions MUST BE EXTREMELY RARE (less than 5%) and only feature as simple clinical correlates of basic science concepts.";
+    } else if (level === "advanced") {
+      levelInstruction = "These questions MUST be EXTREMELY HARD AND COMPLEX, matching 400 - 600 Level Advanced Undergraduate, Clinical, or Postgraduate standards. They should parallel the highly advanced academic and clinical curriculum guidelines of premier Nigerian Universities and Teaching Hospitals (e.g., UI/UCH Ibadan, UNILORIN/UITH, UNILAG/LUTH, OAU/OAUTH).";
+      clinicalInstruction = "For health/medical subjects, balance the focus. Include about 25-35% complex clinical and surgical case scenarios based on the clinical curriculum, and dedicate the remaining 65-75% to deep Pathophysiology, Pharmacology, Microbiology, Advanced Pathology, Diagnostics, and systemic correlations.";
+    } else if (level === "postgrad") {
+      levelInstruction = "These questions MUST represent Postgraduate Master's and Doctoral (PhD) standards. They must require profound critical analysis, deep theoretical synthesis, advanced experimental design, and research comprehension typical of the highest graduate levels globally.";
+      clinicalInstruction = "Highly advanced theoretical integration. If medical, focus heavily on molecular mechanisms, advanced pharmacology, complex pathophysiology, detailed epidemiology, and research/evidence-based medicine.";
+    } else if (level === "professional") {
+      levelInstruction = "These questions MUST represent Specialist, Fellowship, or Professional Board Examination standards (e.g., highly complex clinical case studies, specialized certifications). Even an expert practitioner should need to pause and synthesize multiple concepts. Sync with professional board curriculums.";
+      clinicalInstruction = "For medical disciplines, complex, multi-step clinical vignettes and advanced management scenarios should make up 40-50%, with the rest testing obscure pathophysiology, rare conditions, and highly specialized mechanisms.";
+    } else {
+      levelInstruction = "These questions should be highly rigorous and challenging, mirroring standard entrance or qualifying exams (e.g., WAEC, JAMB, NECO standard). Sync with syllabus.";
+      clinicalInstruction = "Focus on standard senior secondary school / high school curriculum. Avoid overly complex post-graduate scenarios. Limit clinical contexts entirely unless it's a basic biology syllabus requirement.";
     }
     
     const isImage = mimeType.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
@@ -307,6 +359,11 @@ app.post("/api/process-file", async (req, res) => {
         const prompt = `You are an expert AI Study Coach. The student has uploaded an image named: "${fileName}".
         Look at this image content and fulfill their study request: "${message || "Explain the main key terms and concepts in detail."}"
         
+        CRITICAL ACADEMIC LEVEL REQUIREMENT:
+        ${levelInstruction}
+        ${clinicalInstruction}
+        Ensure your explanations and generated content tightly adhere to this specific academic level's curriculum.
+
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
         
         const content = await executeAIFallback([
@@ -321,10 +378,14 @@ app.post("/api/process-file", async (req, res) => {
         
         res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
-        const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded image named: "${fileName}".
-        First, deduce the specific subject name of the exam from the file name "${fileName}" and the visual content of the image. The deduced subject should be precise (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Thermodynamics", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
-        Ensure that the questions reflect very hard, rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter and topics shown. Avoid overly simple, trivial, or basic questions.
-        The generated questions MUST be perfectly synced and linked with the actual topics, concepts, and content of the image. The questions must test clinical reasoning, critical thinking, or multi-step problem solving. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All questions on standard / premium must test very hard high-level concepts and specific topics from the document.
+        const examPrompt = `We need to generate between 25 and 30 high-quality mock exam multiple choice questions based STRICTLY and ONLY on the uploaded image named: "${fileName}".
+        First, deduce the specific subject name of the exam from the file name "${fileName}" and the visual content of the image. The deduced subject should be precise (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Pathophysiology", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
+        
+        CRITICAL DIFFICULTY AND ACADEMIC LEVEL REQUIREMENT:
+        ${levelInstruction}
+        ${clinicalInstruction}
+        
+        The generated questions MUST be perfectly synced and linked with the actual topics, concepts, and content of the image. The questions must test clinical reasoning, critical thinking, or multi-step problem solving. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All questions must test very hard high-level concepts and specific topics from the document.
         
         You must return your output strictly in JSON format matching this schema:
         {
@@ -421,21 +482,29 @@ app.post("/api/process-file", async (req, res) => {
         
         Read the content of this file and fulfill their study request: "${message || "Explain the main key terms and concepts in detail."}"
         
+        CRITICAL ACADEMIC LEVEL REQUIREMENT:
+        ${levelInstruction}
+        ${clinicalInstruction}
+        Ensure your explanations and generated content tightly adhere to this specific academic level's curriculum.
+
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
         
         const content = await executeAIFallback([{ role: "user", content: textPrompt }]);
         
         res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
-        const examPrompt = `We need to generate between 25 and 30 high-quality, professional, college-grade and institute-level mock exam multiple choice questions based STRICTLY and ONLY on the uploaded file named: "${fileName}".
-        First, deduce the specific subject name of the exam from the file title "${fileName}" and the content of the file. The deduced subject should be highly precise and clear (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Thermodynamics", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
+        const examPrompt = `We need to generate between 25 and 30 high-quality mock exam multiple choice questions based STRICTLY and ONLY on the uploaded file named: "${fileName}".
+        First, deduce the specific subject name of the exam from the file title "${fileName}" and the content of the file. The deduced subject should be highly precise and clear (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Pathophysiology", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
         Below is the content of the file:
         
         --- FILE CONTENT START ---
         ${extractedText.substring(0, 35000)}
         --- FILE CONTENT END ---
         
-        Ensure that the questions reflect very hard, rigorous certification, university-level, or professional standards in Nigerian, UK, Australian, or US style for the specific subject matter covered in this document. Avoid overly simple, trivial, or basic questions.
+        CRITICAL DIFFICULTY AND ACADEMIC LEVEL REQUIREMENT:
+        ${levelInstruction}
+        ${clinicalInstruction}
+        
         The generated questions MUST be perfectly synced and linked with the specific topics, facts, concepts, and subject of the document content provided above. The questions must test clinical reasoning, deep analytical understanding, or complex problem-solving. Each question should test a clear and distinct high-level topic or concept from the content. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All standard / premium questions must represent very hard high-level college and institute-style assessments.
         
         You must return your output strictly in JSON format matching this schema:

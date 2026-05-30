@@ -39,6 +39,7 @@ export default function ExamPage() {
   const answersParam = searchParams.get("answers") === "true";
   const topicParam = searchParams.get("topic") || "";
   const strictParam = searchParams.get("strict") === "true";
+  const levelParam = searchParams.get("level") || "standard";
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -160,7 +161,7 @@ export default function ExamPage() {
         }
 
         try {
-          const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}&topic=${encodeURIComponent(topicParam)}`);
+          const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}&topic=${encodeURIComponent(topicParam)}&level=${encodeURIComponent(levelParam)}`);
           const text = await res.text();
           let json;
           try {

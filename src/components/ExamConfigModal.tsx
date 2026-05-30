@@ -25,12 +25,21 @@ export function ExamConfigModal({
   
   const [subject, setSubject] = useState<string>("Mathematics");
   const [topic, setTopic] = useState<string>("");
+  const [difficulty, setDifficulty] = useState<string>("standard");
   const [strictMode, setStrictMode] = useState<boolean>(false);
   const [includePdfAnswers, setIncludePdfAnswers] = useState<boolean>(false);
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [searchSubject, setSearchSubject] = useState("");
   
   const [years, setYears] = useState<number[]>([]);
+
+  const DIFFICULTY_LEVELS = [
+    { value: "standard", label: "Standard (WAEC/JAMB/NECO)" },
+    { value: "undergrad", label: "100 - 300 Level (Undergrad)" },
+    { value: "advanced", label: "400 - 600 Level (Advanced/Clinical)" },
+    { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
+    { value: "professional", label: "Professional / Board Specialist" }
+  ];
 
   const subjectsList = [
     "Accounting", "Agricultural Science", "Anatomy", "Basic Science", "Basic Technology", 
@@ -145,6 +154,7 @@ export function ExamConfigModal({
     
     let url = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}`;
     if (topic.trim()) url += `&topic=${encodeURIComponent(topic.trim())}`;
+    if (difficulty !== "standard") url += `&level=${difficulty}`;
     if (strictMode) url += `&strict=true`;
     
     navigate(url);
@@ -251,38 +261,58 @@ export function ExamConfigModal({
           </div>
 
           {/* Target Topic */}
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-on-surface">Specific Topic <span className="text-on-surface-variant font-normal text-xs">(Optional)</span></label>
-            <input 
-              type="text" 
-              placeholder="e.g. Algebra, Organic Chemistry"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
-            />
-            {subjectTopicsMap[subject] && (
-              <div className="mt-2 text-left">
-                <div className="text-[10px] font-extrabold text-on-surface-variant/85 uppercase tracking-wider mb-1.5">
-                  Suggested Topics for {subject}:
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-on-surface">Specific Topic <span className="text-on-surface-variant font-normal text-xs">(Optional)</span></label>
+              <input 
+                type="text" 
+                placeholder="e.g. Algebra, Organic Chemistry"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none placeholder:text-on-surface-variant/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm"
+              />
+              {subjectTopicsMap[subject] && (
+                <div className="mt-2 text-left">
+                  <div className="text-[10px] font-extrabold text-on-surface-variant/85 uppercase tracking-wider mb-1.5">
+                    Suggested Topics for {subject}:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
+                    {subjectTopicsMap[subject].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTopic(t)}
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                          topic === t 
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : "bg-surface-dim hover:bg-surface-container text-on-surface border-outline-variant/50"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
-                  {subjectTopicsMap[subject].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTopic(t)}
-                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
-                        topic === t 
-                          ? "bg-primary text-white border-primary shadow-sm"
-                          : "bg-surface-dim hover:bg-surface-container text-on-surface border-outline-variant/50"
-                      }`}
-                    >
-                      {t}
-                    </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-on-surface">Academic Level / Difficulty</label>
+              <div className="relative">
+                <select 
+                  className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl appearance-none outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm cursor-pointer"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                >
+                  {DIFFICULTY_LEVELS.map(level => (
+                    <option key={level.value} value={level.value}>{level.label}</option>
                   ))}
+                </select>
+                <div className="absolute top-1/2 right-3 -translate-y-1/2 pointer-events-none">
+                  <ChevronDown className="w-4 h-4 text-on-surface-variant" />
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-6">
@@ -411,6 +441,7 @@ export function ExamConfigModal({
                      }
                      let printUrl = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`;
                      if (topic.trim()) printUrl += `&topic=${encodeURIComponent(topic.trim())}`;
+                     if (difficulty !== "standard") printUrl += `&level=${difficulty}`;
                      if (includePdfAnswers) printUrl += `&answers=true`;
                      navigate(printUrl);
                   }}

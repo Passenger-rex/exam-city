@@ -89,6 +89,7 @@ export default function TutorPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isFileUploading, setIsFileUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [documentDifficulty, setDocumentDifficulty] = useState<string>("standard");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -146,6 +147,7 @@ export default function TutorPage() {
           mimeType: selectedFile.type || "application/octet-stream",
           fileName: selectedFile.name,
           action: action,
+          level: documentDifficulty,
           message: action === "tutor" ? "Summarize this file and list 5 important conceptual questions we can study." : ""
         })
       });
@@ -195,7 +197,7 @@ export default function TutorPage() {
              questions: data.questions
           }));
           setSelectedFile(null);
-          navigate(`/exam?uploaded_exam=true&type=standard&bank=premium&subject=${encodeURIComponent(examSubject)}`);
+          navigate(`/exam?uploaded_exam=true&type=standard&bank=premium&subject=${encodeURIComponent(examSubject)}&level=${documentDifficulty}`);
         } else {
           throw new Error("No questions were generated from the uploaded content.");
         }
@@ -359,6 +361,7 @@ export default function TutorPage() {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
+             level: documentDifficulty,
              messages: messagesBeforeResponse.map(m => ({
                role: m.role,
                parts: [{text: m.text}]
@@ -772,12 +775,25 @@ export default function TutorPage() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto shrink-0">
+                    <select
+                      value={documentDifficulty}
+                      onChange={(e) => setDocumentDifficulty(e.target.value)}
+                      className="w-full sm:w-32 py-2.5 px-3 bg-surface-dim border border-outline-variant/40 rounded-xl outline-none text-xs font-semibold cursor-pointer appearance-none text-on-surface"
+                      disabled={isLoading}
+                    >
+                      <option value="standard">Standard Level</option>
+                      <option value="undergrad">Undergrad (100-300L)</option>
+                      <option value="advanced">Advanced (400-600L)</option>
+                      <option value="postgrad">Postgraduate</option>
+                      <option value="professional">Professional</option>
+                    </select>
+                    
                     <button
                       type="button"
                       onClick={() => handleProcessFile("tutor")}
                       disabled={isLoading}
-                      className="flex-1 sm:flex-none py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/15 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl font-bold text-xs cursor-pointer text-center"
+                      className="w-full sm:w-auto py-2.5 px-4 bg-primary/10 text-primary hover:bg-primary/15 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl font-bold text-xs cursor-pointer text-center"
                     >
                       {isFileUploading ? "Analyzing..." : "Generate Questions"}
                     </button>
@@ -785,7 +801,7 @@ export default function TutorPage() {
                       type="button"
                       onClick={() => handleProcessFile("exam")}
                       disabled={isLoading}
-                      className="flex-1 sm:flex-none py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                      className="w-full sm:w-auto py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Generate Mock Exam
                     </button>
@@ -793,7 +809,7 @@ export default function TutorPage() {
                       type="button"
                       onClick={() => setSelectedFile(null)}
                       disabled={isLoading}
-                      className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
+                      className="p-2.5 text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer self-stretch flex items-center justify-center"
                       title="Remove file"
                     >
                       <X className="w-4 h-4" />
