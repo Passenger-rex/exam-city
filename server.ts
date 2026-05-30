@@ -198,16 +198,19 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
         topicInstruction = `The questions MUST test highly specific, advanced academic knowledge on the topic of "${topicStr}".`;
       }
 
+      const randomEntropy = Math.floor(Math.random() * 1000000000);
+      
       const prompt = `Generate exactly ${limitNum} exceptionally difficult, intellectually rigorous, and upper-division university/certification-grade mock exam multiple choice questions for the subject: "${subjectStr}". 
       ${yearInstruction} 
       ${topicInstruction}
       
       The questions MUST:
-      1. Be highly challenging, representing very hard high-level college, prestigious professional institute-level, or professional board-level styles (Nigerian, UK, Australian, or US style).
-      2. Ensure an exceptionally diverse mix of question subgroups! For relevant subjects (especially medical/health sciences), enforce this distribution: roughly 40% Clinical & Surgical Scenarios (highest proportion). Deeply integrate the remaining 60% across these 16 types: (1) Fundamental Theory, (2) Gross Anatomy, (3) Histology & Cytology, (4) Pathophysiology, (5) Pharmacology & Therapeutics, (6) Epidemiology & Public Health, (7) Diagnostic Imaging & Radiology, (8) Genetics & Molecular Biology, (9) Biochemistry & Metabolism, (10) Immunology & Serology, (11) Embryology & Developmental Biology, (12) Microbiology & Parasitology, (13) Behavioral Science & Psychiatry, (14) Medical Ethics & Law, (15) Biostatistics & Research, and (16) Toxicology & Forensic Pathology.
-      3. Vary the formats: combine direct high-level knowledge queries with detailed scenarios, algebraic formulas, chemical reactions, or brief vignettes.
-      4. Use precise modern nomenclature (such as IUPAC for Chemistry), strict scientific/academic terminology, and absolute technical accuracy.
-      5. Have highly plausible and sophisticated distractors (incorrect options) that require careful analysis and cannot be easily eliminated.
+      1. Be entirely novel and highly varied. Do NOT repeat standard, common examples. Use this random entropy seed (${randomEntropy}) to guarantee unique clinical cases, scenarios, and question formulations.
+      2. Be EXTREMELY HARD AND COMPLEX. They must represent the highest-level post-graduate exams, prestigious professional institute-level, or professional board-level styles. The difficulty should be such that even an expert would need to pause, analyze, and synthesize multiple concepts.
+      3. Ensure an exceptionally diverse mix of question subgroups! For relevant subjects (especially medical/health sciences), enforce a highly balanced distribution: limit Clinical & Surgical Scenarios to AT MOST 20-25%. Deeply integrate the remaining 75-80% equally across these 16 types: (1) Fundamental Theory, (2) Gross Anatomy, (3) Histology & Cytology, (4) Pathophysiology, (5) Pharmacology & Therapeutics, (6) Epidemiology & Public Health, (7) Diagnostic Imaging & Radiology, (8) Genetics & Molecular Biology, (9) Biochemistry & Metabolism, (10) Immunology & Serology, (11) Embryology & Developmental Biology, (12) Microbiology & Parasitology, (13) Behavioral Science & Psychiatry, (14) Medical Ethics & Law, (15) Biostatistics & Research, and (16) Toxicology & Forensic Pathology.
+      4. Vary the formats: heavily lean into detailed multi-step scenarios, complex case studies, extensive data interpretation, advanced algebraic formulas, multi-stage chemical reactions, or long clinical vignettes.
+      5. Use precise modern nomenclature (such as IUPAC for Chemistry), strict scientific/academic terminology, and absolute technical accuracy.
+      6. Have highly plausible and sophisticated distractors (incorrect options). The distinctions between correct and incorrect options should be extremely subtle, requiring deep mastery to discern, and cannot be eliminated by simple guessing.
       
       Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
       

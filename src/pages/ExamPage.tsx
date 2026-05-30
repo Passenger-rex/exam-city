@@ -503,7 +503,7 @@ export default function ExamPage() {
                        )}
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8">
                          {Object.entries(q.options || {}).map(([key, val]: [string, any]) => {
-                            const isCorrect = answersParam && key === q.answer;
+                            const isCorrect = answersParam && key === q.correct_answer;
                             return (
                                <div key={key} className={`flex gap-3 text-base ${isCorrect ? 'font-bold text-green-700 bg-green-50 p-1 -m-1 rounded' : ''}`}>
                                   <span className="font-bold uppercase">({key})</span>
@@ -513,10 +513,10 @@ export default function ExamPage() {
                             );
                          })}
                        </div>
-                       {answersParam && q.solution && (
+                       {answersParam && q.explanation && (
                          <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-900 rounded-r-md italic">
                            <span className="font-bold uppercase not-italic block mb-1">Solution / Explanation:</span>
-                           <span dangerouslySetInnerHTML={{__html: q.solution}} />
+                           <span dangerouslySetInnerHTML={{__html: q.explanation}} />
                          </div>
                        )}
                      </div>
@@ -532,7 +532,7 @@ export default function ExamPage() {
                    {questions.map((q, idx) => (
                       <div key={q.id} className="border border-gray-300 p-2 bg-gray-50 flex flex-col">
                          <span className="font-bold text-xs text-gray-500 mb-1">Q{idx + 1}</span>
-                         <span className="font-bold uppercase text-lg">{q.answer}</span>
+                         <span className="font-bold uppercase text-lg">{q.correct_answer}</span>
                       </div>
                    ))}
                 </div>
