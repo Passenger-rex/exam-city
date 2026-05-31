@@ -10,6 +10,7 @@ import {
   query,
   where,
   getDocs,
+  addDoc,
 } from "firebase/firestore";
 import { updateEmail, updatePassword } from "firebase/auth";
 import {
@@ -24,10 +25,11 @@ import {
   Award,
   Calendar,
   Zap,
+  LifeBuoy,
+  X,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { useUser } from "../UserContext";
-import { FeedbackWidget } from "../components/FeedbackWidget";
 import { Navbar } from "../components/Navbar";
 
 interface ReferredUser {
@@ -45,6 +47,14 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // Support Complaint Widget states
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportCategory, setSupportCategory] = useState("Site Bug");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportSuccess, setSupportSuccess] = useState("");
+  const [supportError, setSupportError] = useState("");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,6 +68,45 @@ export default function ProfilePage() {
   const [groupError, setGroupError] = useState("");
   const [groupMessage, setGroupMessage] = useState("");
   const [groupMembersList, setGroupMembersList] = useState<string[]>([]);
+
+  const MIN_SUPPORT_CHARS = 20;
+  const MAX_SUPPORT_CHARS = 1000;
+
+  const handleSubmitSupport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanMsg = supportMessage.trim();
+    if (cleanMsg.length < MIN_SUPPORT_CHARS) {
+      setSupportError(`Please provide enough information about your issue (at least ${MIN_SUPPORT_CHARS} characters required).`);
+      return;
+    }
+    if (cleanMsg.length > MAX_SUPPORT_CHARS) {
+      setSupportError(`Your message is too long (maximum of ${MAX_SUPPORT_CHARS} characters).`);
+      return;
+    }
+    setSupportSubmitting(true);
+    setSupportError("");
+    setSupportSuccess("");
+
+    try {
+      // Save feedback document to Firestore feedbacks collection
+      await addDoc(collection(db, "feedbacks"), {
+        userId: auth.currentUser?.uid || "anonymous",
+        name: profile?.name || auth.currentUser?.displayName || "Student",
+        email: auth.currentUser?.email || "unknown@student.com",
+        rating: `[SUPPORT: ${supportCategory}]`,
+        message: cleanMsg,
+        createdAt: new Date(),
+      });
+
+      setSupportSuccess("Support ticket submitted! Our administration team will process your inquiry shortly.");
+      setSupportMessage("");
+    } catch (err: any) {
+      console.error(err);
+      setSupportError("Failed to submit support ticket: " + err.message);
+    } finally {
+      setSupportSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -609,7 +658,136 @@ export default function ProfilePage() {
         </motion.div>
       </main>
       </div>
-      <FeedbackWidget />
+
+      {/* Floating Complaint/Support Widget (Profile Page Only) */}
+      <div className="fixed bottom-6 right-6 z-[100]">
+        <button
+          onClick={() => setShowSupportModal(true)}
+          className="w-14 h-14 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-105 hover:rotate-12 active:scale-95 transition-all group border-2 border-white/20 cursor-pointer"
+          title="Submit Site Bug or Payment Issue"
+        >
+          <LifeBuoy className="w-7 h-7 group-hover:rotate-45 transition-transform duration-500" />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showSupportModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-surface w-full max-w-[460px] rounded-[28px] overflow-hidden shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] text-left relative"
+            >
+              <div className="px-6 py-5 border-b border-outline-variant/30 flex justify-between items-center shrink-0 bg-surface/50 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500">
+                    <LifeBuoy className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-on-surface leading-tight">Complaint & Support</h3>
+                    <p className="text-xs text-on-surface-variant font-semibold">Log payment issues or site bugs</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSupportModal(false);
+                    setSupportSuccess("");
+                    setSupportError("");
+                  }}
+                  className="p-2 hover:bg-surface-dim rounded-full transition-colors text-on-surface-variant cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitSupport} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                    Issue Category
+                  </label>
+                  <select
+                    value={supportCategory}
+                    onChange={(e) => setSupportCategory(e.target.value)}
+                    className="w-full h-11 px-4 bg-surface-dim border border-outline-variant rounded-2xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface font-medium cursor-pointer"
+                  >
+                    <option value="Payment Issue">Payment & Subscription Issues</option>
+                    <option value="Site Bug">Site Bug / Technical Failure</option>
+                    <option value="Question Error">Question / Syllabus Feedback</option>
+                    <option value="Other Complaint">General Complaint</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                      Describe the problem
+                    </label>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${supportMessage.trim().length < MIN_SUPPORT_CHARS ? "bg-amber-500/10 text-amber-500" : "bg-green-500/10 text-green-500"}`}>
+                      {supportMessage.trim().length < MIN_SUPPORT_CHARS 
+                        ? `${supportMessage.trim().length}/${MIN_SUPPORT_CHARS} min` 
+                        : `${supportMessage.trim().length}/${MAX_SUPPORT_CHARS} max`
+                      }
+                    </span>
+                  </div>
+                  <textarea
+                    rows={5}
+                    value={supportMessage}
+                    onChange={(e) => setSupportMessage(e.target.value)}
+                    maxLength={MAX_SUPPORT_CHARS}
+                    placeholder="Provide details (e.g. subject name, specific question, transaction hash, active steps to reproduce)..."
+                    className="w-full p-4 rounded-2xl bg-surface-dim border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface placeholder:text-neutral-500 resize-none font-medium leading-relaxed shadow-inner"
+                  />
+                  {supportMessage.trim().length > 0 && supportMessage.trim().length < MIN_SUPPORT_CHARS && (
+                    <p className="text-xs text-amber-500 font-semibold mt-1.5 flex items-center gap-1">
+                      ⚠️ Needs {MIN_SUPPORT_CHARS - supportMessage.trim().length} more characters to submit.
+                    </p>
+                  )}
+                </div>
+
+                {supportError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{supportError}</span>
+                  </div>
+                )}
+
+                {supportSuccess && (
+                  <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs font-semibold rounded-xl flex items-start gap-2.5 leading-relaxed">
+                    <CheckCircle2 className="w-4.5 h-4.5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{supportSuccess}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSupportModal(false);
+                      setSupportSuccess("");
+                      setSupportError("");
+                    }}
+                    className="flex-1 py-3 bg-surface-dim hover:bg-surface-dim/80 text-on-surface-variant hover:text-on-surface font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={supportSubmitting || supportMessage.trim().length < MIN_SUPPORT_CHARS || supportMessage.trim().length > MAX_SUPPORT_CHARS}
+                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                  >
+                    {supportSubmitting ? (
+                      <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      "Submit Ticket"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

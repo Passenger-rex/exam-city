@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
-import { collection, addDoc, serverTimestamp, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, orderBy, query, doc, getDoc, setDoc } from "firebase/firestore";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { Upload, Database, CheckCircle2, AlertCircle, FileSpreadsheet } from "lucide-react";
 import { Logo } from "../components/Logo";
@@ -15,6 +15,25 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [sheetUrl, setSheetUrl] = useState("");
+  const [configuredSheetId, setConfiguredSheetId] = useState("");
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  useEffect(() => {
+    const loadConfigObj = async () => {
+      try {
+        const configRef = doc(db, "settings", "google_sheets");
+        const docSnap = await getDoc(configRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.spreadsheetId) setConfiguredSheetId(data.spreadsheetId);
+          if (data.spreadsheetUrl) setSheetUrl(data.spreadsheetUrl);
+        }
+      } catch (err) {
+        console.error("Error loading config", err);
+      }
+    };
+    loadConfigObj();
+  }, [db]);
 
   useEffect(() => {
     if (loading) return;
@@ -72,6 +91,37 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    setStatus("Saving sheet configuration...");
+    try {
+      let docId = configuredSheetId.trim();
+      // If it's a URL, extract the ID
+      if (docId.includes("docs.google.com/spreadsheets")) {
+        const match = docId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match) docId = match[1];
+      }
+      
+      if (!docId) {
+        throw new Error("Invalid Spreadsheet URL or ID");
+      }
+      
+      const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${docId}`;
+      await setDoc(doc(db, "settings", "google_sheets"), {
+        spreadsheetId: docId,
+        spreadsheetUrl,
+        updatedAt: serverTimestamp()
+      });
+      setConfiguredSheetId(docId);
+      setSheetUrl(spreadsheetUrl);
+      setStatus("Success! Configured spreadsheet saved successfully.");
+    } catch (err: any) {
+      setStatus("Error: " + err.message);
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
   const syncFeedbacksToSheets = async () => {
     setIsSyncing(true);
     setStatus("Fetching feedbacks...");
@@ -106,48 +156,79 @@ export default function AdminPage() {
         ["Date", "User ID", "Name", "Email", "Rating", "Message"]
       ];
 
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const dateStr = data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString();
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const dateStr = data.createdAt ? (typeof data.createdAt.toDate === "function" ? data.createdAt.toDate().toISOString() : new Date(data.createdAt).toISOString()) : new Date().toISOString();
         rows.push([
           dateStr,
           data.userId || "",
           data.name || "",
           data.email || "",
-          String(data.rating || 0),
+          String(data.rating || ""),
           data.message || ""
         ]);
       });
 
-      setStatus("Creating Google Sheet...");
-
-      const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          properties: {
-            title: `Exam City Feedbacks - ${new Date().toLocaleDateString()}`
-          }
-        })
-      });
-
-      if (!createRes.ok) {
-         if (createRes.status === 401 || createRes.status === 403) {
-            sessionStorage.removeItem("google_access_token");
-            setStatus("Error: Token expired or permission denied. Please try again to re-authenticate.");
-            return;
-         }
-         throw new Error("Failed to create Google Sheet");
+      let spreadsheetId = configuredSheetId.trim();
+      if (spreadsheetId.includes("docs.google.com/spreadsheets")) {
+        const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match) spreadsheetId = match[1];
       }
 
-      const sheetData = await createRes.json();
-      const spreadsheetId = sheetData.spreadsheetId;
-      setSheetUrl(sheetData.spreadsheetUrl);
+      if (spreadsheetId) {
+        setStatus("Using configured Google Sheet. Clearing existing sheet...");
+        // Clear first to overwrite
+        try {
+          await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A:Z:clear`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          });
+        } catch (clearErr) {
+          console.error("Clear error - sheet might be empty or tab name not Sheet1, continuing", clearErr);
+        }
+      } else {
+        setStatus("Creating a legacy Google Sheet...");
 
-      setStatus("Populating sheet with feedback data...");
+        const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            properties: {
+              title: `Exam City Feedbacks & Complaints`
+            }
+          })
+        });
+
+        if (!createRes.ok) {
+           if (createRes.status === 401 || createRes.status === 403) {
+              sessionStorage.removeItem("google_access_token");
+              setStatus("Error: Token expired or permission denied. Please try again to re-authenticate.");
+              return;
+           }
+           throw new Error("Failed to create Google Sheet");
+        }
+
+        const sheetData = await createRes.json();
+        spreadsheetId = sheetData.spreadsheetId;
+        const newUrl = sheetData.spreadsheetUrl;
+        
+        setConfiguredSheetId(spreadsheetId);
+        setSheetUrl(newUrl);
+
+        await setDoc(doc(db, "settings", "google_sheets"), {
+          spreadsheetId,
+          spreadsheetUrl: newUrl,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      setStatus("Populating sheet with centralized feedback & support log...");
 
       const appendRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:append?valueInputOption=USER_ENTERED`, {
         method: "POST",
@@ -162,7 +243,7 @@ export default function AdminPage() {
 
       if (!appendRes.ok) throw new Error("Failed to append data to Google Sheet");
 
-      setStatus("Success! Feedbacks synced to Google Sheets.");
+      setStatus("Success! Feedbacks & support logs successfully synced to Google Sheets.");
     } catch (err: any) {
       console.error(err);
       setStatus("Error: " + err.message);
@@ -285,37 +366,58 @@ export default function AdminPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold font-headline-md">
-                Feedback & Reviews
+                Feedback & Support Log Sync
               </h2>
               <p className="text-on-surface-variant font-medium">
-                Export user feedbacks to Google Sheets
+                Sync user complaints, support issues, and reviews to your master Google Sheet.
               </p>
             </div>
+          </div>
+
+          <div className="mb-6 bg-surface-dim/40 p-5 rounded-2xl border border-outline-variant/30">
+            <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+              Configured Google Sheet (ID or URL)
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Paste Google Sheet URL or ID here..."
+                value={configuredSheetId}
+                onChange={(e) => setConfiguredSheetId(e.target.value)}
+                className="flex-1 px-4 py-2.5 bg-surface border border-outline-variant/60 rounded-xl focus:border-primary focus:outline-none text-sm text-on-surface font-mono"
+              />
+              <button
+                onClick={handleSaveConfig}
+                disabled={isSavingConfig || isSyncing}
+                className="px-5 py-2.5 bg-primary hover:bg-primary/95 text-on-primary font-bold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSavingConfig ? "Saving..." : "Save Config"}
+              </button>
+            </div>
+            {sheetUrl && (
+              <div className="mt-3 text-xs text-on-surface-variant font-medium leading-relaxed break-all">
+                <span className="text-gray-400">Sheet Link:</span>{" "}
+                <a href={sheetUrl} target="_blank" rel="noreferrer" className="text-primary font-bold hover:underline">
+                  {sheetUrl}
+                </a>
+              </div>
+            )}
           </div>
           
           <button
              onClick={syncFeedbacksToSheets}
              disabled={isSyncing || isUploading}
-             className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl flex justify-center items-center gap-3 hover:bg-green-700 transition-colors disabled:opacity-50"
+             className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl flex justify-center items-center gap-3 hover:bg-green-700 transition-colors disabled:opacity-50 cursor-pointer"
           >
              {isSyncing ? (
                <div className="w-6 h-6 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
              ) : (
                <>
                  <FileSpreadsheet className="w-6 h-6" />
-                 Sync Feedbacks to Google Sheets
+                 Sync Feedbacks & Complaints
                </>
              )}
           </button>
-          
-          {sheetUrl && (
-             <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-               <p className="text-green-800 font-medium text-sm mb-2">Sheet created successfully!</p>
-               <a href={sheetUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-sm hover:underline break-all">
-                 {sheetUrl}
-               </a>
-             </div>
-          )}
         </div>
 
         {status && (

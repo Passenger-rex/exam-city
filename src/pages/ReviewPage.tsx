@@ -29,10 +29,10 @@ export default function ReviewPage() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   useEffect(() => {
-    // Show review modal automatically after 10 seconds of viewing the result
+    // Show review modal automatically after 1.5 seconds of viewing the result (Ace Experience)
     const timer = setTimeout(() => {
       setIsReviewModalOpen(true);
-    }, 15000);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -222,6 +222,12 @@ export default function ReviewPage() {
                 className="px-6 py-3 bg-surface border border-outline-variant hover:bg-surface-dim font-bold text-primary rounded-xl transition-all active:scale-95 shadow-sm inline-flex items-center gap-2"
               >
                 <FileDown className="w-4 h-4" /> Export Answer Key
+              </button>
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                className="px-6 py-3 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 font-bold text-amber-700 dark:text-amber-400 rounded-xl transition-all active:scale-95 shadow-sm inline-flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" /> Rate Ace Experience
               </button>
             </div>
           </div>
