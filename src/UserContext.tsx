@@ -105,7 +105,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
             groupMembers,
             tutorQueriesUsed: Number(data.tutorQueriesUsed || 0),
             lastTutorQueryDate: data.lastTutorQueryDate || null,
-            name: data.name || user.displayName || "Scholar",
+            name: data.name || user.displayName || (user.email ? user.email.split("@")[0].split(/[^a-zA-Z]/).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).filter(Boolean).join(" ") : "Student Scholar"),
           });
 
           // Secondary checks for community-based tiers (referrals/groups)

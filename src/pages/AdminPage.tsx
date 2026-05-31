@@ -1,18 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { collection, addDoc, serverTimestamp, getDocs, orderBy, query } from "firebase/firestore";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { Upload, Database, CheckCircle2, AlertCircle, FileSpreadsheet } from "lucide-react";
 import { Logo } from "../components/Logo";
-import { Sidebar } from "../components/Sidebar";
+import { Navbar } from "../components/Navbar";
+import { useUser } from "../UserContext";
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const { user, loading } = useUser();
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [sheetUrl, setSheetUrl] = useState("");
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    const adminEmails = [
+      "johntobismart@gmail.com",
+    ];
+    if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // ... handles file upload
@@ -156,23 +172,25 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-dim font-body-md text-on-surface flex flex-row w-full">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto w-full">
-        <nav className="bg-surface px-6 py-4 shadow-sm border-b border-outline-variant/30 sticky top-0 z-50 md:hidden">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <Link to="/" className="hover:opacity-90 transition-opacity">
-              <Logo />
-            </Link>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="text-primary font-bold text-sm hover:underline"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </nav>
+    <div className="min-h-screen bg-surface-dim font-body-md text-on-surface flex flex-col w-full">
+      <Navbar />
 
+      {/* Mobile Top Navigation (only visible under md:breakpoint) */}
+      <nav className="bg-surface px-6 py-4 shadow-sm border-b border-outline-variant/30 sticky top-0 z-50 md:hidden">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <Link to="/" className="hover:opacity-90 transition-opacity">
+            <Logo />
+          </Link>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="text-primary font-bold text-sm hover:underline"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </nav>
+
+      <div className="flex-1 min-w-0 overflow-y-auto w-full">
         <main className="max-w-4xl mx-auto px-6 py-12 space-y-8 w-full">
         {/* Questions Upload Section */}
         <div className="bg-surface p-10 rounded-3xl shadow-sm border border-outline-variant/50">

@@ -35,13 +35,14 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
-import { Sidebar } from "../components/Sidebar";
+import { Navbar } from "../components/Navbar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile: userProfile, loading: userLoading } = useUser();
-  const firstName = user?.displayName ? user.displayName.split(' ')[0] : "Scholar";
+  const fullName = userProfile?.name || user?.displayName || (user?.email ? user.email.split("@")[0].split(/[^a-zA-Z]/).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).filter(Boolean).join(" ") : "Student");
+  const firstName = fullName.split(' ')[0];
   const [stats, setStats] = useState({ total: 0, average: 0, highest: 0 });
   const [recentExams, setRecentExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,22 +183,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md select-none sm:select-text flex flex-row w-full">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto w-full">
-        <AnimatePresence>
-          {showSuccess && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2"
-            >
-              <Trophy className="w-5 h-5" /> Account upgraded to Pro successfully!
-            </motion.div>
-          )}
-        </AnimatePresence>
+    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md select-none sm:select-text flex flex-col w-full">
+      <Navbar />
 
+      {/* Mobile Top Navigation (only visible under md: breakpoint) */}
       <nav className="md:hidden bg-surface/90 backdrop-blur-md px-5 py-3 flex justify-between items-center shadow-sm sticky top-0 z-40 border-b border-outline-variant/50">
         <Logo />
         <div className="flex items-center gap-3">
@@ -228,9 +217,9 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation Navbar */}
+      {/* Mobile Bottom Navigation (only visible under md: breakpoint) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant/50 flex justify-around items-center py-2 px-2 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-         <button onClick={() => { /* home */ }} className="flex flex-col items-center p-2 text-primary">
+         <button onClick={() => {}} className="flex flex-col items-center p-2 text-primary">
             <BookOpen className="w-6 h-6 mb-1" />
             <span className="text-[10px] font-bold">Home</span>
          </button>
@@ -246,7 +235,21 @@ export default function Dashboard() {
          </button>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-10 pb-28 md:pb-10">
+      <div className="flex-1 min-w-0 overflow-y-auto w-full">
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2"
+            >
+              <Trophy className="w-5 h-5" /> Account upgraded to Pro successfully!
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-10 pb-20">
         <AnimatePresence>
           {showConfigModal && (
             <ExamConfigModal

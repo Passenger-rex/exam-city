@@ -7,7 +7,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { useNavigate } from "react-router-dom";
-import { Sidebar } from "../components/Sidebar";
+import { Navbar } from "../components/Navbar";
 import { db, auth } from "../firebase";
 import { 
   collection, 
@@ -457,18 +457,19 @@ export default function TutorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-row font-sans h-screen overflow-hidden relative w-full">
-       <Sidebar />
-       {/* Backdrop on mobile */}
-       {sidebarOpen && (
-          <div 
-             onClick={() => setSidebarOpen(false)}
-             className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-sm transition-all"
-          />
-       )}
+    <div className="min-h-screen bg-surface flex flex-col font-sans h-screen overflow-hidden relative w-full">
+       <Navbar />
+       <div className="flex-1 flex flex-row relative overflow-hidden w-full h-full">
+         {/* Backdrop on mobile and desktop */}
+         {sidebarOpen && (
+            <div 
+               onClick={() => setSidebarOpen(false)}
+               className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm transition-all"
+            />
+         )}
 
-       {/* Sidebar for tutoring history */}
-       <aside className={`fixed inset-y-0 left-0 z-50 lg:relative bg-surface border-r border-outline-variant/30 flex flex-col h-full transform transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 w-[80vw] sm:w-[320px] shrink-0' : '-translate-x-full lg:translate-x-0 lg:w-[320px] shrink-0'}`}>
+         {/* Collapsible history drawer */}
+         <aside className={`fixed inset-y-0 left-0 z-50 bg-surface border-r border-outline-variant/30 flex flex-col h-full transform transition-all duration-300 ease-in-out shadow-2xl ${sidebarOpen ? 'translate-x-0 w-[80vw] sm:w-[320px] shrink-0' : '-translate-x-full w-[80vw] sm:w-[320px] shrink-0'}`}>
           <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between shrink-0">
              <div className="flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" />
@@ -660,7 +661,7 @@ export default function TutorPage() {
                <div onClick={() => navigate("/profile")} className="mt-1.5 p-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 border border-primary/10 flex items-center justify-between cursor-pointer group transition-all">
                  <div className="flex items-center gap-1">
                     <Award className="w-3 h-3 text-primary" />
-                    <span className="text-[9px] text-primary font-bold">Refer 5 friends to unlock lifetime PRO!</span>
+                    <span className="text-[9px] text-primary font-bold">Refer 12 friends to unlock lifetime PRO!</span>
                  </div>
                  <ChevronRight className="w-2.5 h-2.5 text-primary group-hover:translate-x-0.5 transition-transform" />
                </div>
@@ -926,8 +927,7 @@ export default function TutorPage() {
            </div>
          )}
        </AnimatePresence>
-
-
+       </div>
     </div>
   );
 }

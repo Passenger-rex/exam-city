@@ -28,7 +28,7 @@ import {
 import { Logo } from "../components/Logo";
 import { useUser } from "../UserContext";
 import { FeedbackWidget } from "../components/FeedbackWidget";
-import { Sidebar } from "../components/Sidebar";
+import { Navbar } from "../components/Navbar";
 
 interface ReferredUser {
   id: string;
@@ -229,23 +229,25 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md flex flex-row w-full">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto w-full">
-        <nav className="bg-surface/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 border-b border-outline-variant/30 md:hidden">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="p-2 hover:bg-surface-dim group rounded-full transition-colors flex items-center"
-              >
-                <ArrowLeft className="w-6 h-6 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </button>
-              <Logo />
-            </div>
-          </div>
-        </nav>
+    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md flex flex-col w-full">
+      <Navbar />
 
+      {/* Mobile Top Navigation (only visible under md:breakpoint) */}
+      <nav className="bg-surface/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 border-b border-outline-variant/30 md:hidden">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="p-2 hover:bg-surface-dim group rounded-full transition-colors flex items-center"
+            >
+              <ArrowLeft className="w-6 h-6 text-on-surface-variant group-hover:text-primary transition-colors" />
+            </button>
+            <Logo />
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex-1 min-w-0 overflow-y-auto w-full">
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
