@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
+import { Sidebar } from "../components/Sidebar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -181,56 +182,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md select-none sm:select-text">
-      <AnimatePresence>
-        {showSuccess && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2"
-          >
-            <Trophy className="w-5 h-5" /> Account upgraded to Pro successfully!
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <nav className="bg-surface/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 border-b border-outline-variant/50 hidden md:block">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Logo />
-          <div className="flex items-center gap-4 sm:gap-6">
-            <button
-              onClick={async () => {
-                setIsSigningOut(true);
-                setTimeout(async () => {
-                  try {
-                    await auth.signOut();
-                  } catch (error) {
-                    console.error("Sign out error", error);
-                    setIsSigningOut(false);
-                  }
-                }, 1000);
-              }}
-              disabled={isSigningOut}
-              className="text-on-surface-variant font-semibold text-sm hover:text-error transition-colors flex items-center gap-2 disabled:opacity-50"
-              aria-label="Sign Out"
+    <div className="min-h-screen bg-surface-dim text-on-surface font-body-md select-none sm:select-text flex flex-row w-full">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto w-full">
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-white px-6 py-3 rounded-full font-bold shadow-lg flex items-center gap-2"
             >
-              {isSigningOut ? (
-                <div className="w-4 h-4 border-2 border-on-surface-variant border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <LogOut className="w-4 h-4" />
-              )}
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
-            <button
-              onClick={() => navigate("/profile")}
-              className="w-10 h-10 rounded-full bg-surface-dim flex items-center justify-center cursor-pointer hover:bg-surface-container-high transition-colors outline outline-1 outline-outline-variant/50"
-              aria-label="Go to Profile"
-            >
-              <User className="w-5 h-5 text-on-surface-variant" />
-            </button>
-          </div>
-        </div>
-      </nav>
+              <Trophy className="w-5 h-5" /> Account upgraded to Pro successfully!
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       <nav className="md:hidden bg-surface/90 backdrop-blur-md px-5 py-3 flex justify-between items-center shadow-sm sticky top-0 z-40 border-b border-outline-variant/50">
         <Logo />
@@ -733,6 +699,7 @@ export default function Dashboard() {
           );
         })()}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

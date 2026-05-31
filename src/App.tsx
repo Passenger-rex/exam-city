@@ -18,6 +18,7 @@ import { PageTransition } from "./components/PageTransition";
 import { UserProvider } from "./UserContext";
 
 import { SplashScreen } from "./components/SplashScreen";
+import { DarkModeToggle } from "./components/DarkModeToggle";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -115,6 +116,7 @@ export default function App() {
     <UserProvider>
       <BrowserRouter>
         <SplashScreen />
+        <DarkModeToggle />
         <AnimatedRoutes />
       </BrowserRouter>
     </UserProvider>

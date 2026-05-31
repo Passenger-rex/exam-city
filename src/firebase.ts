@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
+import { getStorage } from "firebase/storage";
 import localConfig from "../firebase-applet-config.json";
 
 const firebaseConfig = {
@@ -20,9 +21,11 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || localConfig.firestoreDatabaseId || "ai-studio-f3bff7d7-cefd-4a42-aa3d-c8cfedf96ffe";
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
   ignoreUndefinedProperties: true,
-}, localConfig.firestoreDatabaseId);
+}, dbId);
 export const auth = getAuth();
 export const functions = getFunctions(app, "europe-west2");
+export const storage = getStorage(app);

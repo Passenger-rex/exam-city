@@ -103,32 +103,13 @@ async function fetchAlocQuestions(subject: string, limit: number, year?: string,
     
     const cleanToken = token.replace(/^["']+|["']+$/g, "").trim();
     
-    // Create broad variation of request attempts
+    // Create targeted request attempts
     const endpoints: string[] = [];
-    const types = ["utme", "waec", "post-utme", "neco"];
     
     slugsToTry.forEach(slug => {
       // Prioritize the user-provided working format: /api/v2/q/{limit}?subject={subject}
       endpoints.push(`https://questions.aloc.com.ng/api/v2/q/${limit}?subject=${encodeURIComponent(slug)}`);
       endpoints.push(`https://questions.aloc.com.ng/api/v2/q/${limit}?subject=${encodeURIComponent(slug)}&AccessToken=${cleanToken}`);
-
-      // Try v2 q-practice with different types (most reliable for practice mode)
-      types.forEach(type => {
-        const url = `https://questions.aloc.com.ng/api/v2/q-practice?subject=${encodeURIComponent(slug)}&limit=${limit}&type=${type}`;
-        endpoints.push(url);
-        endpoints.push(`${url}&AccessToken=${cleanToken}`);
-      });
-
-      // Try other known endpoints
-      baseUrls.forEach(baseUrl => {
-        const urlWithSubject = `${baseUrl}?subject=${encodeURIComponent(slug)}&limit=${limit}`;
-        endpoints.push(urlWithSubject);
-        endpoints.push(`${urlWithSubject}&AccessToken=${cleanToken}`);
-      });
-      
-      // Legacy variations
-      endpoints.push(`https://questions.aloc.com.ng/v1/qp/questions?subject=${encodeURIComponent(slug)}&limit=${limit}`);
-      endpoints.push(`https://questions.aloc.com.ng/v1/qc/questions?subject=${encodeURIComponent(slug)}&limit=${limit}`);
     });
     
     if (year && year !== "any" && year !== "random") {
@@ -274,6 +255,45 @@ app.get("/api/curriculum-topics", async (req, res) => {
 
 // Questions generator API Endpoint
 app.get(["/api/questions", "/questions"], async (req, res) => {
+  // Helper to clean and format math text for superscripts and subscripts
+  const formatMath = (txt: string) => {
+     if (!txt) return "";
+     let result = txt;
+
+     // 1. Handle fractions \frac{a}{b}
+     result = result.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1/$2)");
+     
+     // 2. Clear known symbols
+     result = result.replace(/\\pm/g, "&plusmn;");
+     result = result.replace(/\\times/g, "&times;");
+     result = result.replace(/\\div/g, "&divide;");
+     result = result.replace(/\\sqrt\{([^{}]+)\}/g, "&radic;($1)");
+     result = result.replace(/\\sqrt/g, "&radic;");
+     
+     // 3. Powers/Subscripts with braces
+     result = result.replace(/\^\{([^{}]+)\}/g, "<sup>$1</sup>");
+     result = result.replace(/\_\{([^{}]+)\}/g, "<sub>$1</sub>");
+     
+     // 4. Powers/Subscripts without braces (single char or digits)
+     result = result.replace(/\^(\d+)/g, "<sup>$1</sup>");
+     result = result.replace(/\^([a-zA-Z])/g, "<sup>$1</sup>");
+     result = result.replace(/\_(\d+)/g, "<sub>$1</sub>");
+     result = result.replace(/\_([a-zA-Z])/g, "<sub>$1</sub>");
+     
+     // 5. Greek & Logic
+     result = result.replace(/\\alpha/g, "&alpha;");
+     result = result.replace(/\\beta/g, "&beta;");
+     result = result.replace(/\\theta/g, "&theta;");
+     result = result.replace(/\\pi/g, "&pi;");
+     result = result.replace(/\\implies/g, "&rArr;");
+     result = result.replace(/\\rightarrow/g, "&rarr;");
+     result = result.replace(/\\infty/g, "&infin;");
+
+     // Strip dollar signs
+     result = result.replace(/\$/g, "");
+     return result;
+  };
+
   try {
     const { subject = "english", year = "any", type = "standard", bank = "public", topic = "", level = "standard" } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
@@ -303,45 +323,6 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       const mappedAloc = fetchedAloc.map((item: any) => {
         const optionsRaw = item.option || item.options || {};
         
-        // Helper to clean and format math text for superscripts and subscripts
-        const formatMath = (txt: string) => {
-           if (!txt) return "";
-           let result = txt;
-
-           // 1. Handle fractions \frac{a}{b}
-           result = result.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1/$2)");
-           
-           // 2. Clear known symbols
-           result = result.replace(/\\pm/g, "&plusmn;");
-           result = result.replace(/\\times/g, "&times;");
-           result = result.replace(/\\div/g, "&divide;");
-           result = result.replace(/\\sqrt\{([^{}]+)\}/g, "&radic;($1)");
-           result = result.replace(/\\sqrt/g, "&radic;");
-           
-           // 3. Powers/Subscripts with braces
-           result = result.replace(/\^\{([^{}]+)\}/g, "<sup>$1</sup>");
-           result = result.replace(/\_\{([^{}]+)\}/g, "<sub>$1</sub>");
-           
-           // 4. Powers/Subscripts without braces (single char or digits)
-           result = result.replace(/\^(\d+)/g, "<sup>$1</sup>");
-           result = result.replace(/\^([a-zA-Z])/g, "<sup>$1</sup>");
-           result = result.replace(/\_(\d+)/g, "<sub>$1</sub>");
-           result = result.replace(/\_([a-zA-Z])/g, "<sub>$1</sub>");
-           
-           // 5. Greek & Logic
-           result = result.replace(/\\alpha/g, "&alpha;");
-           result = result.replace(/\\beta/g, "&beta;");
-           result = result.replace(/\\theta/g, "&theta;");
-           result = result.replace(/\\pi/g, "&pi;");
-           result = result.replace(/\\implies/g, "&rArr;");
-           result = result.replace(/\\rightarrow/g, "&rarr;");
-           result = result.replace(/\\infty/g, "&infin;");
-
-           // Strip dollar signs
-           result = result.replace(/\$/g, "");
-           return result;
-        };
-
         const cleanOptions: Record<string, string> = {
           a: formatMath(optionsRaw.a || optionsRaw.A || ""),
           b: formatMath(optionsRaw.b || optionsRaw.B || ""),
@@ -412,12 +393,13 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       ${topicInstruction}
       
       The questions MUST:
-      1. Be entirely novel and highly varied. Do NOT repeat standard, common examples. Use this random entropy seed (${randomEntropy}) to guarantee unique question formulations.
+      1. Be entirely novel and highly varied. Do NOT repeat standard, common examples. (Internal seed: ${randomEntropy})
       ${levelInstruction}
       ${clinicalInstruction}
-      4. Vary the formats: heavily lean into detailed multi-step problem solving, complex case studies, extensive data interpretation, advanced formulas, or multi-stage reactions as appropriate for the level.
-      5. Use precise modern nomenclature (such as IUPAC for Chemistry, Terminologia Anatomica for Anatomy), strict scientific/academic terminology, and absolute technical accuracy.
-      6. Have highly plausible and sophisticated distractors (incorrect options). The distinctions between correct and incorrect options should be extremely subtle, requiring deep mastery to discern, and cannot be eliminated by simple guessing.
+      4. Ensure the questions perfectly match the curriculum of secondary school mock exams (e.g., WAEC, NECO, UTME/JAMB) if applicable.
+      5. Use precise modern nomenclature and maintain terminology appropriate for the target exam level.
+      6. Provide highly plausible distractors (incorrect options). The distinctions between correct and incorrect options should be clear but require real understanding to discern.
+      7. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
       
       IMPORTANT FOR MATHEMATICS/SCIENCE:
       - DO NOT use dollar signs ($) or LaTeX.

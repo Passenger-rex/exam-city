@@ -7,6 +7,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { useNavigate } from "react-router-dom";
+import { Sidebar } from "../components/Sidebar";
 import { db, auth } from "../firebase";
 import { 
   collection, 
@@ -241,6 +242,11 @@ export default function TutorPage() {
     if (!user) return;
     setSessionsLoading(true);
     
+    const safetyTimeout = setTimeout(() => {
+      console.warn("Tutor sessions loading timeout.");
+      setSessionsLoading(false);
+    }, 4500);
+
     const q = query(
       collection(db, "tutor_sessions"),
       where("userId", "==", user.uid),
@@ -248,6 +254,7 @@ export default function TutorPage() {
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      clearTimeout(safetyTimeout);
       const loaded = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -255,12 +262,16 @@ export default function TutorPage() {
       setSessions(loaded);
       setSessionsLoading(false);
     }, (error) => {
+      clearTimeout(safetyTimeout);
       console.error("Error on tutor_sessions snapshot:", error);
       handleFirestoreError(error, OperationType.LIST, "tutor_sessions");
       setSessionsLoading(false);
     });
     
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimeout);
+      unsubscribe();
+    };
   }, [user]);
 
   // Load a session if set in search params or fallback
@@ -446,7 +457,8 @@ export default function TutorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-row font-sans h-screen overflow-hidden relative">
+    <div className="min-h-screen bg-surface flex flex-row font-sans h-screen overflow-hidden relative w-full">
+       <Sidebar />
        {/* Backdrop on mobile */}
        {sidebarOpen && (
           <div 

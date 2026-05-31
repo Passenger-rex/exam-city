@@ -10,6 +10,7 @@ interface UserProfile {
   groupMembers?: string[] | null;
   tutorQueriesUsed?: number;
   lastTutorQueryDate?: string | null;
+  name?: string;
 }
 
 interface UserContextType {
@@ -52,10 +53,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (!user) return;
 
+    // Safety timeout to prevent the app from hanging forever if Firestore is unreachable/offline
+    const safetyTimeout = setTimeout(() => {
+      console.warn("User profile loading took too long. Falling back to default values to keep app responsive.");
+      const guestCount = Number(localStorage.getItem('guestExamCount') || 0);
+      setProfile(prev => prev.testsTakenThisMonth === 0 ? { tier: "free", testsTakenThisMonth: guestCount } : prev);
+      setLoading(false);
+    }, 4000);
+
     const userRef = doc(db, "users", user.uid);
     const unsubscribeProfile = onSnapshot(
       userRef,
       async (docSnap) => {
+        clearTimeout(safetyTimeout);
         if (docSnap.exists()) {
           const data = docSnap.data();
           let currentTier = data.tier || "free";
@@ -95,6 +105,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
             groupMembers,
             tutorQueriesUsed: Number(data.tutorQueriesUsed || 0),
             lastTutorQueryDate: data.lastTutorQueryDate || null,
+            name: data.name || user.displayName || "Scholar",
           });
 
           // Secondary checks for community-based tiers (referrals/groups)
@@ -116,7 +127,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
                 const groupsQ = query(collection(db, "users"), where("groupMembers", "array-contains", user.email.toLowerCase().trim()));
                 const groupsSnap = await getDocs(groupsQ);
                 if (!groupsSnap.empty) {
-                  const adminData = groupsSnap.docs[0].data();
                   setProfile(prev => ({
                     ...prev,
                     tier: "pro",
@@ -137,12 +147,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       },
       (error) => {
+        clearTimeout(safetyTimeout);
         console.error("Error fetching user profile:", error);
         setLoading(false);
       }
     );
 
-    return () => unsubscribeProfile();
+    return () => {
+      clearTimeout(safetyTimeout);
+      unsubscribeProfile();
+    };
   }, [user]);
 
   return (

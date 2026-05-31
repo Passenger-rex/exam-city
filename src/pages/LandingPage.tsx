@@ -24,7 +24,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [showConfig, setShowConfig] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -47,11 +46,6 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  useEffect(() => {
-    if (isDark) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
-  }, [isDark]);
-
   return (
     <div className="min-h-screen bg-background text-on-background font-body-md overflow-x-hidden selection:bg-primary/20 selection:text-primary relative transition-colors duration-500">
       <ExamConfigModal 
@@ -70,12 +64,6 @@ export default function LandingPage() {
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className="p-2 rounded-full hover:bg-surface-dim transition-colors text-on-surface-variant hover:text-on-surface hover-jelly"
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
             <Link
               to="/login"
               className="font-semibold text-on-surface hover:text-primary transition-colors hover-jelly"
@@ -91,12 +79,6 @@ export default function LandingPage() {
           </div>
 
           <div className="md:hidden flex items-center gap-3 z-50 relative">
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-dim text-on-surface-variant border border-outline-variant/30"
-            >
-               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
             <button 
               className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-dim text-on-surface-variant border border-outline-variant/30"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

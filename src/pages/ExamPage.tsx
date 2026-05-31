@@ -25,6 +25,7 @@ import {
   Send,
   Volume2,
   X,
+  Printer
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Markdown from "react-markdown";
@@ -678,6 +679,14 @@ export default function ExamPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
+          <button 
+            onClick={() => window.print()}
+            className="p-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors hidden sm:block"
+            aria-label="Print/Download PDF"
+            title="Download PDF"
+          >
+            <Printer className="w-5 h-5" />
+          </button>
           <button 
             onClick={() => setShowGrid(!showGrid)}
             className="lg:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors"

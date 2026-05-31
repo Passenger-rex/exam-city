@@ -319,7 +319,12 @@ export default function AuthPage() {
     setError("");
     try {
       const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/spreadsheets');
       const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+         sessionStorage.setItem("google_access_token", credential.accessToken);
+      }
       
       const userDocRef = doc(db, "users", result.user.uid);
       const userSnap = await getDoc(userDocRef);

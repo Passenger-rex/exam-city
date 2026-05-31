@@ -4,7 +4,7 @@ const cors = require('cors')({ origin: true });
 const crypto = require('crypto');
 
 admin.initializeApp();
-const db = admin.firestore(admin.app(), "j-texams-db");
+const db = admin.firestore(admin.app(), "ai-studio-f3bff7d7-cefd-4a42-aa3d-c8cfedf96ffe");
 
 // Hardcode the region to europe-west2
 const regionalFunctions = functions.region("europe-west2");
