@@ -10,10 +10,14 @@ import {
   Award,
   Play,
   Sparkles,
+  Printer,
+  FileDown,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { ReviewModal } from "../components/ReviewModal";
 import { motion } from "motion/react";
 import Markdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 export default function ReviewPage() {
   const { resultId } = useParams();
@@ -22,6 +26,16 @@ export default function ReviewPage() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiExplanations, setAiExplanations] = useState<Record<string, {loading: boolean, text: string}>>({});
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  useEffect(() => {
+    // Show review modal automatically after 10 seconds of viewing the result
+    const timer = setTimeout(() => {
+      setIsReviewModalOpen(true);
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -162,7 +176,7 @@ export default function ReviewPage() {
                 stroke="currentColor"
                 strokeWidth="10"
                 className={`${scorePercentage >= 80 ? "text-green-500" : scorePercentage >= 60 ? "text-yellow-500" : "text-red-500"} transition-all duration-1000 ease-out`}
-                strokeDasharray="${scorePercentage * 2.82} 282"
+                strokeDasharray={`${scorePercentage * 2.82} 282`}
               />
             </svg>
             <div className="absolute text-center">
@@ -188,6 +202,26 @@ export default function ReviewPage() {
                 className="px-6 py-3 bg-primary text-on-primary font-bold rounded-xl hover:bg-primary/90 transition-all active:scale-95 shadow-sm inline-flex items-center gap-2"
               >
                 <Play className="w-4 h-4" /> Try Again
+              </button>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("customPrintExam", JSON.stringify(result.questions || questions));
+                  const printUrl = `/exam?subject=${encodeURIComponent(result.subject || '')}&print=true&use_history=true`;
+                  navigate(printUrl);
+                }}
+                className="px-6 py-3 bg-surface border border-outline-variant hover:bg-surface-dim font-bold text-on-surface rounded-xl transition-all active:scale-95 shadow-sm inline-flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4 text-on-surface-variant" /> Export Exam PDF
+              </button>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("customPrintExam", JSON.stringify(result.questions || questions));
+                  const printUrl = `/exam?subject=${encodeURIComponent(result.subject || '')}&print=true&answers=true&use_history=true`;
+                  navigate(printUrl);
+                }}
+                className="px-6 py-3 bg-surface border border-outline-variant hover:bg-surface-dim font-bold text-primary rounded-xl transition-all active:scale-95 shadow-sm inline-flex items-center gap-2"
+              >
+                <FileDown className="w-4 h-4" /> Export Answer Key
               </button>
             </div>
           </div>
@@ -216,10 +250,11 @@ export default function ReviewPage() {
                   >
                     {idx + 1}
                   </div>
-                  <h3 
-                    className="text-base sm:text-lg lg:text-xl font-bold font-headline-md leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: q.question_html || q.question_text }}
-                  />
+                  <h3 className="text-base sm:text-lg lg:text-xl font-bold font-headline-md leading-relaxed markdown-body">
+                    <Markdown rehypePlugins={[rehypeRaw]}>
+                      {q.question_html || q.question_text}
+                    </Markdown>
+                  </h3>
                 </div>
 
                 {q.image && (
@@ -252,12 +287,13 @@ export default function ReviewPage() {
                       return (
                         <div
                           key={key}
-                          className={`p-4 rounded-2xl border-2 flex justify-between items-center ${bgClass}`}
+                          className={`p-4 rounded-2xl border-2 flex justify-between items-center ${bgClass} markdown-body`}
                         >
-                          <span 
-                            className={`text-sm sm:text-base font-medium ${textClass}`}
-                            dangerouslySetInnerHTML={{ __html: val }}
-                          />
+                          <div className={`text-sm sm:text-base font-medium flex-1 ${textClass}`}>
+                             <Markdown rehypePlugins={[rehypeRaw]}>
+                               {val}
+                             </Markdown>
+                          </div>
                           {isActualCorrect && (
                             <CheckCircle2 className="w-5 h-5 text-green-600" />
                           )}
@@ -278,10 +314,11 @@ export default function ReviewPage() {
                       <h4 className="font-bold text-sm uppercase tracking-wider mb-2 text-on-surface flex items-center gap-2">
                         Explanation
                       </h4>
-                      <div 
-                        className="text-on-surface-variant font-medium text-sm sm:text-base leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: q.explanation }}
-                      />
+                      <div className="text-on-surface-variant font-medium text-sm sm:text-base leading-relaxed markdown-body">
+                        <Markdown rehypePlugins={[rehypeRaw]}>
+                          {q.explanation}
+                        </Markdown>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -310,7 +347,7 @@ export default function ReviewPage() {
                                </div>
                             ) : (
                                <div className="markdown-body prose prose-primary prose-sm sm:prose-base max-w-none text-on-surface-variant">
-                                  <Markdown>{aiExplanations[q.id].text}</Markdown>
+                                  <Markdown rehypePlugins={[rehypeRaw]}>{aiExplanations[q.id].text}</Markdown>
                                </div>
                             )}
                          </div>
@@ -322,6 +359,12 @@ export default function ReviewPage() {
           })}
         </div>
       </main>
+
+      <ReviewModal 
+        isOpen={isReviewModalOpen} 
+        onClose={() => setIsReviewModalOpen(false)} 
+        context={{ resultId, score: result.score, total: result.total, subject: result.subject }}
+      />
     </div>
   );
 }

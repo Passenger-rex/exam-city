@@ -550,7 +550,7 @@ export default function Dashboard() {
           const fullMessageForCopy = `${modalShareText} ${shareUrl}`;
 
           return (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
               {/* Dismiss backdrop */}
               <div 
                 className="absolute inset-0 cursor-default" 
@@ -562,27 +562,27 @@ export default function Dashboard() {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.95, opacity: 0, y: 15 }}
                 transition={{ type: "spring", duration: 0.4 }}
-                className="bg-surface border border-outline-variant/60 rounded-3xl p-6 w-[350px] max-w-full shadow-2xl relative z-10 flex flex-col font-sans overflow-hidden"
+                className="bg-surface border border-outline-variant/30 rounded-[32px] p-8 w-[380px] max-w-full shadow-2xl relative z-10 flex flex-col font-sans overflow-hidden"
               >
                 {/* Visual top accent bar */}
-                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-primary via-secondary to-primary/80 animate-pulse" />
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-primary via-secondary to-primary" />
 
                 {/* Close Button */}
                 <button
                   onClick={() => setShareModalExam(null)}
-                  className="absolute top-4 right-4 p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-dim rounded-full transition-colors outline-none"
+                  className="absolute top-4 right-4 p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-dim rounded-full transition-all active:scale-90 border border-outline-variant/20"
                   aria-label="Close share dialog"
                 >
-                  <X className="w-4.5 h-4.5" />
+                  <X className="w-5 h-5" />
                 </button>
 
                 {/* Title */}
-                <div className="mb-5 mt-1 text-center font-sans">
-                  <h3 className="text-lg font-black text-on-surface tracking-tight mb-1">
-                    Share Performance
+                <div className="mb-6 mt-2 text-center font-sans">
+                  <h3 className="text-2xl font-black text-on-surface tracking-tight mb-2">
+                    Share Score
                   </h3>
-                  <p className="text-xs text-on-surface-variant font-medium">
-                    Celebrate and inspire your schoolmates!
+                  <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
+                    Show off your progress and inspire your study streak!
                   </p>
                 </div>
 

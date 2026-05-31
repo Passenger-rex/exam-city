@@ -15,6 +15,10 @@
     "/tutor_sessions/{sessionId}": {
       "schema": "TutorSession",
       "description": "AI Tutor Chat history sessions"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "User feedback and ratings"
     }
   },
   "entities": {
@@ -69,6 +73,19 @@
         "messages": { "type": "array" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
+      }
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User feedback and rating",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "context": { "type": "object" },
+        "createdAt": { "type": "string" }
       }
     }
   }

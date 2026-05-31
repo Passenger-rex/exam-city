@@ -36,7 +36,16 @@ Options: ${JSON.stringify(options)}
 User's Incorrect Answer: ${options[userAnswer] || userAnswer}
 Correct Answer: ${options[correctAnswer] || correctAnswer}
 
-Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-step breakdown. Use markdown to format the output nicely.`;
+Explain it like you're an enthusiastic and helpful tutor. Give a clear, step-by-step breakdown. 
+
+IMPORTANT FOR MATHEMATICS/SCIENCE:
+- DO NOT use dollar signs ($) or LaTeX.
+- Use HTML tags for formatting: <sup> for exponents/superscripts (e.g., x<sup>2</sup>) and <sub> for subscripts (e.g., H<sub>2</sub>O, log<sub>10</sub>).
+- For division/fractions, use a clear format like "a/b" or HTML combinations if appropriate, but keep it simple and readable.
+- Use standard mathematical symbols (e.g., ×, ÷, ±, √, ∑, ∞).
+- Ensure all technical terms are clearly explained.
+
+Use markdown for overall structure.`;
 
     const content = await executeAIFallback([{ role: "user", content: prompt }]);
     res.json({ success: true, explanation: content });
@@ -55,7 +64,7 @@ async function fetchAlocQuestions(subject: string, limit: number, year?: string,
   // Normalize subject name to match ALOC subjects
   const subLower = String(subject).toLowerCase().trim();
   let alocSubject = "";
-  if (subLower.includes("mathematics") || subLower === "math" || subLower === "further mathematics") alocSubject = "mathematics";
+  if (subLower.includes("math")) alocSubject = "mathematics";
   else if (subLower.includes("english")) alocSubject = "english";
   else if (subLower.includes("biology")) alocSubject = "biology";
   else if (subLower.includes("chemistry")) alocSubject = "chemistry";
@@ -63,47 +72,109 @@ async function fetchAlocQuestions(subject: string, limit: number, year?: string,
   else if (subLower.includes("economics")) alocSubject = "economics";
   else if (subLower.includes("geography")) alocSubject = "geography";
   else if (subLower.includes("government")) alocSubject = "government";
-  else if (subLower.includes("literature")) alocSubject = "english literature";
+  else if (subLower.includes("literature")) alocSubject = "literature-in-english";
   else if (subLower.includes("crk") || subLower.includes("christian")) alocSubject = "crk";
   else if (subLower.includes("irk") || subLower.includes("islamic")) alocSubject = "irk";
   else if (subLower.includes("commerce")) alocSubject = "commerce";
-  else if (subLower.includes("accounting") || subLower.includes("financial")) alocSubject = "accounting";
-  else if (subLower.includes("agric")) alocSubject = "agricultural science";
-  else if (subLower.includes("civic")) alocSubject = "civic education";
+  else if (subLower.includes("account")) alocSubject = "accounting";
+  else if (subLower.includes("agric")) alocSubject = "agricultural-science";
+  else if (subLower.includes("civic")) alocSubject = "civic-education";
 
   if (!alocSubject) {
-    console.log(`[ALOC API] Subject "${subject}" is not a direct match for ALOC past questions API database.`);
-    return null;
+    console.log(`[ALOC API] Subject "${subject}" is not a direct match. Trying as-is slugified.`);
+    alocSubject = subLower.replace(/\s+/g, '-');
   }
 
+  console.log(`[ALOC API] Mapping original subject "${subject}" to ALOC slug: "${alocSubject}"`);
+
   try {
-    // Fetch a larger set (80) so that we have enough diversity, random selection, and topic keyword coverage
-    let url = `https://questions.aloc.com.ng/v1/qp/questions?subject=${alocSubject}&limit=80`;
-    
-    if (year && year !== "any" && year !== "random") {
-      url += `&year=${year}`;
-    }
-    
-    console.log(`[ALOC API] Fetching from endpoint: ${url}`);
+    const slugsToTry = [alocSubject];
+    if (alocSubject === "literature-in-english") slugsToTry.push("english-literature", "literature");
+    if (alocSubject === "agricultural-science") slugsToTry.push("agric", "agriculture");
+    if (alocSubject === "civic-education") slugsToTry.push("civic");
+    if (alocSubject === "mathematics") slugsToTry.push("maths", "math");
+
+    const baseUrls = [
+      "https://questions.aloc.com.ng/api/q",
+      "https://questions.aloc.com.ng/api/v2/q",
+      "https://questions.aloc.com.ng/api/v2/q-practice",
+      "https://questions.aloc.com.ng/api/v1/q"
+    ];
     
     const cleanToken = token.replace(/^["']+|["']+$/g, "").trim();
+    
+    // Create broad variation of request attempts
+    const endpoints: string[] = [];
+    const types = ["utme", "waec", "post-utme", "neco"];
+    
+    slugsToTry.forEach(slug => {
+      // Prioritize the user-provided working format: /api/v2/q/{limit}?subject={subject}
+      endpoints.push(`https://questions.aloc.com.ng/api/v2/q/${limit}?subject=${encodeURIComponent(slug)}`);
+      endpoints.push(`https://questions.aloc.com.ng/api/v2/q/${limit}?subject=${encodeURIComponent(slug)}&AccessToken=${cleanToken}`);
+
+      // Try v2 q-practice with different types (most reliable for practice mode)
+      types.forEach(type => {
+        const url = `https://questions.aloc.com.ng/api/v2/q-practice?subject=${encodeURIComponent(slug)}&limit=${limit}&type=${type}`;
+        endpoints.push(url);
+        endpoints.push(`${url}&AccessToken=${cleanToken}`);
+      });
+
+      // Try other known endpoints
+      baseUrls.forEach(baseUrl => {
+        const urlWithSubject = `${baseUrl}?subject=${encodeURIComponent(slug)}&limit=${limit}`;
+        endpoints.push(urlWithSubject);
+        endpoints.push(`${urlWithSubject}&AccessToken=${cleanToken}`);
+      });
+      
+      // Legacy variations
+      endpoints.push(`https://questions.aloc.com.ng/v1/qp/questions?subject=${encodeURIComponent(slug)}&limit=${limit}`);
+      endpoints.push(`https://questions.aloc.com.ng/v1/qc/questions?subject=${encodeURIComponent(slug)}&limit=${limit}`);
+    });
+    
+    if (year && year !== "any" && year !== "random") {
+      endpoints.forEach((url, i) => {
+        if (!url.includes("year=")) {
+          endpoints[i] = `${url}&year=${year}`;
+        }
+      });
+    }
+    
     const headers: Record<string, string> = {
       "Accept": "application/json",
-      "AccessToken": cleanToken
+      "AccessToken": cleanToken,
+      "Authorization": `Bearer ${cleanToken}`
     };
 
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      console.warn(`[ALOC API] Request failed with status ${res.status}`);
-      return null;
+    let data: any[] | null = null;
+    
+    for (const url of endpoints) {
+      try {
+        console.log(`[ALOC API] Attempting fetch from: ${url}`);
+        const res = await fetch(url, { headers });
+        const contentType = res.headers.get("content-type") || "";
+        
+        if (res.ok && contentType.includes("application/json")) {
+           const jsonHistory: any = await res.json();
+           if (jsonHistory && jsonHistory.data && Array.isArray(jsonHistory.data) && jsonHistory.data.length > 0) {
+              console.log(`[ALOC API] SUCCESS: Retrieved ${jsonHistory.data.length} questions from ${url}`);
+              data = jsonHistory.data;
+              break;
+           } else if (jsonHistory && Array.isArray(jsonHistory)) {
+              // Some versions return raw array
+              console.log(`[ALOC API] SUCCESS (Raw Array): Retrieved ${jsonHistory.length} questions`);
+              data = jsonHistory;
+              break;
+           }
+        } else {
+           const errBody = await res.text();
+           console.warn(`[ALOC API] Attempt failed (${res.status}) for ${url}. Content: ${errBody.slice(0, 50)}...`);
+        }
+      } catch (e: any) {
+        console.error(`[ALOC API] Error for ${url}:`, e.message || e);
+      }
     }
 
-    const jsonHistory: any = await res.json();
-    if (jsonHistory && jsonHistory.data && Array.isArray(jsonHistory.data) && jsonHistory.data.length > 0) {
-      console.log(`[ALOC API] Successfully retrieved ${jsonHistory.data.length} questions for subject '${alocSubject}'`);
-      return jsonHistory.data;
-    }
-    return null;
+    return data;
   } catch (err: any) {
     console.error("[ALOC API] Failed fetching questions:", err.message || err);
     return null;
@@ -115,45 +186,50 @@ function getCurriculumInstructions(level: string) {
   let levelInstruction = "";
   let curriculumInstruction = "";
 
-  if (level === "undergrad") {
+  // Map custom sub-levels/years of study to base system levels for instructions mapping
+  let baseLevel = level;
+  if (["200", "300", "200_eng", "300_eng", "100_sci", "200_sci", "300_sci"].includes(level)) {
+    baseLevel = "undergrad";
+  } else if (["400", "500", "600", "400_eng", "500_eng", "400_sci"].includes(level)) {
+    baseLevel = "advanced";
+  }
+
+  if (baseLevel === "undergrad") {
     levelInstruction = `These questions/assessments MUST align strictly with the 100 - 300 Level (Undergraduate) Course Outline and General Academic standard of top-tier Nigerian Universities (such as University of Ilorin (UNILORIN), University of Lagos (UNILAG), University of Ibadan (UI), Obafemi Awolowo University (OAU), and Covenant University). This matches introductory to intermediate level curriculum requirements:
 - MEDICAL & HEALTH SCIENCES / PRE-CLINICAL MODULES: Focus heavily (at least 95%) on Pre-clinical/Basic medical sciences (Gross Anatomy, developmental Embryology, Cytology, Histology, systemic Physiology, Medical Biochemistry, & Basic Nutrition). Absolutely NO advanced diagnosis management or surgical management scenarios. Limit clinical contexts to at most 5% as basic pre-clinical correlates (e.g. anatomical nerve relationships, basic receptor action). Fully cover and sync specific core modules:
-  * CARDIOVASCULAR, BLOOD AND LYMPHATICS (CBD) / CELL BIOLOGY, BLOOD AND DEFENSE: Must cover cell biology principles, basic blood physiology (erythropoiesis, hemoglobin synthesis, normal blood groups, hemostasis, intrinsic/extrinsic clotting pathways, platelets), electrophysiology (SAN, AVN, action potentials), basic cardiac cycle (Wiggers diagram, cardiac output regulation, Starling's law), and histology/gross structure of blood vessels and spleen.
-  * CARDIOVASCULAR & RESPIRATORY SYSTEMS (CV/RS): Focus on mechanics of breathing, surfactant functions, pulmonary volumes/capacities (spirometry, FEV1, FVC, tidal volume), alveolar gas exchange, oxygen-hemoglobin dissociation curves, carbon dioxide transport, cardiorespiratory neuro-reflex controls, and renal/chemical acid-base buffering mechanics.
-  * INFECTIOUS DISEASES SYSTEM (IDS) / BASIC IMMUNOLOGY & DEFENSE: Innate vs adaptive immunity, antigens, antibodies, T and B cell maturation, phagocytosis, complement system pathways, basic bacteriology staining (Gram positive vs Gram negative walls, Ziehl-Neelsen, morphology), basic virology structure, and common basic parasitic life cycles.
   * ANATOMY UPPER & LOWER EXTREMITIES (LOCOMOTOR SYSTEM): Deep musculoskeletal anatomy of the shoulder, arm, forearm, hand, gluteal, thigh, popliteal, leg, and foot. Must cover muscle origins, insertions, actions, arterial/venous supplies, joint mechanics (shoulder, elbow, hip, knee, ankle stability), brachial and lumbosacral plexus anatomy, and pre-clinical nerve lesions (Erb-Duchenne palsy, Klumpke's palsy, radial nerve wrist drop, foot drop from common peroneal nerve injury).
+  * CORE PHYSIOLOGY & BIOCHEMISTRY: Cardiac output regulation, respiratory gas exchange, renal filtration, and metabolic pathways.
+  * IMMUNOLOGY & MICROBIOLOGY: Innate vs adaptive immunity, bacterial structure, and viral replication cycles.
 - ENGINEERING, COMPUTER SCIENCE & TECH: Focus heavily on foundational principles, engineering calculus, physics, linear algebra, general mechanics, circuit theories, introductory electronic devices, basic software programming concepts, elementary data structures (arrays, lists, stacks), and fundamental algorithms (sorting, searching). No advanced systems architecture, professional PM frameworks, or complex deployment.
 - LAW & JURISPRUDENCE: Align with 100-300 Level LLB courses: legal methods, legal system, constitutional law, contracts, criminal law, torts, and basic human rights law.
 - BUSINESS, ECONOMICS & ACCOUNTING: Focus on basic micro/macroeconomics, accounting entry logic, ledger balancing, general balance sheet preparations, arithmetic techniques, business math, and management principles.
 - NATURAL & APPLIED SCIENCES: Focus strictly on key foundational concepts, general stoichiometry, basic reaction mechanisms, physical states, Newtonian physics, electromagnetism, wave properties, basic heredity, calculus-based mathematical proofs, and introductory calculus.
 - ART, SOCIAL SCIENCES & HUMANITIES: Cover central concepts, major sociological/political theories, history outlines, and standard analytical writing.`;
 
-    curriculumInstruction = "Assessments must stay firmly within standard pre-clinical/undergraduate foundational boundaries and course outlines (including CBD, IDS, CV/RS, and Extremities anatomy). Avoid professional, clinical management, or postgraduate-level complexity.";
-  } else if (level === "advanced") {
+    curriculumInstruction = "Assessments must stay firmly within standard pre-clinical/undergraduate foundational boundaries and course outlines (including Anatomy, Physiology, and Biochemistry). Avoid professional, clinical management, or postgraduate-level complexity.";
+  } else if (baseLevel === "advanced") {
     levelInstruction = `These questions/assessments MUST match the rigorous 400 - 600 Level (Clinical or Advanced Undergraduate) Degree Curriculum of premier Nigerian Medical Schools, Teaching Hospitals, and Engineering/Science faculties (e.g., UI/UCH Ibadan, UNILORIN/UITH, UNILAG/LUTH, OAU/OAUTHC). This reflects complex applied theories, design implementation, and specialized coursework:
-- MEDICAL & HEALTH SCIENCES / CLINICAL SYNC: Sync with Clinical Years 4-6 MBBS/BDS/Nursing/Pharmacy curriculum. Integrate Pathology, Morbid Anatomy, Histopathology, Medical Microbiology, and Clinical Pharmacology. Patient presentations, diagnostic imaging (X-rays, CTs), and clinical/surgical vignettes must make up exactly 20-30% of the material; the remaining 70-80% must detail deep pathophysiology, biochemical mechanism defects, pharmacodynamics, indicators, and multi-system correlations. Sync with:
-  * CARDIOVASCULAR, BLOOD & LYMPHATICS (CBD): Pathophysiology of congenital/valvular heart diseases, infective endocarditis, myocarditis, cardiomyopathy, bleeding/clotting disorders (hemophilia, von Willebrand, DIC, DVT), leukemias, lymphomas, and myelodysplastic syndromes.
-  * CARDIOVASCULAR & RESPIRATORY SYSTEMS (CV/RS): Clinical cardiology & pulmonology. Detailed management of chronic heart failure (CHF), acute coronary syndrome (ACS), hypertension therapeutics, COPD, asthma step-up regimens, restrictive lung diseases, ARDS, and complex acid-base compensation interpretation.
-  * INFECTIOUS DISEASES SYSTEM (IDS): Diagnostic criteria and clinical pharmacology of antimicrobials, treatment algorithms, multi-drug resistance (MDR-TB), tropical infections (complicated malaria, typhoid fever, Lassa fever, meningitis, cholera, HIV/AIDS opportunistic infections).
+- MEDICAL & HEALTH SCIENCES / CLINICAL SYNC: Sync with Clinical Years 4-6 MBBS/BDS/Nursing/Pharmacy curriculum. Integrate Pathology, Morbid Anatomy, Histopathology, Medical Microbiology, and Clinical Pharmacology. Patient presentations, diagnostic imaging (X-rays, CTs), and clinical/surgical vignettes must be kept minimal (at most 10-15% of the material); the remaining 85-90% must detail deep pathophysiology, biochemical mechanism defects, pharmacodynamics, indicators, and multi-system correlations. Sync with:
   * ANATOMY UPPER & LOWER EXTREMITIES (SURGICAL/ORTHOPAEDIC): Surgical approaches to the joints, orthopedic fracture classifications (Salter-Harris, Gustilo-Anderson), compartment syndrome diagnoses and fasciotomy landmarks, deep tendon/nerve repairs, peripheral nerve entrapment decompressions, and osteomyelitis management.
+  * ADVANCED PATHOPHYSIOLOGY: Detailed mechanisms of heart failure, respiratory failure, renal disease, and infectious syndromes.
 - ENGINEERING, COMPUTER SCIENCE & TECH: Focus on advanced systems design, digital signal processing, structural analysis, highway/hydraulic design, compiler design, operating systems, advanced database algorithms, networking/Internet protocols, machine learning mathematics, and fluid dynamics/thermodynamics.
 - LAW & JURISPRUDENCE: Sync with 400-500 Level LLB courses: Land law, Law of Evidence, Jurisprudence, Equity and Trusts, Commercial/Intellectual Property law, and Company law.
 - BUSINESS, ECONOMICS & ACCOUNTING: Advanced Corporate Reporting, Auditing and Assurance, Taxation law/practice, Econometrics, and Portfolio investment theories.
 - NATURAL & APPLIED SCIENCES: Advanced modern physics (quantum mechanic fundamentals, relativity), complex spectroscopy, organic/inorganic synthesis, advanced molecular genetics, complex analysis, real analysis, and numerical computations.`;
 
-    curriculumInstruction = "Assessments should demand extensive logical synthesis, clinical case evaluations (using CBD, IDS, CV/RS, or orthopedic extremities correlates), multi-step calculations, legal or case analysis.";
-  } else if (level === "postgrad") {
+    curriculumInstruction = "Assessments should demand extensive logical synthesis, clinical case evaluations (using orthopedic extremities or systemic pathophysiology correlates), multi-step calculations, legal or case analysis.";
+  } else if (baseLevel === "postgrad") {
     levelInstruction = `These questions/assessments MUST reflect Postgraduate coursework and research standards (Master's and Doctoral/PhD levels) of elite universities. They must require profound critical evaluation, deep theoretical integration, and advanced experimental methodology knowledge:
-- MEDICAL & HEALTH SCIENCES: Detail advanced cellular/molecular pathology, pharmacokinetics/metabolism, detailed epidemiology models, advanced biostatistics, and academic medical translation. Sync with molecular research in CBD (cellular signaling, stem cells in hematopoiesis), IDS (cryptic resistance genes, immunology models, cytokine storms), CV/RS (mitochondrial respiration, pulmonary endothelial shear-stress), and biomechanical/tissue-engineering of extremities. Keep clinical contexts focused on scientific research/molecular therapy rather than routine clinical management.
+- MEDICAL & HEALTH SCIENCES: Detail advanced cellular/molecular pathology, pharmacokinetics/metabolism, detailed epidemiology models, advanced biostatistics, and academic medical translation. Sync with molecular research in hematopoiesis, immunology models, mitochondrial respiration, and biomechanical/tissue-engineering of extremities. Keep clinical contexts focused on scientific research/molecular therapy rather than routine clinical management.
 - ENGINEERING, COMPUTER SCIENCE & TECH: Tackle advanced engineering research, cryptographic protocols, cellular communications, parallel processing power systems, composite mechanics, optimization algorithms, and advanced nanotechnology.
 - LAW & JURISPRUDENCE: Comparative constitutionalism, international law/treaties, alternative dispute resolutions (ADR) theory, advanced jurisprudence, and comparative corporate law.
 - BUSINESS, ECONOMICS & ACCOUNTING: Empirical Finance modeling, complex econometric theories, auditing philosophies, strategic business models, and IFRS-based accounting research.
 - NATURAL & APPLIED SCIENCES: Quantum field theory, advanced organic retro-synthesis, molecular immunology, advanced abstract/modern algebra, and topology.`;
 
-    curriculumInstruction = "Focus heavily on cellular, statistical, research, and highly abstract theoretical dimensions of CBD, IDS, CV/RS, and musculoskeletal biomechanics.";
-  } else if (level === "professional") {
+    curriculumInstruction = "Focus heavily on cellular, statistical, research, and highly abstract theoretical dimensions of medical and musculoskeletal biomechanics.";
+  } else if (baseLevel === "professional") {
     levelInstruction = `These questions/assessments MUST align strictly with Fellowship, Professional Certification, and Licensing Board Curriculums (such as West African College of Surgeons (WACS), West African College of Physicians (WACP), National Postgraduate Medical College of Nigeria (NPMCN), COREN engineering professional practice exams, ICAN/ACCA chartered exams, and Nigerian Law School (NLS) Bar examinations):
-- MEDICAL & HEALTH SCIENCES: Focus on board-level clinical decisions, complicated differential diagnostics, expert-level clinical pharmacology, therapeutic intervention protocols, and multi-step management vignettes (clinical scenarios forming around 40-50% of the content, with the other 50-60% representing advanced medical science theory, medical law, and ethics).
+- MEDICAL & HEALTH SCIENCES: Focus on board-level clinical decisions, complicated differential diagnostics, expert-level clinical pharmacology, therapeutic intervention protocols, and multi-step management vignettes (clinical scenarios forming at most 15-20% of the content, with the remaining 80-85% representing advanced medical science theory, medical law, and ethics).
 - ENGINEERING/TECH: Focus on COREN/NSE Professional Examination standards: engineering ethics, project management (PMBOK), engineering economics, safety protocols, national environmental laws, and standard design codes.
 - LAW & JURISPRUDENCE: Focus strictly on NLS Bar Exam syllabi: civil litigation, criminal litigation, property law practice, corporate law practice, and professional ethics (Rules of Professional Conduct).
 - BUSINESS & FINANCE: Align with ICAN/ACCA standards: ethical code of conduct, advanced Taxation strategies, auditing and assurance reports, international financial reporting standards (IFRS), and strategic financial management.`;
@@ -214,7 +290,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
     // Try fetching from ALOC if requested, or if subject is matching Nigerian WAEC/UTME subjects
     let fetchedAloc: any[] | null = null;
     const isStandardLevel = String(level).trim().toLowerCase() === "standard";
-    const isAlocEligible = isStandardLevel && ["mathematics", "english", "biology", "chemistry", "physics", "economics", "geography", "government", "literature", "crk", "irk", "commerce", "accounting", "agric", "civic"]
+    const isAlocEligible = isStandardLevel && bank === "public" && ["mathematics", "english", "biology", "chemistry", "physics", "economics", "geography", "government", "literature", "crk", "irk", "commerce", "accounting", "agric", "civic"]
       .some(s => subjectStr.toLowerCase().includes(s));
 
     if (isAlocEligible) {
@@ -226,11 +302,51 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       // Map ALOC questions keys to match our exact required schema
       const mappedAloc = fetchedAloc.map((item: any) => {
         const optionsRaw = item.option || item.options || {};
+        
+        // Helper to clean and format math text for superscripts and subscripts
+        const formatMath = (txt: string) => {
+           if (!txt) return "";
+           let result = txt;
+
+           // 1. Handle fractions \frac{a}{b}
+           result = result.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1/$2)");
+           
+           // 2. Clear known symbols
+           result = result.replace(/\\pm/g, "&plusmn;");
+           result = result.replace(/\\times/g, "&times;");
+           result = result.replace(/\\div/g, "&divide;");
+           result = result.replace(/\\sqrt\{([^{}]+)\}/g, "&radic;($1)");
+           result = result.replace(/\\sqrt/g, "&radic;");
+           
+           // 3. Powers/Subscripts with braces
+           result = result.replace(/\^\{([^{}]+)\}/g, "<sup>$1</sup>");
+           result = result.replace(/\_\{([^{}]+)\}/g, "<sub>$1</sub>");
+           
+           // 4. Powers/Subscripts without braces (single char or digits)
+           result = result.replace(/\^(\d+)/g, "<sup>$1</sup>");
+           result = result.replace(/\^([a-zA-Z])/g, "<sup>$1</sup>");
+           result = result.replace(/\_(\d+)/g, "<sub>$1</sub>");
+           result = result.replace(/\_([a-zA-Z])/g, "<sub>$1</sub>");
+           
+           // 5. Greek & Logic
+           result = result.replace(/\\alpha/g, "&alpha;");
+           result = result.replace(/\\beta/g, "&beta;");
+           result = result.replace(/\\theta/g, "&theta;");
+           result = result.replace(/\\pi/g, "&pi;");
+           result = result.replace(/\\implies/g, "&rArr;");
+           result = result.replace(/\\rightarrow/g, "&rarr;");
+           result = result.replace(/\\infty/g, "&infin;");
+
+           // Strip dollar signs
+           result = result.replace(/\$/g, "");
+           return result;
+        };
+
         const cleanOptions: Record<string, string> = {
-          a: optionsRaw.a || optionsRaw.A || "",
-          b: optionsRaw.b || optionsRaw.B || "",
-          c: optionsRaw.c || optionsRaw.C || "",
-          d: optionsRaw.d || optionsRaw.D || ""
+          a: formatMath(optionsRaw.a || optionsRaw.A || ""),
+          b: formatMath(optionsRaw.b || optionsRaw.B || ""),
+          c: formatMath(optionsRaw.c || optionsRaw.C || ""),
+          d: formatMath(optionsRaw.d || optionsRaw.D || "")
         };
 
         let cleanAnswer = "a";
@@ -240,10 +356,10 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 
         return {
           id: String(item.id || Math.random()),
-          question: item.question || "",
+          question: formatMath(item.question || ""),
           option: cleanOptions,
           answer: cleanAnswer,
-          solution: item.solution || item.explanation || "No explanation provided.",
+          solution: formatMath(item.solution || item.explanation || "No explanation provided."),
           examyear: item.examyear || item.year || "Past Question"
         };
       });
@@ -303,6 +419,12 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       5. Use precise modern nomenclature (such as IUPAC for Chemistry, Terminologia Anatomica for Anatomy), strict scientific/academic terminology, and absolute technical accuracy.
       6. Have highly plausible and sophisticated distractors (incorrect options). The distinctions between correct and incorrect options should be extremely subtle, requiring deep mastery to discern, and cannot be eliminated by simple guessing.
       
+      IMPORTANT FOR MATHEMATICS/SCIENCE:
+      - DO NOT use dollar signs ($) or LaTeX.
+      - Use HTML tags: <sup> for exponents (e.g., x<sup>2</sup>) and <sub> for subscripts (e.g., log<sub>2</sub>).
+      - Use standard symbols for sets (e.g., {1, 2, 3}, ∩, ∪) and division.
+      - Ensure all mathematical and scientific notation is clean and correctly formatted using HTML tags where needed.
+      
       Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
       
       IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted matching this schema:
@@ -337,7 +459,17 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
          responseSubject = String(json.subject);
       }
       if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-        allQuestions = [...json.data];
+        allQuestions = json.data.map((q: any) => ({
+           ...q,
+           question: formatMath(q.question || ""),
+           solution: formatMath(q.solution || ""),
+           option: {
+             a: formatMath(q.option?.a || ""),
+             b: formatMath(q.option?.b || ""),
+             c: formatMath(q.option?.c || ""),
+             d: formatMath(q.option?.d || "")
+           }
+        }));
       } else {
          throw new Error("AI returned empty or invalid question data format.");
       }
@@ -391,6 +523,11 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
         ${levelInstruction}
         ${curriculumInstruction}
         Ensure all of your answers strictly and accurately adhere to these subjects and academic level guidelines.
+
+        IMPORTANT FOR MATHEMATICS/SCIENCE:
+        - DO NOT use dollar signs ($) or LaTeX delimiters.
+        - Use HTML <sup> and <sub> tags for all superscripts and subscripts.
+        - Use clear, standard mathematical symbols.
         
         Be encouraging. Respond in Markdown.` 
       },
@@ -505,10 +642,9 @@ app.post("/api/process-file", async (req, res) => {
         try {
           const { createRequire } = await import("module");
           const require = createRequire(import.meta.url);
-          const { PDFParse } = require("pdf-parse");
+          const pdf = require("pdf-parse");
           const buffer = Buffer.from(fileBase64, "base64");
-          const parser = new PDFParse({ data: buffer });
-          const pdfData = await parser.getText();
+          const pdfData = await pdf(buffer);
           extractedText = pdfData.text || "";
         } catch (pdfErr: any) {
           console.error("PDF Extraction Error:", pdfErr);
@@ -644,6 +780,33 @@ app.post("/api/process-file", async (req, res) => {
       console.error("[File API Fatal] Local processor failed:", fallbackErr);
       res.status(500).json({ success: false, error: "Unable to process document. Please try a different and smaller format." });
     }
+  }
+});
+
+// Feedback and Reviews API
+app.post("/api/feedback", async (req, res) => {
+  const { userId, rating, comment, category = "general", context = {} } = req.body;
+  try {
+    console.log(`[Feedback API] New ${category} feedback from ${userId}: ${rating} stars`);
+    
+    // We can also analyze the feedback sentiment using AI if it's a critical review
+    if (rating <= 2 && comment) {
+       const prompt = `Analyze this negative user feedback and suggest 3 actionable improvements for our exam prep platform.
+       
+Feedback: "${comment}"
+Context: ${JSON.stringify(context)}
+
+Return suggestions in concise bullet points.`;
+       const advice = await executeAIFallback([{ role: "user", content: prompt }]);
+       console.log(`[Feedback API] AI Suggestion for improvement: ${advice}`);
+    }
+
+    // Since we don't have direct firebase-admin here, we rely on client-side for storage 
+    // but the API can be used for secondary logging or AI processing.
+    res.json({ success: true, message: "Feedback received and being processed." });
+  } catch (error: any) {
+    console.error("[Feedback API] Error:", error.message || error);
+    res.status(500).json({ success: false, error: "Failed to process feedback." });
   }
 });
 

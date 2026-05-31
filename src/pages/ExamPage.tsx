@@ -27,6 +27,8 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import Markdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 export default function ExamPage() {
   const navigate = useNavigate();
@@ -51,6 +53,7 @@ export default function ExamPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [strictStarted, setStrictStarted] = useState(false);
   const [warnings, setWarnings] = useState(0);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   // We should not use localStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
   const stateKey = printParam 
@@ -106,6 +109,32 @@ export default function ExamPage() {
           }
         } catch (e) {
           console.error("Failed to load uploaded exam questions from store", e);
+        }
+      }
+
+      const useHistory = new URLSearchParams(window.location.search).get("use_history") === "true";
+      if (useHistory) {
+        try {
+          const stored = sessionStorage.getItem("customPrintExam");
+          if (stored) {
+            const parsedData = JSON.parse(stored);
+            const qList = parsedData.map((item: any) => ({
+              id: String(item.id || Math.random()),
+              question_html: item.question_html || item.question || "",
+              options: item.options || item.option || { a: "", b: "", c: "", d: "" },
+              correct_answer: item.correct_answer || item.answer || "a",
+              subject: item.subject || subjectParam,
+              explanation: item.explanation || item.solution || "",
+              year: item.year || item.examyear || "Exam",
+              isPremium: true,
+              image: item.image || null
+            }));
+            setQuestions(qList);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to load history PDF questions from store", e);
         }
       }
 
@@ -250,8 +279,9 @@ export default function ExamPage() {
            timeLeft
          }));
        };
-       saveData(); // Save instantly on change
-       const intervalId = setInterval(saveData, 30000); // 30s periodic auto-save
+       // Save on major changes, but not timer ticks to avoid disk thrashing
+       saveData(); 
+       const intervalId = setInterval(saveData, 10000); // 10s periodic auto-save is enough
        return () => clearInterval(intervalId);
     } else {
        // It's print mode. Wait a bit for DOM to render then trigger print
@@ -275,16 +305,22 @@ export default function ExamPage() {
     };
   }, [currentIndex]);
 
-  // Countdown timer effect
+  // Countdown timer effect - Robust implementation
   useEffect(() => {
     if (loading || submitting || printParam || timeLeft <= 0) return;
-    if (strictParam && !strictStarted) return; // wait till strict mode started
+    if (strictParam && !strictStarted) return;
     
     const timer = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1000));
+      setTimeLeft((prev) => {
+        if (prev <= 0) {
+           clearInterval(timer);
+           return 0;
+        }
+        return prev - 1000;
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, [loading, submitting, printParam, timeLeft, strictParam, strictStarted]);
+  }, [loading, submitting, printParam, strictParam, strictStarted, timeLeft <= 0]);
 
   const submitRef = useRef<() => void>(() => {});
   useEffect(() => { submitRef.current = handleSubmit; });
@@ -330,6 +366,7 @@ export default function ExamPage() {
   };
 
   const handleSubmit = async () => {
+    if (showSubmitConfirm) setShowSubmitConfirm(false);
     setSubmitting(true);
     localStorage.removeItem(stateKey);
     // Auto remove strict mode after submitting
@@ -448,6 +485,22 @@ export default function ExamPage() {
   if (printParam) {
     return (
        <div className="min-h-screen bg-white text-black p-10 font-serif print:p-0 print:m-0 max-w-4xl mx-auto relative z-10">
+          {/* Floating Action Bar for screen display only (hidden in print) */}
+          <div className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-md border border-gray-200 shadow-md px-4 py-2 rounded-full font-sans">
+             <button
+                onClick={() => navigate(-1)}
+                className="text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+             >
+                ← Return to Review
+             </button>
+             <button
+                onClick={() => window.print()}
+                className="text-xs font-bold bg-primary text-on-primary hover:bg-primary/90 px-3.5 py-1.5 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+             >
+                🖨️ Print / Save PDF
+             </button>
+          </div>
+
           {/* Watermark Background - Repeats on every physical page when printing due to position: fixed */}
           <div className="fixed inset-0 pointer-events-none flex flex-col justify-around items-center select-none opacity-[0.035] print:opacity-[0.025] -z-10 overflow-hidden mix-blend-multiply">
              {[1, 2, 3].map((i) => (
@@ -493,10 +546,11 @@ export default function ExamPage() {
                    <div className="flex items-start gap-4">
                      <span className="font-bold text-base min-w-[1.5rem] mt-0.5">{idx + 1}.</span>
                      <div className="flex-1">
-                       <div 
-                         className="mb-4 text-base leading-relaxed text-justify"
-                         dangerouslySetInnerHTML={{ __html: q.question_html || q.question_text }}
-                       />
+                       <div className="mb-4 text-base leading-relaxed text-justify markdown-body">
+                         <Markdown rehypePlugins={[rehypeRaw]}>
+                           {q.question_html || q.question_text}
+                         </Markdown>
+                       </div>
                        {q.image && (
                          <div className="mb-4">
                            <img src={q.image} alt={`Graphic for question ${idx + 1}`} className="max-w-full h-auto max-h-64 rounded-md object-contain mx-auto print:mx-0" referrerPolicy="no-referrer" />
@@ -506,18 +560,24 @@ export default function ExamPage() {
                          {Object.entries(q.options || {}).map(([key, val]: [string, any]) => {
                             const isCorrect = answersParam && key === q.correct_answer;
                             return (
-                               <div key={key} className={`flex gap-3 text-base ${isCorrect ? 'font-bold text-green-700 bg-green-50 p-1 -m-1 rounded' : ''}`}>
+                               <div key={key} className={`flex gap-3 text-base ${isCorrect ? 'font-bold text-green-700 bg-green-50 p-1 -m-1 rounded' : ''} markdown-body`}>
                                   <span className="font-bold uppercase">({key})</span>
-                                  <span dangerouslySetInnerHTML={{__html: val}} className="flex-1" />
+                                  <div className="flex-1">
+                                    <Markdown rehypePlugins={[rehypeRaw]}>
+                                      {val}
+                                    </Markdown>
+                                  </div>
                                   {isCorrect && <span className="ml-2 text-green-600 font-extrabold">✓</span>}
                                </div>
                             );
                          })}
                        </div>
                        {answersParam && q.explanation && (
-                         <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-900 rounded-r-md italic">
+                         <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-900 rounded-r-md italic markdown-body">
                            <span className="font-bold uppercase not-italic block mb-1">Solution / Explanation:</span>
-                           <span dangerouslySetInnerHTML={{__html: q.explanation}} />
+                           <Markdown rehypePlugins={[rehypeRaw]}>
+                              {q.explanation}
+                           </Markdown>
                          </div>
                        )}
                      </div>
@@ -623,7 +683,7 @@ export default function ExamPage() {
             className="lg:hidden p-2 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors"
             aria-label="Toggle Exam Overview"
           >
-            <LayoutGrid className="w-5 h-5 sm:w-6 sm:h-6" />
+            <LayoutGrid className="w-5 h-5" />
           </button>
           <motion.div
             animate={
@@ -638,7 +698,7 @@ export default function ExamPage() {
               duration: timeLeft < 60000 ? 0.5 : 2,
               ease: "easeInOut",
             }}
-            className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold font-mono text-xl md:text-2xl transition-colors duration-500 shadow-lg border-2 ${
+            className={`flex items-center gap-2 md:gap-3 px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold font-mono text-base md:text-2xl transition-colors duration-500 shadow-lg border-2 ${
               timeLeft < 60000
                 ? "bg-error text-white border-error shadow-error/40"
                 : timeLeft < 300000
@@ -646,7 +706,7 @@ export default function ExamPage() {
                 : "bg-surface-dim text-on-surface border-outline-variant/50 shadow-black/5"
             }`}
           >
-            <Clock className={`w-6 h-6 ${timeLeft < 60000 ? "animate-pulse" : ""}`} />
+            <Clock className={`w-4 h-4 md:w-6 md:h-6 ${timeLeft < 60000 ? "animate-pulse" : ""}`} />
             {formatTime(timeLeft)}
           </motion.div>
         </div>
@@ -684,10 +744,13 @@ export default function ExamPage() {
               transition={{ duration: 0.3 }}
               className="bg-surface py-5 px-4 sm:p-8 md:p-10 border-b sm:border border-outline-variant/20 sm:rounded-[28px] sm:shadow-sm"
             >
-              <h1 
-                className="text-base sm:text-lg md:text-2xl font-headline-md font-bold mb-5 sm:mb-8 md:mb-10 text-on-surface leading-relaxed prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl break-words w-full"
-                dangerouslySetInnerHTML={{ __html: currentQ?.question_html || currentQ?.question_text }}
-              />
+              <div className="text-base sm:text-lg md:text-2xl font-headline-md font-bold mb-5 sm:mb-8 md:mb-10 text-on-surface leading-relaxed prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl break-words w-full markdown-body">
+                <Markdown 
+                  rehypePlugins={[rehypeRaw]}
+                >
+                  {currentQ?.question_html || currentQ?.question_text}
+                </Markdown>
+              </div>
 
               {currentQ?.image && (
                 <div className="mb-6 sm:mb-8 md:mb-10 w-full flex justify-center bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-outline-variant/30 shadow-sm">
@@ -730,9 +793,12 @@ export default function ExamPage() {
                           </div>
                         </div>
                         <div
-                          className={`text-[15px] sm:text-[15px] md:text-base font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full pt-1 sm:pt-0 ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
-                          dangerouslySetInnerHTML={{ __html: val }}
-                        />
+                          className={`text-[15px] sm:text-[15px] md:text-base font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full pt-1 sm:pt-0 markdown-body ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
+                        >
+                          <Markdown rehypePlugins={[rehypeRaw]}>
+                             {val}
+                          </Markdown>
+                        </div>
                       </label>
                     );
                   },
@@ -758,7 +824,7 @@ export default function ExamPage() {
 
               {currentIndex === questions.length - 1 ? (
                 <button
-                  onClick={submitRef.current}
+                  onClick={() => setShowSubmitConfirm(true)}
                   className="px-5 sm:px-6 py-3 font-bold bg-primary text-white hover:bg-primary/90 rounded-xl transition-all shadow-[0_4px_14px_0_rgba(129,51,255,0.39)] flex items-center gap-2 active:scale-95"
                 >
                   <span className="hidden sm:inline">Submit Test</span>
@@ -786,7 +852,7 @@ export default function ExamPage() {
               </button>
               {currentIndex === questions.length - 1 ? (
                 <button
-                  onClick={submitRef.current}
+                  onClick={() => setShowSubmitConfirm(true)}
                   className="px-8 py-3.5 font-bold bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all shadow-[0_4px_14px_0_rgba(129,51,255,0.39)] flex items-center gap-2"
                 >
                   Submit Test <Send className="w-5 h-5 ml-1" />
@@ -850,7 +916,7 @@ export default function ExamPage() {
           </div>
           <div className="p-6 border-t border-outline-variant/30 bg-surface-dim/30">
             <button
-               onClick={handleSubmit}
+               onClick={() => setShowSubmitConfirm(true)}
                disabled={submitting}
                className="w-full py-4 bg-on-surface text-surface font-bold rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
             >
@@ -863,6 +929,61 @@ export default function ExamPage() {
           </div>
         </div>
       </main>
+
+      {/* Submit Confirmation Modal */}
+      <AnimatePresence>
+        {showSubmitConfirm && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-surface w-full max-w-[360px] rounded-[32px] overflow-hidden shadow-2xl border border-outline-variant/30 flex flex-col"
+            >
+              <div className="px-6 pt-8 pb-4 flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-5 text-primary rotate-3">
+                  <Send className="w-7 h-7" />
+                </div>
+                <h2 className="text-2xl font-bold font-headline-md mb-2 text-on-surface">Finish Exam?</h2>
+                <p className="text-on-surface-variant font-medium text-sm px-2">
+                  You've answered <strong>{answeredCount}</strong> of <strong>{questions.length}</strong> questions. Progress will be saved.
+                </p>
+              </div>
+
+              <div className="p-6 flex flex-col gap-3">
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="w-full py-4 bg-primary text-on-primary font-bold rounded-2xl hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 group"
+                >
+                  {submitting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 transition-transform group-hover:scale-110" />
+                      Yes, Submit Now
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowSubmitConfirm(false)}
+                  disabled={submitting}
+                  className="w-full py-4 bg-surface-dim text-on-surface font-bold rounded-2xl hover:bg-surface-container transition-all active:scale-95 border border-outline-variant/20"
+                >
+                  No, Keep Working
+                </button>
+              </div>
+              
+              <button 
+                onClick={() => setShowSubmitConfirm(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-surface-dim rounded-full transition-colors text-on-surface-variant"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Overlay for mobile drawer */}
       {showGrid && (

@@ -74,96 +74,6 @@ export class FallbackGenerator {
           solution: "Erb-Duchenne palsy involves loss of C5-C6 fibers. Since the abductors (deltoid, supraspinatus), lateral rotators (infraspinatus), and supinator/biceps brachii are paralyzed, the arm hangs adducted, medially rotated, with the forearm extended and pronated, forming the 'waiter's tip' posture.",
           examyear: "Postgrad Board"
         }
-      ],
-      "Cardiovascular, Blood & Lymphatics (CBD)": [
-        {
-          question: "Which of the following describes the key molecular trigger for the conversion of fibrinogen to fibrin monomer during the final stage of the coagulation cascade, and what cofactor is strictly required?",
-          option: {
-            a: "Activated Factor VIIa requiring Tissue Factor and free zinc ions",
-            b: "Thrombin (Factor IIa) which cleaves fibrinopeptides A and B, requiring calcium ions (Factor IV)",
-            c: "Factor IXa cleaving the activation peptide, requiring intracellular magnesium",
-            d: "Plasmin breaking down the alpha and beta chains, requiring Tissue Plasminogen Activator"
-          },
-          answer: "b",
-          solution: "Thrombin (Factor IIa) is a serine protease that cleaves fibrinopeptides A and B from the central domain of fibrinogen to form fibrin monomers, which then polymerize. This process, along with subsequent cross-linking by Factor XIIIa, is highly dependent on Calcium (Factor IV).",
-          examyear: "UNILAG MBBS"
-        },
-        {
-          question: "During the phase 0 depolarization of a cardiac contractile hummyocyte, which of the following ion channels is primarily responsible, and how does this contrast with the depolarization phase in the sinoatrial (SA) node pacemaker cells?",
-          option: {
-            a: "Rapid sodium channels (I_Na) in myocytes vs. L-type calcium channels (I_Ca,L) in SA node cells",
-            b: "L-type calcium channels (I_Ca,L) in myocytes vs. hyperpolarization-activated cyclic nucleotide-gated channels (I_f) in pacemaker cells",
-            c: "Inward rectifier potassium channels in myocytes vs. delayed rectifier channels in SA node cells",
-            d: "Transient outward potassium channels in myocytes vs. T-type calcium channels in pacemakers"
-          },
-          answer: "a",
-          solution: "In cardiac contractile cells, phase 0 depolarization is driven by rapid influx of sodium (I_Na) through voltage-gated Na+ channels. Pacemaker cells (e.g., SA node) lack functional rapid sodium channels; their slower upstroke depolarization (Phase 0) is driven by Ca2+ influx via L-type calcium channels.",
-          examyear: "UI Preclinical"
-        },
-        {
-          question: "A 48-year-old male with deep vein thrombosis is started on Heparin. What is the fundamental molecular mechanism of action of Heparin, and which laboratory metric is used to monitor its therapeutic window?",
-          option: {
-            a: "It directly inhibits vitamin K epoxide reductase; monitored using the PT/INR",
-            b: "It binds to antithrombin III, enhancing its inactivation of thrombin and Factor Xa; monitored via the activated partial thromboplastin time (aPTT)",
-            c: "It acts as a direct glycoprotein IIb/IIIa receptor antagonist; monitored by platelet count",
-            d: "It activates protein C and protein S; monitored via the bleeding time index"
-          },
-          answer: "b",
-          solution: "Heparin works indirectly by binding to and inducing a conformational change in antithrombin III, accelerating its inhibition of thrombin (IIa) and activated Factor Xa by over 1000-fold. The activated partial thromboplastin time (aPTT) checks the intrinsic/common pathway and is used to monitor unfractionated heparin.",
-          examyear: "Specialist Boards"
-        }
-      ],
-      "Cardiovascular & Respiratory Systems (CV/RS)": [
-        {
-          question: "A 65-year-old patient undergoes spirometry. The results indicate a Forced Expiratory Volume in 1 second (FEV1) of 1.2L (45% predicted) and a Forced Vital Capacity (FVC) of 3.0L (80% predicted), giving an FEV1/FVC ratio of 40%. Which pathology is most consistent with this, and how does the ventilation-perfusion (V/Q) ratio shift?",
-          option: {
-            a: "Restrictive lung disease with a high ventilation-perfusions ratio (V/Q > 1)",
-            b: "Obstructive lung disease (such as Asthma or COPD) with a decreased V/Q ratio due to airway resistance",
-            c: "Idiopathic Pulmonary Fibrosis with a normal to high V/Q ratio",
-            d: "Anatomical Dead Space expansion with no alteration in airway resistance"
-          },
-          answer: "b",
-          solution: "An FEV1/FVC ratio beneath 70% is diagnostic of obstructive pattern airway limitation (e.g., COPD or asthma). Airway obstruction reduces alveolar ventilation (V), which decreases the overall local ventilation-perfusion ratio (low V/Q), leading to a physiological shunt effect.",
-          examyear: "UCH Exam"
-        },
-        {
-          question: "According to the Henderson-Hasselbalch equation and chemical buffering mechanics, how does the kidney compensate for chronic respiratory acidosis caused by severe emphysema?",
-          option: {
-            a: "By increasing the excretion of bicarbonate (HCO3-) in the distal convoluted tubule",
-            b: "By actively secreting hydrogen ions (H+) and reabsorbing/producing bicarbonate (HCO3-) to raise systemic arterial pH towards normal",
-            c: "By hyperventilating to reduce the partial pressure of carbon dioxide (PCO2)",
-            d: "By decreasing the synthesis of ammonium (NH4+) in the proximal tubule cells"
-          },
-          answer: "b",
-          solution: "In chronic respiratory acidosis, there is a sustained increase in arterial PaCO2. The renal compensation mechanism (which takes 3-5 days to fully prime) involves increased H+ secretion via Na+/H+ antiporters, and increased HCO3- reabsorption and de novo synthesis, raising plasma bicarbonate levels.",
-          examyear: "Physiology Exam"
-        }
-      ],
-      "Infectious Diseases System (IDS)": [
-        {
-          question: "Which structural difference between Gram-positive and Gram-negative bacterial cell walls accounts for their differential retention of the Crystal Violet-Iodine complex during the decolorization step of the Gram stain?",
-          option: {
-            a: "Gram-positive walls have a thin peptidoglycan layer backed by a lipopolysaccharide outer membrane",
-            b: "Gram-positive walls possess a thick, highly cross-linked peptidoglycan layer that dehydrates and shrinks in alcohol, trapping the dye; whereas Gram-negative walls have a thin peptidoglycan layer and outer lipid membrane dissolved by alcohol, letting the dye wash out",
-            c: "Gram-negative walls contain teichoic and lipoteichoic acids that actively reject basic organic dyes",
-            d: "Gram-negative walls are completely impervious to iodine ions due to specialized calcium-binding porins"
-          },
-          answer: "b",
-          solution: "Gram stain decolorization depends on cell wall architecture. Acetone/alcohol dehydrates the thick Gram-positive peptidoglycan mesh, closing pores and retaining the large crystal violet-iodine complexes. In Gram-negatives, alcohol dissolves the outer lipid membrane and the thin peptidoglycan layer is easily penetrated, letting the dye wash out.",
-          examyear: "Microbiology"
-        },
-        {
-          question: "A medical student is analyzing the life cycle of Plasmodium falciparum. Which of the following describes the exact site of the sporozoite's immediate destination upon inoculation by the female Anopheles mosquito, and what is this phase of development called?",
-          option: {
-            a: "Red blood cells (Erythrocytic schizogony phase)",
-            b: "Hepatocytes of the liver (Pre-erythrocytic / Exo-erythrocytic schizogony phase)",
-            c: "Splenic red pulp macrophages (Erythrophagocytosis phase)",
-            d: "Vascular endothelial lining (Cytoadherence phase)"
-          },
-          answer: "b",
-          solution: "Sporozoites inoculated by the female Anopheles mosquito quickly enter the circulation and migrate to hepatocytes of the liver within 30 minutes, initiating the primary pre-erythrocytic (exo-erythrocytic) schizogony cycle before any blood stages begin.",
-          examyear: "Parasitology"
-        }
       ]
     };
 
@@ -182,6 +92,46 @@ export class FallbackGenerator {
           solution: "Paraxial mesoderm segments into somites, which divide into sclerotome (forms the vertebrae and ribs), dermomyotome (forms skeletal muscle and dermis). Deficiencies in sclerotome migration can lead to hemivertebrae and congenital scoliosis.",
           examyear: "Anatomy Core"
         },
+      ],
+      "Mathematics": [
+        {
+          question: "Solve the following quadratic equation using the quadratic formula: 2x<sup>2</sup> - 5x + 3 = 0. What are the values of x?",
+          option: {
+            a: "x = 1, x = 1.5",
+            b: "x = -1, x = -1.5",
+            c: "x = 0.5, x = 3",
+            d: "x = 2, x = 3"
+          },
+          answer: "a",
+          solution: "Using the formula x = (-b &plusmn; &radic;(b<sup>2</sup> - 4ac)) / 2a, we have a=2, b=-5, c=3. Discriminant D = (-5)<sup>2</sup> - 4(2)(3) = 25 - 24 = 1. So x = (5 &plusmn; 1) / 4, which gives x = 6/4 = 1.5 and x = 4/4 = 1.",
+          examyear: "WAEC"
+        },
+        {
+          question: "In set theory, if A = {x | x is a factor of 12} and B = {1, 2, 3, 4, 5, 6}, what is A &cap; B?",
+          option: {
+            a: "{1, 2, 3, 4, 6}",
+            b: "{1, 2, 3, 4, 5, 6}",
+            c: "{1, 2, 3, 4, 6, 12}",
+            d: "{1, 2, 3}"
+          },
+          answer: "a",
+          solution: "Factors of 12 are {1, 2, 3, 4, 6, 12}. The intersection with B = {1, 2, 3, 4, 5, 6} yields elements present in both sets: {1, 2, 3, 4, 6}.",
+          examyear: "JAMB"
+        },
+        {
+          question: "If a function f(x) = x<sup>3</sup> - 3x<sup>2</sup> - 9x + 5 is defined on the real numbers, find the local maximum and minimum coordinates of the function.",
+          option: {
+            a: "Local Max at (-1, 10), Local Min at (3, -22)",
+            b: "Local Max at (1, -6), Local Min at (-3, 15)",
+            c: "Local Max at (3, -22), Local Min at (-1, 10)",
+            d: "Local Max at (0, 5), Local Min at (2, -15)"
+          },
+          answer: "a",
+          solution: "Differentiate f'(x) = 3x<sup>2</sup> - 6x - 9. Set to zero: 3(x<sup>2</sup> - 2x - 3) = 0 &rArr; (x-3)(x+1) = 0. Critical points are x = 3 and x = -1. f''(x) = 6x - 6. f''(-1) = -12 < 0 (Maximum), f(-1) = -1 + 3 + 9 + 5 = 10. f''(3) = 12 > 0 (Minimum), f(3) = 27 - 27 - 27 + 5 = -22.",
+          examyear: "UTME Past Q"
+        }
+      ] ,
+      "Neuroanatomy": [
         {
           question: "Which cranial nerve emerges from the posterior aspect of the brainstem, has the longest intracranial course, and is highly vulnerable to injury in increased intracranial pressure?",
           option: {
@@ -237,20 +187,6 @@ export class FallbackGenerator {
           examyear: "Pharm Board"
         }
       ],
-      "Mathematics": [
-        {
-          question: "If a function f(x) = x^3 - 3x^2 - 9x + 5 is defined on the real numbers, find the local maximum and minimum coordinates of the function.",
-          option: {
-            a: "Local Max at (-1, 10), Local Min at (3, -22)",
-            b: "Local Max at (1, -6), Local Min at (-3, 15)",
-            c: "Local Max at (3, -22), Local Min at (-1, 10)",
-            d: "Local Max at (0, 5), Local Min at (2, -15)"
-          },
-          answer: "a",
-          solution: "Differentiate f'(x) = 3x^2 - 6x - 9. Set to zero: 3(x^2 - 2x - 3) = 0 => (x-3)(x+1) = 0. Critical points are x = 3 and x = -1. f''(x) = 6x - 6. f''(-1) = -12 < 0 (Maximum), f(-1) = -1 + 3 + 9 + 5 = 10. f''(3) = 12 > 0 (Minimum), f(3) = 27 - 27 - 27 + 5 = -22.",
-          examyear: "UTME Past Q"
-        }
-      ]
     };
 
     // Try to find matching questions
@@ -385,19 +321,19 @@ Write down the core pathway or flow related to this topic in your flashcards. Ac
     const cleanMsg = lastUserMessage.toLowerCase();
 
     let customizedTopicContent = "";
-    if (cleanMsg.includes("cbd") || cleanMsg.includes("blood") || cleanMsg.includes("spleen") || cleanMsg.includes("clotting")) {
+    if (cleanMsg.includes("blood") || cleanMsg.includes("spleen") || cleanMsg.includes("clotting")) {
       customizedTopicContent = `
-### Advanced Focus: Cell Biology, Blood & defense (CBD)
+### Advanced Focus: Blood & Defense
 *   **Hemostasis & Clotting:** Remember that the **extrinsic pathway** is initiated by Tissue Factor (Factor III) binding to Factor VII, whereas the **intrinsic pathway** begins with Factor XII activation. Both converge on the **common pathway** starting at **Factor X**.
-*   **ECG Electrophysiology:** Phase 0 (depolarization) is driven by $Na^+$ channels in cardiac myocytes, but by $Ca^{2+}$ in nodal tissue. Pay close attention to Wiggers' diagrams during study sessions!`;
-    } else if (cleanMsg.includes("cv/rs") || cleanMsg.includes("resp") || cleanMsg.includes("breath") || cleanMsg.includes("lung")) {
+*   **ECG Electrophysiology:** Phase 0 (depolarization) is driven by Na<sup>+</sup> channels in cardiac myocytes, but by Ca<sup>2+</sup> in nodal tissue. Pay close attention to Wiggers' diagrams during study sessions!`;
+    } else if (cleanMsg.includes("resp") || cleanMsg.includes("breath") || cleanMsg.includes("lung")) {
       customizedTopicContent = `
-### Advanced Focus: Cardiovascular & Respiratory Systems (CV/RS)
-*   **Ventilation Mechanics:** The **FEV1/FVC ratio** is critical. If it falls below $0.70$ ($70\\%$), it is highly indicative of obstructive lung diseases (Asthma/COPD) due to airway resistance. For restrictive lung diseases, the ratio is normal or elevated because both volumes decline proportionally.
-*   **Oxygen Transport:** The oxygen-hemoglobin curve shifts to the right (facilitating oxygen offloading in active tissues) in response to increased temperature, $CO_2$ tension, $H^+$ ions (acidosis), and 2,3-BPG (Bohr effect).`;
-    } else if (cleanMsg.includes("ids") || cleanMsg.includes("infect") || cleanMsg.includes("micro") || cleanMsg.includes("malaria")) {
+### Advanced Focus: Cardiovascular & Respiratory Physiology
+*   **Ventilation Mechanics:** The **FEV1/FVC ratio** is critical. If it falls below 0.70 (70%), it is highly indicative of obstructive lung diseases (Asthma/COPD) due to airway resistance. For restrictive lung diseases, the ratio is normal or elevated because both volumes decline proportionally.
+*   **Oxygen Transport:** The oxygen-hemoglobin curve shifts to the right (facilitating oxygen offloading in active tissues) in response to increased temperature, CO<sub>2</sub> tension, H<sup>+</sup> ions (acidosis), and 2,3-BPG (Bohr effect).`;
+    } else if (cleanMsg.includes("infect") || cleanMsg.includes("micro") || cleanMsg.includes("malaria")) {
       customizedTopicContent = `
-### Advanced Focus: Infectious Diseases System (IDS)
+### Advanced Focus: Infectious Diseases & Microbiology
 *   **Bacterial Staining:** Gram-positive cell walls contain a thick, multi-layered peptidoglycan coat with teichoic acid, keeping the primary Crystal Violet stain. Gram-negative cell walls have a thin peptidoglycan layer enveloped by an outer lipopolysaccharide (LPS) membrane, washing out during alcohol decolorization.
 *   **Plasmodium Life Cycle:** Anopheles mosquitoes inject sporozites that travel directly to hepatocytes within 30 minutes, starting the **exo-erythrocytic cycle** before entering red blood cells.`;
     } else if (cleanMsg.includes("anatomy") || cleanMsg.includes("extremit") || cleanMsg.includes("arm") || cleanMsg.includes("plexus") || cleanMsg.includes("drop")) {

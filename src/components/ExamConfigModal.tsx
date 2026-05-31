@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Lock, Play, Layers, Search, Zap, ChevronDown, Check } from "lucide-react";
+import { X, Lock, Key, Play, Layers, Search, Zap, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CurriculumManager } from "../utils/CurriculumManager";
 
@@ -29,8 +29,6 @@ export function ExamConfigModal({
   const [difficulty, setDifficulty] = useState<string>("standard");
   const [strictMode, setStrictMode] = useState<boolean>(false);
   const [includePdfAnswers, setIncludePdfAnswers] = useState<boolean>(false);
-  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
-  const [searchSubject, setSearchSubject] = useState("");
   
   const [dynamicTopics, setDynamicTopics] = useState<string[]>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState<boolean>(false);
@@ -39,9 +37,133 @@ export function ExamConfigModal({
   
   const [years, setYears] = useState<number[]>([]);
 
+  const SECONDARY_SUBJECTS = [
+    "Agricultural Science", "Basic Science", "Basic Technology", "Civic Education", "Commerce", "CRK", 
+    "IRK", "Business Studies", "Current Affairs", "Physical Education", "Technical Drawing", "Home Economics", 
+    "Fine Art", "Insurance"
+  ];
+
+  const DUAL_PURPOSE_SUBJECTS = [
+    "Accounting", "Biology", "Chemistry", "Economics", "English", "English Literature", 
+    "French", "Further Mathematics", "Geography", "Hausa", "History", "Igbo", "Mathematics", 
+    "Physics", "Yoruba"
+  ];
+
+  const PRE_CLINICAL_SUBJECTS = [
+    "Anatomy", "Anatomy: Extremities (Locomotor)", "Medical Biochemistry", "Medical Histology", 
+    "Embryology", "Neuroanatomy", "Physiology"
+  ];
+
+  const CLINICAL_PATH_SUBJECTS = [
+    "Pharmacology", "Pathology", "Medical Microbiology", "Hematology", "Medical Parasitology", 
+    "Clinical Biochemistry", "Clinical Immunology"
+  ];
+
+  const CLINICAL_MID_SUBJECTS = [
+    "Pediatrics", "Obstetrics and Gynecology", "Community Medicine"
+  ];
+
+  const CLINICAL_SENIOR_SUBJECTS = [
+    "Medicine", "Internal Medicine", "Surgery", "Psychiatry", "Radiology", "ENT", "Ophthalmology", "Dermatology"
+  ];
+
+  const ENGINEERING_SUBJECTS = [
+    "Chemical Engineering", "Civil Engineering", "Computer Engineering", "Electrical Engineering", 
+    "Mechanical Engineering", "Petroleum Engineering", "Fluid Mechanics", "Thermodynamics", "Strength of Materials", 
+    "Structural Engineering"
+  ];
+
+  const SCIENCE_SUBJECTS = [
+    "Biochemistry", "Biotechnology", "Botany", "Genetics", "Geology", "Geophysics", "Meteorology", 
+    "Microbiology", "Molecular Biology", "Statistics", "Food Science", "Zoology"
+  ];
+
+  const getDifficultyLevelsForSubject = (subj: string) => {
+    if (SECONDARY_SUBJECTS.includes(subj)) {
+      return [{ value: "standard", label: "Standard (WAEC/JAMB/NECO)" }];
+    }
+    if (DUAL_PURPOSE_SUBJECTS.includes(subj)) {
+      return [
+        { value: "standard", label: "Standard (WAEC/JAMB/NECO)" },
+        { value: "100_sci", label: "100 Level (Intro University)" },
+        { value: "200_sci", label: "200 Level (Foundational Core)" },
+        { value: "300_sci", label: "300 Level (Intermediate Theory)" },
+        { value: "400_sci", label: "400 Level (Advanced Seminar/Thesis)" },
+        { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
+        { value: "professional", label: "Professional / Chartered Specialist" }
+      ];
+    }
+    if (PRE_CLINICAL_SUBJECTS.includes(subj)) {
+      return [
+        { value: "200", label: "200 Level (Pre-Clinical Year 1)" },
+        { value: "300", label: "300 Level (Pre-Clinical Year 2)" },
+        { value: "400", label: "400 Level (Clinical Year 1 / B.Sc Final)" },
+        { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
+        { value: "professional", label: "Professional Body/Primary Fellowship" }
+      ];
+    }
+    if (CLINICAL_PATH_SUBJECTS.includes(subj)) {
+      return [
+        { value: "400", label: "400 Level (Clinical Year 1 / Lab Medicine)" },
+        { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
+        { value: "professional", label: "Professional Fellowship (Part I)" }
+      ];
+    }
+    if (CLINICAL_MID_SUBJECTS.includes(subj)) {
+      return [
+        { value: "500", label: "500 Level (Clinical Year 2 / Specialties)" },
+        { value: "postgrad", label: "Postgraduate (MPH/MSc/PhD)" },
+        { value: "professional", label: "Professional Fellowship (Part II)" }
+      ];
+    }
+    if (CLINICAL_SENIOR_SUBJECTS.includes(subj)) {
+      return [
+        { value: "600", label: "600 Level (Clinical Year 3 / Senior Clerkship)" },
+        { value: "postgrad", label: "Postgraduate Residence / Research PhD" },
+        { value: "professional", label: "Professional Board Specialty Fellowship" }
+      ];
+    }
+    if (ENGINEERING_SUBJECTS.includes(subj)) {
+      return [
+        { value: "200_eng", label: "200 Level (Foundational Engineering)" },
+        { value: "300_eng", label: "300 Level (Core Engineering Design)" },
+        { value: "400_eng", label: "400 Level (Advanced Systems & SIWES)" },
+        { value: "500_eng", label: "500 Level (Senior Projects & Electives)" },
+        { value: "postgrad", label: "Postgraduate (MEng/PhD)" },
+        { value: "professional", label: "Professional Practice (COREN/NSE)" }
+      ];
+    }
+    if (SCIENCE_SUBJECTS.includes(subj)) {
+      return [
+        { value: "100_sci", label: "100 Level (General Science)" },
+        { value: "200_sci", label: "200 Level (Foundational Science)" },
+        { value: "300_sci", label: "300 Level (Intermediate Lab & Theory)" },
+        { value: "400_sci", label: "400 Level (Advanced Seminar & Research)" },
+        { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
+        { value: "professional", label: "Professional Specialist / Laboratory Fellow" }
+      ];
+    }
+    
+    // Default fallback list
+    return [
+      { value: "standard", label: "Standard" },
+      { value: "undergrad", label: "100 - 300 Level (Undergrad)" },
+      { value: "advanced", label: "400 - 600 Level (Advanced/Clinical)" },
+      { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
+      { value: "professional", label: "Professional / Board Specialist" }
+    ];
+  };
+
   useEffect(() => {
     // Reset topic when subject changes to prevent carry-over
     setTopic("");
+    const availableLevels = getDifficultyLevelsForSubject(subject);
+    if (availableLevels.length > 0) {
+      const hasCurrentLevel = availableLevels.some(l => l.value === difficulty);
+      if (!hasCurrentLevel) {
+        setDifficulty(availableLevels[0].value);
+      }
+    }
   }, [subject]);
 
   useEffect(() => {
@@ -66,8 +188,8 @@ export function ExamConfigModal({
             if (data.difficultyRating) setCurriculumDifficulty(data.difficultyRating);
           }
         }
-      } catch (error) {
-        console.error("Failed to fetch curriculum dynamic topics:", error);
+      } catch (error: any) {
+        console.info("[Curriculum Manager] Using client-sync curriculum fallback:", error?.message || error);
       } finally {
         if (isMounted) {
           setIsLoadingTopics(false);
@@ -81,25 +203,18 @@ export function ExamConfigModal({
     };
   }, [subject, difficulty]);
 
-  const DIFFICULTY_LEVELS = [
-    { value: "standard", label: "Standard (WAEC/JAMB/NECO)" },
-    { value: "undergrad", label: "100 - 300 Level (Undergrad)" },
-    { value: "advanced", label: "400 - 600 Level (Advanced/Clinical)" },
-    { value: "postgrad", label: "Postgraduate (MSc/PhD)" },
-    { value: "professional", label: "Professional / Board Specialist" }
-  ];
+  const DIFFICULTY_LEVELS = getDifficultyLevelsForSubject(subject);
 
   const subjectsList = [
-    "Accounting", "Agricultural Science", "Anatomy", "Anatomy: Extremities (Locomotor)", "Basic Science", "Basic Technology", 
+    "Accounting", "Agricultural Science", "Anatomy", "Basic Science", "Basic Technology", 
     "Biochemistry", "Biology", "Biotechnology", "Botany", "Business Studies", 
-    "Cardiovascular, Blood & Lymphatics (CBD)", "Cardiovascular & Respiratory Systems (CV/RS)",
     "Chemical Engineering", "Chemistry", "Civic Education", "Civil Engineering", 
     "Clinical Biochemistry", "Clinical Immunology", "Commerce", "Community Medicine", 
     "Computer Engineering", "CRK", "Current Affairs", "Dermatology", "Economics", 
     "Electrical Engineering", "Embryology", "English", "English Literature", 
     "ENT", "Fine Art", "Fluid Mechanics", "Food Science", "French", 
     "Further Mathematics", "Genetics", "Geography", "Geology", "Geophysics", 
-    "Hausa", "Hematology", "History", "Home Economics", "Igbo", "Insurance", "Infectious Diseases System (IDS)",
+    "Hausa", "Hematology", "History", "Home Economics", "Igbo", "Insurance", 
     "Internal Medicine", "IRK", "Mathematics", "Mechanical Engineering", "Medical Biochemistry", 
     "Medical Histology", "Medical Microbiology", "Medical Parasitology", "Medicine", 
     "Meteorology", "Microbiology", "Molecular Biology", "Neuroanatomy", "Obstetrics and Gynecology", 
@@ -113,13 +228,16 @@ export function ExamConfigModal({
     if (isOpen) {
       const generatedYears = Array.from({ length: 2026 - 1979 + 1 }, (_, i) => 2026 - i);
       setYears(generatedYears);
-      setSearchSubject("");
-      setIsSubjectDropdownOpen(false);
     }
   }, [isOpen]);
 
+  const isLevelPremium = (lvl: string) => {
+    return ["postgrad", "professional", "400", "500", "600", "400_eng", "500_eng", "400_sci"].includes(lvl);
+  };
+
   const handleStartExam = async () => {
-    if (bankType === "premium" && userTier === "free") {
+    const isCurrentLevelPremium = isLevelPremium(difficulty);
+    if ((bankType === "premium" || isCurrentLevelPremium) && userTier === "free") {
       navigate("/checkout");
       return;
     }
@@ -141,28 +259,31 @@ export function ExamConfigModal({
 
   if (!isOpen) return null;
   
-  const filteredSubjects = subjectsList.filter(s => s.toLowerCase().includes(searchSubject.toLowerCase()));
-  const showPremiumGate = bankType === "premium" && userTier === "free";
+  const isCurrentLevelPremium = isLevelPremium(difficulty);
+  const showPremiumGate = (bankType === "premium" || isCurrentLevelPremium) && userTier === "free";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 sm:p-6">
       <motion.div
-        initial={{ opacity: 0, y: "100%", scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: "100%", scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="bg-surface w-full sm:max-w-[600px] md:max-w-[720px] max-h-[85dvh] flex flex-col relative rounded-t-[1.5rem] sm:rounded-3xl shadow-2xl overflow-hidden font-sans"
+        className="bg-surface w-full sm:max-w-[600px] md:max-w-[680px] max-h-[90vh] flex flex-col relative rounded-[32px] shadow-2xl overflow-hidden font-sans border border-outline-variant/30"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 md:p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface shrink-0">
+        <div className="px-6 py-5 border-b border-outline-variant/30 flex justify-between items-center bg-surface/80 backdrop-blur-xl shrink-0 z-10">
           <div>
-            <h2 className="text-xl font-bold text-on-surface tracking-tight">Exam Setup</h2>
+            <h2 className="text-xl font-bold text-on-surface tracking-tight font-headline-md flex items-center gap-2">
+              <div className="w-1.5 h-6 bg-primary rounded-full"></div>
+              Exam Setup
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 bg-surface-dim hover:bg-surface-container rounded-full transition-colors active:scale-95"
+            className="p-2.5 bg-surface-dim hover:bg-surface-container rounded-full transition-all active:scale-90 border border-outline-variant/20 text-on-surface-variant hover:text-on-surface"
           >
-            <X className="w-5 h-5 text-on-surface-variant" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -171,61 +292,22 @@ export function ExamConfigModal({
           
           <div className="grid sm:grid-cols-2 gap-6">
             {/* Subject Dropdown */}
-            <div className="space-y-2 relative">
+            <div className="space-y-2">
               <label className="text-sm font-bold text-on-surface">Subject</label>
-              <button
-                onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
-                className="w-full flex items-center justify-between p-3 bg-surface-dim border border-outline-variant/60 rounded-xl active:bg-surface-container-high transition-colors text-sm"
-              >
-                <span className="font-bold capitalize text-on-surface">{subject}</span>
-                <ChevronDown className={`w-4 h-4 text-on-surface-variant transition-transform ${isSubjectDropdownOpen ? "rotate-180" : ""}`} />
-              </button>
-              
-              <AnimatePresence>
-                {isSubjectDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-surface border border-outline-variant/60 rounded-xl shadow-xl z-20 overflow-hidden flex flex-col"
-                  >
-                    <div className="p-2 border-b border-outline-variant/30 flex items-center gap-2 bg-surface relative">
-                      <Search className="w-4 h-4 text-on-surface-variant shrink-0 ml-1" />
-                      <input 
-                        type="text" 
-                        placeholder="Search subject..."
-                        value={searchSubject}
-                        onChange={(e) => setSearchSubject(e.target.value)}
-                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60 py-1 pr-7"
-                      />
-                      {searchSubject && (
-                        <button
-                          type="button"
-                          onClick={() => setSearchSubject("")}
-                          className="absolute right-3 p-1 hover:bg-surface-dim rounded-full transition-colors text-on-surface-variant/70 hover:text-on-surface"
-                          aria-label="Clear search"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1">
-                      {filteredSubjects.length > 0 ? filteredSubjects.map(s => (
-                        <button
-                          key={s}
-                          onClick={() => { setSubject(s); setIsSubjectDropdownOpen(false); }}
-                          className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium capitalize text-left transition-colors ${subject === s ? "bg-primary/10 text-primary" : "text-on-surface hover:bg-surface-dim"}`}
-                        >
-                          {s}
-                          {subject === s && <Check className="w-4 h-4" />}
-                        </button>
-                      )) : (
-                        <div className="p-4 text-center text-sm text-on-surface-variant">No subjects found</div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div className="relative">
+                <select
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none text-on-surface font-semibold text-sm appearance-none pr-10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 cursor-pointer"
+                >
+                  {subjectsList.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
 
             {/* Target Year */}
@@ -295,31 +377,49 @@ export function ExamConfigModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-on-surface">Academic Level / Difficulty</label>
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                  Academic Level / Year of Study
+                </label>
+              </div>
+              
               <div className="relative">
                 <select 
-                  className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl appearance-none outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-medium text-sm cursor-pointer"
+                  className={`w-full p-3.5 bg-surface-dim border rounded-xl appearance-none outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all font-bold text-sm cursor-pointer pr-10 ${
+                    isCurrentLevelPremium && userTier === "free" 
+                      ? "border-amber-500/50 text-amber-900 dark:text-amber-200" 
+                      : "border-outline-variant/60 text-on-surface"
+                  }`}
                   value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
+                  onChange={(e) => {
+                    setDifficulty(e.target.value);
+                    setTopic("");
+                  }}
                 >
-                  {DIFFICULTY_LEVELS.map(level => (
-                    <option key={level.value} value={level.value}>{level.label}</option>
-                  ))}
+                  {DIFFICULTY_LEVELS.map((level) => {
+                    const isPremium = isLevelPremium(level.value);
+                    const isLocked = isPremium && userTier === "free";
+                    const prefix = isLocked ? "🔒 " : isPremium ? "✨ " : "";
+                    return (
+                      <option 
+                        key={level.value} 
+                        value={level.value}
+                        className="bg-surface text-on-surface font-semibold py-2"
+                      >
+                        {prefix}{level.label}
+                      </option>
+                    );
+                  })}
                 </select>
-                <div className="absolute top-1/2 right-3 -translate-y-1/2 pointer-events-none">
+                <div className="absolute top-1/2 right-3 -translate-y-1/2 pointer-events-none flex items-center gap-2">
+                  {isCurrentLevelPremium && userTier === "free" ? (
+                    <Lock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  ) : isCurrentLevelPremium ? (
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  ) : null}
                   <ChevronDown className="w-4 h-4 text-on-surface-variant" />
                 </div>
               </div>
-              
-              {curriculumScope && (
-                <div className="mt-2.5 p-3.5 bg-primary/5 rounded-xl border border-primary/10 text-xs text-on-surface-variant flex flex-col gap-1 md:gap-1.5 animate-fadeIn">
-                  <div className="flex items-center gap-1.5 font-bold text-primary">
-                    <Layers className="w-3.5 h-3.5 animate-pulse" />
-                    <span>Scope: {curriculumDifficulty}</span>
-                  </div>
-                  <p className="leading-relaxed opacity-90">{curriculumScope}</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -387,8 +487,8 @@ export function ExamConfigModal({
                     </div>
                   </div>
                   {userTier === "free" && (
-                    <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[9px] uppercase font-bold px-2 py-0.5 rounded-bl-lg">
-                      PRO
+                    <div className="absolute top-2.5 right-2.5 p-1 bg-stone-950 dark:bg-stone-100 text-stone-100 dark:text-stone-950 rounded-md shadow-sm">
+                      <Key className="w-3 h-3" />
                     </div>
                   )}
                 </button>
@@ -402,7 +502,11 @@ export function ExamConfigModal({
           {showPremiumGate && (
             <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-600 shrink-0" />
-              <span className="text-xs font-semibold text-amber-900">Upgrade to Pro to unlock AI Predictive Mode.</span>
+              <span className="text-xs font-semibold text-amber-900">
+                {isCurrentLevelPremium 
+                  ? "Upgrade to Pro to unlock Advanced clinical, Postgraduate, and Professional modules." 
+                  : "Upgrade to Pro to unlock AI Predictive Mode."}
+              </span>
             </div>
           )}
           {!isDemo && userTier === "free" && testsTakenThisMonth >= 2 && !showPremiumGate && (
@@ -428,38 +532,6 @@ export function ExamConfigModal({
               )}
             </button>
             
-            {!isDemo && ((userTier === "pro") || (userTier === "free" && localStorage.getItem('hasUsedFreePdf') !== 'true')) && !showPremiumGate && (
-              <div className="flex flex-col gap-1 items-center">
-                <label className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant cursor-pointer group">
-                  <div className="relative flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={includePdfAnswers}
-                      onChange={(e) => setIncludePdfAnswers(e.target.checked)}
-                      className="peer appearance-none w-4 h-4 border-2 border-outline rounded bg-surface checked:bg-primary checked:border-primary transition-colors cursor-pointer"
-                    />
-                    <Check className="w-3 h-3 text-on-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" />
-                  </div>
-                  <span className="group-hover:text-on-surface transition-colors">Include Correct Answers (Answer Key)</span>
-                </label>
-                <button
-                  onClick={() => {
-                     if (userTier === "free") {
-                        localStorage.setItem('hasUsedFreePdf', 'true');
-                     }
-                     let printUrl = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&print=true`;
-                     if (topic.trim()) printUrl += `&topic=${encodeURIComponent(topic.trim())}`;
-                     if (difficulty !== "standard") printUrl += `&level=${difficulty}`;
-                     if (includePdfAnswers) printUrl += `&answers=true`;
-                     navigate(printUrl);
-                  }}
-                  className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center gap-1.5"
-                >
-                  Generate Offline PDF {userTier === "free" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold ml-1">1 Free Trial</span>}
-                </button>
-              </div>
-            )}
-
             {!showPremiumGate && userTier === "free" && testsTakenThisMonth < 2 && (
               <p className="text-[11px] text-center text-on-surface-variant font-medium">
                 {2 - testsTakenThisMonth} free attempt{2 - testsTakenThisMonth !== 1 && 's'} remaining this month

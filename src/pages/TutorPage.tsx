@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image } from "lucide-react";
 import { useUser } from "../UserContext";
 import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import { useNavigate } from "react-router-dom";
 import { db, auth } from "../firebase";
 import { 
@@ -710,7 +713,7 @@ export default function TutorPage() {
                              <p className="whitespace-pre-wrap font-normal">{m.text}</p>
                           ) : (
                              <div className="markdown-body prose prose-sm max-w-none prose-p:font-normal prose-headings:font-normal prose-strong:font-medium text-on-surface font-normal">
-                                <Markdown>{m.text}</Markdown>
+                                <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>{m.text}</Markdown>
                              </div>
                           )}
                        </div>
@@ -869,42 +872,42 @@ export default function TutorPage() {
        {/* Upgrade Limit Dialog Modal */}
        <AnimatePresence>
          {showUpgradeModal && (
-           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
              <motion.div 
-               initial={{ scale: 0.95, opacity: 0 }}
-               animate={{ scale: 1, opacity: 1 }}
-               exit={{ scale: 0.95, opacity: 0 }}
-               className="bg-surface border border-outline-variant/40 rounded-3xl p-6 sm:p-10 max-w-md w-full shadow-2xl text-center relative overflow-hidden font-sans"
+               initial={{ opacity: 0, scale: 0.95, y: 10 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+               className="bg-surface border border-outline-variant/30 rounded-[32px] p-8 sm:p-10 max-w-md w-full shadow-2xl text-center relative overflow-hidden font-sans flex flex-col"
              >
                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-primary to-amber-500" />
                <button 
                  onClick={() => setShowUpgradeModal(false)}
-                 className="absolute top-4 right-4 p-2 text-on-surface-variant/80 hover:text-on-surface hover:bg-surface-dim rounded-full transition-colors"
+                 className="absolute top-4 right-4 p-2 text-on-surface-variant/80 hover:text-on-surface hover:bg-surface-dim rounded-full transition-all active:scale-90 border border-outline-variant/20"
                >
                  <X className="w-5 h-5" />
                </button>
                
-               <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/25">
-                  <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+               <div className="w-20 h-20 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-8 border border-primary/25 rotate-3">
+                  <Sparkles className="w-10 h-10 text-primary animate-pulse" />
                </div>
                
-               <h3 className="text-2xl font-black text-on-surface mb-3 tracking-tight">Daily Coach Limit Reached</h3>
-               <p className="text-on-surface-variant text-sm font-medium leading-relaxed mb-8">
-                 You have used all your **5 free daily questions**. Upgrade to a lifetime plan to unlock continuous live tutoring, infinite analytics, and no daily constraints ever again!
+               <h3 className="text-2xl font-black text-on-surface mb-3 tracking-tight font-headline-md">Study Coach Limit</h3>
+               <p className="text-on-surface-variant text-base font-medium leading-relaxed mb-10">
+                 You've hit your **5 free daily questions**. Unlock unlimited coaching, predictive analytics, and premium question banks with Pro.
                </p>
                
-               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+               <div className="flex flex-col gap-3">
                   <button
                     onClick={() => navigate('/checkout')}
-                    className="w-full bg-primary text-white py-3 px-4 rounded-xl font-bold text-sm tracking-tight hover:bg-primary/95 transition-all shadow-sm flex items-center justify-center gap-2"
+                    className="w-full bg-primary text-on-primary py-4 px-6 rounded-2xl font-bold text-[15px] tracking-tight hover:bg-primary/95 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95"
                   >
-                     Upgrade Now
+                     Upgrade to Unlock All
                   </button>
                   <button
                     onClick={() => setShowUpgradeModal(false)}
-                    className="w-full bg-surface border border-outline-variant/60 text-on-surface-variant py-3 px-4 rounded-xl font-bold text-sm tracking-tight hover:bg-surface-dim transition-colors"
+                    className="w-full bg-surface-dim border border-outline-variant/60 text-on-surface font-bold py-4 px-6 rounded-2xl text-[15px] tracking-tight hover:bg-surface-container transition-all active:scale-95"
                   >
-                     Keep Studying
+                     Continue with Basics
                   </button>
                </div>
              </motion.div>

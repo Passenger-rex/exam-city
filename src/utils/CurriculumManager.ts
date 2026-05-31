@@ -11,9 +11,7 @@ export interface SubjectCurriculum {
 
 export class CurriculumManager {
   private static defaultTopics: Record<string, string[]> = {
-    "Accounting": ["Principles of Accounting", "Ledger Accounts", "Final Accounts", "Partnership Accounts", "Company Accounts", "Cost Accounting"],
-    "Agricultural Science": ["Soil Science", "Crop Production", "Animal Husbandry", "Agricultural Economics", "Farm Tools", "Irrigation & Drainage"],
-    "Anatomy": ["Gross Anatomy", "Histology Core", "Embryology Base", "Neuroanatomy Intro", "Musculoskeletal System", "Cardiovascular Anatomy"],
+    "Anatomy": ["Gross Anatomy", "Histology Core", "Embryology Base", "Neuroanatomy Intro", "Musculoskeletal System", "Cardiovascular Anatomy", "Cardiovascular & Blood Physiology", "Respiratory & Renal Anatomy", "Lymphatic System", "Central Nervous System"],
     "Anatomy: Extremities (Locomotor)": ["Pectoral Girdle & Axilla", "Brachial Plexus & Arm Anatomy", "Forearm & Hand compartments", "Gluteal Region & Thigh", "Popliteal Fossa & Leg", "Ankle, Foot & Joint Mechanics"],
     "Basic Science": ["Living & Non-Living Things", "Matter & Energy", "The Human Body", "Environment", "Reproductive Health", "Forces & Motion"],
     "Basic Technology": ["General Woodwork", "Metalwork", "Energy & Power", "Building Technology", "Technical Drawing Intro", "Electrical Wiring Basics"],
@@ -22,8 +20,6 @@ export class CurriculumManager {
     "Biotechnology": ["Genomics", "Proteomics", "Bioinformatics", "Environmental Biotech", "Plant Biotechnology", "Recombinant DNA Tools"],
     "Botany": ["Plant Anatomy", "Photosynthesis", "Plant Reproduction", "Systematics", "Plant Ecology", "Plant Biochemistry"],
     "Business Studies": ["Office Practice", "Commerce Principles", "Bookkeeping", "Keyboarding", "Entrepreneurship", "Business Ethics"],
-    "Cardiovascular, Blood & Lymphatics (CBD)": ["Myocardial Contraction Mechanism", "Cardiac Cycle & Pressures", "RBC, WBC & Platelet Hemostasis", "Lymphatic Drainage & Spleen", "Anatomy of Great Vessels", "Electrophysiology & ECG Leads"],
-    "Cardiovascular & Respiratory Systems (CV/RS)": ["Anatomy of Coronary & Bronchial Circulation", "Cardiac Output Regulation", "Pulmonary Ventilation Mechanics", "Alveolar Gas Exchange & Diffusion", "Acid-Base Regulation & Buffers", "Cardiorespiratory Reflex Controls"],
     "Chemical Engineering": ["Mass Transfer", "Heat Transfer", "Chemical Reaction Engineering", "Process Control", "Separation Processes", "Transport Phenomena"],
     "Chemistry": ["Organic Chemistry", "Inorganic Chemistry", "Thermodynamics", "Chemical Bonding", "Acids & Bases", "Kinetics & Equilibrium"],
     "Civic Education": ["Human Rights", "Rule of Law", "Nationalism", "Citizenship", "Community Service", "National Values"],
@@ -56,7 +52,6 @@ export class CurriculumManager {
     "History": ["Pre-Colonial Nigerian Kingdoms", "Trans-Atlantic Slave Trade", "British Colonization & Amalgamation", "Nigeria Independence Movement", "Post-Independence & Civil War", "Modern African History"],
     "Home Economics": ["Food & Nutrition", "Clothing & Textiles", "Home Management", "Child Development", "Consumer Education", "Interior Decoration"],
     "Igbo": ["Agumagu Igbo", "Omenala Igbo", "Ito Igbo", "Utasusu Igbo (Girama)", "Ederede Igbo", "Ilu Na Akpa Okwu"],
-    "Infectious Diseases System (IDS)": ["Host-Pathogen Interactions", "Bacterial Staining & Gram Classification", "Viral Replication Cycles", "Systemic Mycoses", "Protozoan & Helminthic Parasites", "Infectious Disease Surveillance / Infection Control"],
     "Insurance": ["Principles of Insurance", "Life & Health Insurance", "Marine & Aviation Insurance", "Motor & Property Insurance", "Reinsurance Basics", "Risk Management Principles"],
     "Internal Medicine": ["Cardiology", "Pulmonology", "Gastroenterology", "Endocrinology", "Rheumatology", "Infectious Diseases", "Nephrology", "Neurology"],
     "IRK": ["Fundamentals of Islam", "Hadith", "Sharia Law", "History of Islam", "Islamic Ethics", "Quranic Text Studies"],
@@ -66,7 +61,7 @@ export class CurriculumManager {
     "Medical Histology": ["Epithelial Tissue", "Connective Tissue", "Muscle Tissue", "Nervous Tissue", "Respiratory Histology", "Organ Histology"],
     "Medical Microbiology": ["Bacteriology", "Virology", "Mycology", "Diagnostic Techniques", "Antibiotic Resistance", "Parasitology Basics"],
     "Medical Parasitology": ["Plasmodium & Malaria", "Schistosoma & Bilharziasis", "Soil-Transmitted Helminths", "Protozoan Infections (Amoeba, Giardia)", "Arthropod Vectors of Disease", "Laboratory Diagnostics of Parasites"],
-    "Medicine": ["General Pathological Principles", "Respiratory Diseases", "Cardiovascular Diagnostics", "Renal System Pathologies", "Endocrine Disorders", "CNS Infections & Diagnosis"],
+    "Medicine": ["General Pathological Principles", "Respiratory Diseases", "Cardiovascular Diagnostics", "Renal System Pathologies", "Endocrine Disorders", "CNS Infections & Diagnosis", "Blood & Lymphatic System", "Systemic Pathology", "Tropical Medicine"],
     "Meteorology": ["Atmospheric Thermodynamics", "Synoptic Meteorology", "Climatology", "Cloud Physics", "Dynamic Meteorology", "Remote Sensing"],
     "Microbiology": ["Microbial Genetics", "Industrial Microbiology", "Immunology", "Environmental Microbiology", "Medical Bacteriology", "Microbial Physiology"],
     "Molecular Biology": ["DNA Replication", "Transcription & RNA Processing", "Translation & Protein Folding", "Gene Regulation", "Recombinant DNA Tech", "Genomics & PCR"],
@@ -79,7 +74,7 @@ export class CurriculumManager {
     "Pharmacology": ["Pharmacokinetics", "Pharmacodynamics", "Autonomic Nervous System Drugs", "Cardiovascular Pharmacology", "Antibiotics & Chemotherapies", "Neuropharmacology"],
     "Physical Education": ["Athletics", "Team Sports", "Health Education", "Physical Fitness", "First Aid", "Sports Administration"],
     "Physics": ["Mechanics", "Electromagnetism", "Thermodynamics", "Quantum Physics", "Wave Optics", "Atomic & Nuclear Physics"],
-    "Physiology": ["Cardiovascular Physiology", "Respiratory Mechanics", "Renal & Acid-Base Physiology", "Neurophysiology", "Endocrine Physiology", "Gastrointestinal Physiology"],
+    "Physiology": ["Cardiovascular Physiology", "Respiratory Mechanics", "Renal & Acid-Base Physiology", "Neurophysiology", "Endocrine Physiology", "Gastrointestinal Physiology", "Hematology & Blood Physiology"],
     "Psychiatry": ["Psychosis", "Mood Disorders", "Anxiety Disorders", "Personality Disorders", "Child Psychiatry", "Psychopharmacology"],
     "Radiology": ["X-ray Principles", "CT Imaging", "MRI Physics", "Ultrasound Basics", "Nuclear Medicine", "Radiation Safety"],
     "Statistics": ["Probability Theory", "Inferential Statistics", "Regression Analysis", "Design of Experiments", "Non-Parametric Methods", "Time Series Analysis"],
@@ -106,9 +101,32 @@ export class CurriculumManager {
       "Practice Regulations & Ethics"
     ];
 
+    const SECONDARY_SUBJECTS = [
+      "Accounting", "Agricultural Science", "Basic Science", "Basic Technology", "Biology", "Chemistry", 
+      "Civic Education", "Commerce", "CRK", "Economics", "English", "English Literature", "Fine Art", 
+      "French", "Further Mathematics", "Geography", "Hausa", "History", "Home Economics", "Igbo", 
+      "IRK", "Mathematics", "Physical Education", "Physics", "Technical Drawing", "Yoruba", "Business Studies", "Current Affairs"
+    ];
+
+    if (SECONDARY_SUBJECTS.includes(subject)) {
+      return list; // Do NOT morph secondary school topics with preclinical, clinical or research terms!
+    }
+
+    // Map custom sub-levels/years of study to the base standard levels for topic structures
+    let baseLevel = "standard";
+    if (["200", "300", "200_eng", "300_eng", "100_sci", "200_sci", "300_sci", "undergrad"].includes(level)) {
+      baseLevel = "undergrad";
+    } else if (["400", "500", "600", "400_eng", "500_eng", "400_sci", "advanced"].includes(level)) {
+      baseLevel = "advanced";
+    } else if (level === "postgrad") {
+      baseLevel = "postgrad";
+    } else if (level === "professional") {
+      baseLevel = "professional";
+    }
+
     // Align sub-topics explicitly to reflect level requirements for medical domains requested
     if (subject === "Anatomy: Extremities (Locomotor)") {
-      if (level === "undergrad") {
+      if (baseLevel === "undergrad") {
         return [
           "Shoulder, Axilla & Brachial Plexus",
           "Compartments of the Upper Limb & Nerve Palsies",
@@ -118,7 +136,7 @@ export class CurriculumManager {
           "Anatomical Correlates of Common Fractures"
         ];
       }
-      if (level === "advanced") {
+      if (baseLevel === "advanced") {
         return [
           "Surgical Approaches to Extremity Joints",
           "Compartment Syndrome Dx & Fasciotomy Landmarks",
@@ -128,7 +146,7 @@ export class CurriculumManager {
           "Limb Salvage and Osteomyelitis Debridement"
         ];
       }
-      if (level === "postgrad") {
+      if (baseLevel === "postgrad") {
         return [
           "Biomechanical Modeling of Extremity Joints",
           "Cartilage and Ligament Tissue-Engineering",
@@ -138,7 +156,7 @@ export class CurriculumManager {
           "Advanced Comparative Hominid Locomotor Morphology"
         ];
       }
-      if (level === "professional") {
+      if (baseLevel === "professional") {
         return [
           "Orthopaedic Fellowship Shoulder/Hip Exposures",
           "Surgical Management of Gustilo-Anderson fractures",
@@ -150,167 +168,154 @@ export class CurriculumManager {
       }
     }
 
-    if (subject === "Cardiovascular, Blood & Lymphatics (CBD)") {
-      if (level === "undergrad") {
+    if (subject === "Physiology") {
+      if (level === "200" || level === "200_sci") {
         return [
-          "Cell Biology of Erythropoiesis & RBC Lifespan",
-          "Hemoglobin Synthesis & Normal Blood Groups",
-          "Intrinsic & Extrinsic Clotting Pathways",
-          "Myocardial Contraction Mechanism & Action Potentials",
-          "Wiggers Diagram of Cardiac Cycle & Output",
-          "Microscopic Anatomy of Blood Vessels & Spleen"
+          "Cell Membrane Potential & Transport Mechanisms",
+          "General Blood Physiology & Hematopoiesis",
+          "Hemostasis, Clotting Cascade & Platelet Function",
+          "Nerve-Muscle Physiology & Synaptic Transmission",
+          "Cardiac Cycle, Output & Regulation",
+          "Electrophysiology & Electrocardiography (ECG) Mechanics"
         ];
       }
-      if (level === "advanced") {
+      if (level === "300" || level === "300_sci" || baseLevel === "undergrad") {
         return [
-          "Pathophysiology of Congenital & Valvular Diseases",
-          "Infective Endocarditis, Myocarditis & Cardiomyopathy",
-          "Bleeding Disorders (Hemophilia, vWD, DIC, DVT)",
-          "Leukemias, Lymphomas & Myelodysplastic Syndromes",
-          "Therapeutic Anticoagulation & Antiplatelet Control",
-          "Marrow Failure Syndromes & Immune Cytopenias"
+          "Pulmonary Ventilation, Spirometry & Surfactant Mechanics",
+          "Alveolar Gas Exchange & Oxygen Dissociation Dynamics",
+          "Renal Glomerular Filtration & Tubular Secretion/Reabsorption",
+          "Renal Acid-Base Balancing & Buffering Systems",
+          "Central Nervous System Motor Pathways & Sensory Control",
+          "Endocrine Hormonal Feedback Mechanics & Metabolism"
         ];
       }
-      if (level === "postgrad") {
+      if (level === "400" || level === "400_sci" || baseLevel === "advanced") {
         return [
-          "Molecular Mechanisms in Leukemia Pathogenesis",
-          "Endothelial Shear-stress Gene Regulation Models",
-          "Cytokine Receptor Signaling in Hematopoiesis",
-          "Pluripotent Hematopoietic Stem Cell Microenvironments",
-          "Molecular Immunology of Transfusion Reactions",
-          "Mechanisms of Myocardial Action Potential Remodeling"
+          "Pathophysiology of Anemic Syndromes & Transfusion Reactions",
+          "Thrombotic Disorders & Hemorrhagic Diathesis Cascade",
+          "Cardiorespiratory Failures, Valvular Disease & Shock States",
+          "Chronic Renal Failure & Electrolyte Disturbances",
+          "Endocrinological Pathologies & Metabolic Derangements",
+          "Neuropathophysiology & Autonomic Dysfunction Clinical Tests"
         ];
       }
-      if (level === "professional") {
+      if (baseLevel === "postgrad") {
         return [
-          "NPMCN / Board ACS Diagnostics & Interventions",
-          "Hematology Specialist Coagulopathy Algorithms",
-          "Fellowship-level Bone Marrow Transplant Medicine",
-          "Therapeutic Management of Unstable Angina/STEMI",
-          "Valvular Heart Disease Valve Replacement Criteria",
-          "Advanced Transfusion Medicine & Apheresis Protocols"
+          "Molecular Signal Transduction & Receptor Biophysics",
+          "Patch-Clamp Electrophysiology of Ion Channels",
+          "Vascular Endothelial Shear-Stress Regulator Biology",
+          "Biophysical Modeling of Renal Tubular Transport",
+          "Adipokines & Hypothalamic Axis Feedbacks",
+          "Respiratory Center Control & Hypoxia-Inducible Kinetics"
         ];
       }
-    }
-
-    if (subject === "Cardiovascular & Respiratory Systems (CV/RS)") {
-      if (level === "undergrad") {
+      if (baseLevel === "professional") {
         return [
-          "Gross Anatomy of Bronchopulmonary Segments",
-          "Respiratory Mechanics & Alveolar Surfactant Function",
-          "Spirometry (FEV1, FVC, Tidal & VC Parameters)",
-          "Oxygen-Hemoglobin Dissociation Curves & Gas Transport",
-          "Acid-Base Regulation & Renal-Respiratory Buffering",
-          "Central & Peripheral Chemoreceptor Reflex Controls"
-        ];
-      }
-      if (level === "advanced") {
-        return [
-          "Chronic Heart Failure Pathophysiology & Therapeutics",
-          "Therapeutic Management of ACS & Hypertension",
-          "Asthma Step-Up Care Regimens & COPD Protocols",
-          "Restrictive Lung Diseases & Pulmonary Fibrosis",
-          "Acute Respiratory Distress Syndrome (ARDS) Criteria",
-          "Interpretative Ventilation-Perfusion (V/Q) Mismatch"
-        ];
-      }
-      if (level === "postgrad") {
-        return [
-          "Vascular Remodeling in Pulmonic Hypertension",
-          "Mitochondrial Respiration and Hypoxia-Inducible Factors",
-          "Pulmonary Endothelial Shear-Stress Mechanics",
-          "Molecular Biology of Surfactant Proteins in ARDS",
-          "Computational Models of Cardiorespiratory Dynamics",
-          "Neuro-Respiratory Pattern Generator Models"
-        ];
-      }
-      if (level === "professional") {
-        return [
-          "Intensive Care Vent Setting Strategies (ARDS/COPD)",
-          "Advanced Fellowship-level CHF Management Guilds",
-          "Pulmonary Artery Catheter readings & Swan-Ganz Dx",
-          "Aortic Dissection & Refractory Arrhythmia Decisions",
-          "Management of Complex Mixed Acid-Base Disturbances",
-          "Thoracic Anesthesia Single-Lung Ventilation Management"
+          "Fellowship Clinical Acid-Base Correction Protocols",
+          "Board-Certified Cardiac Rhythm Management & ECG Diagnostics",
+          "Critical Care Pulmonary Function & Ventilatory Settings",
+          "Endocrine Emergencies & Diabetic Ketoacidosis Protocols",
+          "Advanced Cardiovascular Dynamics under Vasoactive Support",
+          "Renal Replacement Therapy & Nephrological Management"
         ];
       }
     }
 
-    if (subject === "Infectious Diseases System (IDS)") {
-      if (level === "undergrad") {
+    if (subject === "Medical Biochemistry") {
+      if (level === "200" || level === "200_sci") {
         return [
-          "Bacterial Staining (Gram Positive vs Gram Negative)",
-          "Innate vs Adaptive Immunity & Antigen Recognition",
-          "Antibody Classes, Structure & Function",
-          "T/B Cell Maturation Path & Complement Pathways",
-          "Classic Staining & Morphology of Protozoa & Helminths",
-          "Life Cycles of Key African Parasites (Malaria, Shisto)"
+          "Structure & Classification of Carbohydrates & Proteins",
+          "Lipids Classification, Fatty Acids & Membrane Structure",
+          "Enzyme Kinetics, Michaelis-Menten & Inhibition Types",
+          "Glycolysis, Krebs Cycle & Electron Transport Chain",
+          "Glycogen Metabolism & Gluconeogenesis Pathways",
+          "Urea Cycle & Amino Acid Catabolism"
         ];
       }
-      if (level === "advanced") {
+      if (level === "300" || level === "300_sci" || baseLevel === "undergrad") {
         return [
-          "Clinical Antimicrobial Pharmacology & Selection",
-          "Therapeutic Algorithms for Multi-Drug Resistant TB",
-          "Tropical Infection Syndromes (Lassa, Typhoid, Cholera)",
-          "Opportunistic Systemic Infections in HIV & Meningitis",
-          "Infectious Disease Surveillance & Outbreak Protocols",
-          "Diagnostics: PCR, Serologies & Resistance Panels"
+          "Beta-Oxidation of Fatty Acids & Ketogenesis",
+          "De Novo Purine & Pyrimidine Nucleotide Synthesis",
+          "DNA Replication, DNA Repair & Mutation Mechanisms",
+          "Transcription, RNA Processing & Spliceosome Control",
+          "Translation, Ribosomes & Post-translational Modifications",
+          "Hormonal Signal Transduction, GPCR & Tyrosine Kinase Axes"
         ];
       }
-      if (level === "postgrad") {
+      if (level === "400" || level === "400_sci" || baseLevel === "advanced") {
         return [
-          "Molecular Biology of Bacterial Beta-Lactamases",
-          "Viral Fusion Mechanisms & Host-Cell Penetration",
-          "Immunological Cytokine Storm Models in Septic Shock",
-          "Advanced Empirical Mathematical Disease Modeling",
-          "Host Gene Regulation During Chronic Viral Infection",
-          "Evolutionary Genomics of Antimicrobial Resistance"
+          "Pathological Biochemistry of Diabetes Mellitus & Ketoacidosis",
+          "Inborn Errors of Metabolism (G6PD Deficiency, PKU)",
+          "Dyslipidemias & Atherosclerosis Biochemical Cascades",
+          "Liver Function Tests & Serum Bilirubin Interpretation",
+          "Tumor Markers & Molecular Biochemistry of Oncogenes",
+          "Porphyria Biochemistry & Hemoglobin Degradation Pathways"
         ];
       }
-      if (level === "professional") {
+      if (baseLevel === "postgrad") {
         return [
-          "Fellowship Specialist Antimicrobial Stewardship",
-          "Salvage Regimens for Multi-Drug Resistant TB/HIV",
-          "WACP Nosocomial Outbreak Investigation Protocols",
-          "Critical Care Management of Severe Septic Shock",
-          "Tropical Infection Board Specialists Decisions (Lassa)",
-          "Advanced Medical Legal Regulations & Pandemics Rules"
+          "Recombinant DNA Tools & Molecular Gene Cloning",
+          "Epigenetics, Histone Modifications & DNA Methylation",
+          "Proteomics & Mass Spectrometry Structural Analysis",
+          "Metabolic Flux Analysis & Computer Modeling",
+          "Molecular Targets in Chemotherapeutic Selection",
+          "CRISPR-Cas9 Gene Editing Mechanics & Bioengineering"
+        ];
+      }
+      if (baseLevel === "professional") {
+        return [
+          "Clinical Laboratory Quality Management & Westgard Rules",
+          "Molecular Diagnostics of Hereditary Genetic Disorders",
+          "Inborn Metabolic Emergency Screening Protocols",
+          "Therapeutic Drug Monitoring & Toxicology Assays",
+          "Advanced Biomarkers in Acute Coronary Syndrome",
+          "Endocrine Assay Interpretations & Lab Standardization"
         ];
       }
     }
 
     if (subject === "Anatomy") {
-      if (level === "undergrad") {
+      if (level === "200" || level === "200_sci") {
         return [
           "General Torso, Abdominal & Thoracic Visceral Layouts",
           "Developmental Embryology & Germ Layer Derivatives",
           "Epithelium & Basic Structural Tissue Histology",
-          "Spinal Cord Mechanics & Intro to Cranial Nerves",
-          "Musculoskeletal Layout of Body Trunk & Joints",
-          "Basic Cardiac Anatomy & Coronary Arterial Paths"
+          "Musculoskeletal Spine & General Vertebrae",
+          "Anatomical terminology & planes of dissection",
+          "Skin structure & Integumentary layers"
         ];
       }
-      if (level === "advanced") {
+      if (level === "300" || level === "300_sci" || baseLevel === "undergrad") {
         return [
-          "Clinical Neuroanatomy: Cranial Nerve Pathologies",
-          "Microscopic Architecture of Endocrine & Solid Organs",
-          "Anatomical Surgical Landmarks of Torso & Neck",
-          "Anatomy of Complex Abdominal Retroperitoneal Spaces",
-          "Clinical Embryology: Congenital Malformations",
-          "Pathological Vascular Occlusions & Collateral Flows"
+          "Detailed Cranial Nerve courses & Exit foramina",
+          "Microscopic histology of main visceral organs",
+          "Structural anatomy of the Gastrointestinal tract & Mesentery",
+          "Genitourinary anatomy, Kidney sections & Pelvic floor",
+          "Peritoneum, retroperitoneal structures & Spaces",
+          "Brachial plexus & Locomotor musculoskeletal details"
+        ];
+      }
+      if (level === "400" || level === "400_sci" || baseLevel === "advanced") {
+        return [
+          "Surgical landmarks of the neck, thorax & abdomen",
+          "Pathological vascular occlusions & collateral circulatory paths",
+          "Congenital anomalies (Patent ductus, Spina bifida, Cleft palate)",
+          "Anatomical variations of major blood vessels & nerves",
+          "Cross-sectional anatomy & radiographic correlation (CT/MRI)",
+          "Oncological lymphatic drainage pathways for surgical staging"
         ];
       }
     }
 
     // Dynamic morphing approach if not explicitly mapped
     return list.map(topic => {
-      if (level === "undergrad") {
-        return `Pre-Clinical/Foundational aspects of ${topic}`;
-      } else if (level === "advanced") {
-        return `Advanced clinical/conceptual analysis of ${topic}`;
-      } else if (level === "postgrad") {
+      if (baseLevel === "undergrad") {
+        return `Foundational/Undergrad aspects of ${topic}`;
+      } else if (baseLevel === "advanced") {
+        return `Advanced/Applied aspects of ${topic}`;
+      } else if (baseLevel === "postgrad") {
         return `Molecular, theoretical & research dimensions of ${topic}`;
-      } else if (level === "professional") {
+      } else if (baseLevel === "professional") {
         return `Professional practice & specialist decision constraints in ${topic}`;
       }
       return topic;
@@ -325,9 +330,55 @@ export class CurriculumManager {
     let scope = "";
     let difficultyRating = "";
 
-    if (level === "undergrad") {
+    // Years of Study Medical / Clinical mapping
+    if (level === "200") {
+      difficultyRating = "200 Level (Pre-Clinical Year 1)";
+      scope = `Covers 200 level foundational preclinical medical curriculum in Gross Anatomy, systemic Physiology, Medical Biochemistry, & Histology. Restricts clinical vignettes to minor pre-clinical references (<2%).`;
+    } else if (level === "300") {
+      difficultyRating = "300 Level (Pre-Clinical Year 2)";
+      scope = `Aligns with the 300 level preclinical medical syllabus prior to major clinical transition. Emphasizes advanced electrophysiology, cardiorespiratory ventilation, neuroanatomy, and basic immunology paths.`;
+    } else if (level === "400") {
+      difficultyRating = "400 Level (Clinical Year 1 / Laboratory Medicine)";
+      scope = `Studies Clinical Year 1 curriculum, focusing intensely on Pathological sciences, Histopathology, Clinical Pharmacology, Medical Microbiology, and Parasitology. Vignettes are limited to at most 10-15%.`;
+    } else if (level === "500") {
+      difficultyRating = "500 Level (Clinical Year 2 / Specialities)";
+      scope = `Corresponds to 500 level syllabus focusing key areas: Pediatrics, Obstetrics and Gynecology, and Community Medicine. Direct clinical vignettes represent less than 15% of questions.`;
+    } else if (level === "600") {
+      difficultyRating = "600 Level (Clinical Year 3 / Senior Clerkships)";
+      scope = `Aligns with final year (600 Level) medical board expectations in Internal Medicine, General Surgery, Psychiatry, Ophthalmology, ENT, and Radiographic diagnostics.`;
+    }
+    // Engineering 5-year B.Eng mapping
+    else if (level === "200_eng") {
+      difficultyRating = "200 Level (Basics of Engineering)";
+      scope = `Covers 200 level foundational engineering topics: general mathematics, statistics, basic fluid mechanics, basic mechanics of materials, and engineering thermodynamics.`;
+    } else if (level === "300_eng") {
+      difficultyRating = "300 Level (Intermediate B.Eng Specialization)";
+      scope = `Reviews intermediate 300 level courses: design elements, advanced circuit analysis, structural analysis, and core mechanical/civil/chemical system theories.`;
+    } else if (level === "400_eng") {
+      difficultyRating = "400 Level (Advanced Systems & IT Preparation)";
+      scope = `Matches 400 level engineering coursework: advanced control systems, software systems design, transport phenomena, and systems optimization.`;
+    } else if (level === "500_eng") {
+      difficultyRating = "500 Level (Senior Professional Design & Projects)";
+      scope = `Evaluates final-year 500 level engineering standards, including design code enforcement, professional systems optimization, and core electives.`;
+    }
+    // Science B.Sc mapping
+    else if (level === "100_sci") {
+      difficultyRating = "100 Level (General Science)";
+      scope = `Encompasses introductory 100 level general science subjects (entry university-level cell structure, chemistry stoichiometry, base mechanics).`;
+    } else if (level === "200_sci") {
+      difficultyRating = "200 Level (Foundational B.Sc Subject Core)";
+      scope = `Dives into 200 level science fundamentals: basic organic nomenclature, basic microbiology morphology, and structural genetics.`;
+    } else if (level === "300_sci") {
+      difficultyRating = "300 Level (Intermediate Theory & Laboratory)";
+      scope = `Represents 300 level science: intermediate metabolic reactions, chemical control processes, and analytical scientific techniques.`;
+    } else if (level === "400_sci") {
+      difficultyRating = "400 Level (Advanced Seminar & Scientific Research)";
+      scope = `Targets 400 level final year B.Sc requirements: contemporary molecular research models, abstract systems biology, and advanced thesis theories.`;
+    }
+    // Backward-compatible/fallback mapping
+    else if (level === "undergrad") {
       difficultyRating = "100 - 300 Level (Undergraduate Academic Curriculum)";
-      scope = `Aligns strictly with intermediate undergraduate outlines of top Nigerian Universities (e.g. UNILORIN, UNILAG, UI). For Medical/Basic sciences (Anatomy, Physiology, Biochemistry, CBD, CV/RS, IDS), the material focuses at least 95% on pre-clinical basic physiological mechanics and cell biology, restricting case scenarios to minor pre-clinical correlates (<5%). No advanced management or surgical protocols.`;
+      scope = `Aligns strictly with intermediate undergraduate outlines of top Nigerian Universities (e.g. UNILORIN, UNILAG, UI). For Medical/Basic sciences (Anatomy, Physiology, Biochemistry), the material focuses at least 95% on pre-clinical basic physiological mechanics and cell biology, restricting case scenarios to minor pre-clinical correlates (<5%). No advanced management or surgical protocols.`;
     } else if (level === "advanced") {
       difficultyRating = "400 - 600 Level (Advanced / Clinical Undergraduate)";
       scope = `Matches the rigorous advanced degree and clinical course curriculum of premier Nigerian Medical Schools, Teaching Hospitals, and advanced Engineering faculties (e.g., UCH Ibadan, LUTH, UITH). Integrates advanced pathophysiology, design theories, diagnostic interpretations (such as imaging/biomarkers), and complex calculations. Case vignettes are restricted to exactly 20-30% of content, emphasizing deeper mechanics throughout.`;
@@ -345,12 +396,6 @@ export class CurriculumManager {
     // Customize the scope slightly based on subject groupings for absolute precision
     if (subject === "Anatomy: Extremities (Locomotor)") {
       scope += " Focuses on upper and lower limb musculoskeletal mechanics, joints, plexuses, and nerve lesions.";
-    } else if (subject === "Cardiovascular, Blood & Lymphatics (CBD)") {
-      scope += " Focuses on hematopoiesis, normal clotting pathways, myocardial action potential, cardiac output regulation, and spleen architecture.";
-    } else if (subject === "Cardiovascular & Respiratory Systems (CV/RS)") {
-      scope += " Focuses on ventilation mechanics, spirometry, oxygen transport, cardiorespiratory neuro-reflex controls, and blood buffer kinetics.";
-    } else if (subject === "Infectious Diseases System (IDS)") {
-      scope += " Focuses on Gram cell wall biology, immune cell maturation, parasites, antiviral/antimicrobial kinetics, stewardship, and resistance patterns.";
     }
 
     return { scope, difficultyRating };
