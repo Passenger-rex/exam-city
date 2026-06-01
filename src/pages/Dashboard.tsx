@@ -369,18 +369,18 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 gap-8">
           <div className="col-span-1">
-            <div className="bg-surface p-8 rounded-[32px] border border-outline-variant/50 overflow-hidden bento-card">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h2 className="font-headline-md text-xl font-bold">
+            <div className="bg-surface p-6 sm:p-8 rounded-[32px] border border-outline-variant/50 overflow-hidden bento-card">
+              <div className="flex flex-row items-center justify-between gap-4 mb-6">
+                <h2 className="font-headline-md text-lg sm:text-xl font-bold truncate">
                   Recent Performance
                 </h2>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   {/* Subject Dropdown Filter */}
                   <div className="relative">
                     <select
                       value={selectedSubject}
                       onChange={(e) => setSelectedSubject(e.target.value)}
-                      className="appearance-none bg-surface-dim hover:bg-surface-dim/80 text-on-surface font-semibold text-xs py-2.5 pl-4 pr-10 rounded-xl border border-outline-variant/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-sans"
+                      className="appearance-none bg-surface-dim hover:bg-surface-dim/80 text-on-surface font-semibold text-xs py-2 sm:py-2.5 pl-3 sm:pl-4 pr-8 sm:pr-10 rounded-xl border border-outline-variant/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-sans"
                     >
                       <option value="all">All Subjects</option>
                       {uniqueSubjects.map((sub) => (
@@ -428,9 +428,10 @@ export default function Dashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                  <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-left border-collapse">
-                    <thead className="text-on-surface-variant text-xs font-bold uppercase bg-surface-dim border-b border-outline-variant/50 rounded-t-xl">
+                    <thead className="text-on-surface-variant text-[10px] font-bold uppercase bg-surface-dim border-b border-outline-variant/50 rounded-t-xl">
                       <tr>
                         <th className="px-6 py-4 rounded-tl-xl w-1/3">Exam</th>
                         <th className="px-6 py-4 w-1/5">Score</th>
@@ -447,18 +448,18 @@ export default function Dashboard() {
                           className="border-b border-outline-variant/30 hover:bg-surface-dim transition-colors group"
                         >
                           <td className="px-6 py-4 font-bold text-on-surface flex flex-col">
-                            <span className="text-sm font-bold text-on-surface">
+                            <span className="text-xs font-bold text-on-surface">
                               {formatSubject(getExamSubject(exam))}
                             </span>
-                            <span className="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider">
+                            <span className="text-[9px] text-on-surface-variant font-semibold uppercase tracking-wider">
                               Mock Exam
                             </span>
                           </td>
-                          <td className="px-6 py-4 font-bold text-primary">
+                          <td className="px-6 py-4 font-bold text-primary text-xs">
                             {exam.score} / {exam.total} (
                             {Math.round((exam.score / exam.total) * 100)}%)
                           </td>
-                          <td className="px-6 py-4 text-sm text-on-surface-variant font-medium">
+                          <td className="px-6 py-4 text-xs text-on-surface-variant font-medium">
                             {exam.createdAt?.toDate
                               ? exam.createdAt.toDate().toLocaleDateString()
                               : "Just now"}
@@ -466,16 +467,16 @@ export default function Dashboard() {
                           <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                             <button
                               onClick={(e) => handleSharePerformance(exam, e)}
-                              className="px-3 py-1.5 text-xs rounded-lg border bg-surface-dim/40 text-on-surface-variant hover:text-primary hover:bg-primary/10 border-outline-variant/50 font-bold flex items-center gap-1.5 transition-all outline-none"
+                              className="px-2 py-1 text-[10px] rounded-lg border bg-surface-dim/40 text-on-surface-variant hover:text-primary hover:bg-primary/10 border-outline-variant/50 font-bold flex items-center gap-1 transition-all outline-none"
                               title="Share score with friends"
                             >
-                              <Share2 className="w-3.5 h-3.5 text-on-surface-variant/70 shrink-0" />
+                              <Share2 className="w-3 h-3 text-on-surface-variant/70 shrink-0" />
                               <span>Share</span>
                             </button>
 
                             <button
                                onClick={() => navigate(`/review/${exam.id}`)}
-                              className="px-4 py-2 bg-surface-dim text-primary border border-transparent font-bold text-[13px] rounded-lg group-hover:bg-primary group-hover:text-on-primary transition-colors flex items-center gap-1"
+                              className="px-3 py-1.5 bg-surface-dim text-primary border border-transparent font-bold text-[11px] rounded-lg group-hover:bg-primary group-hover:text-on-primary transition-colors flex items-center gap-1"
                             >
                               Review <ArrowRight className="w-3 h-3" />
                             </button>
@@ -485,6 +486,55 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Specific List View */}
+                <div className="sm:hidden space-y-4">
+                   {displayedExams.map((exam, i) => {
+                      const scorePct = Math.round((exam.score / exam.total) * 100);
+                      return (
+                        <div key={i} className="bg-surface-dim/30 border border-outline-variant/30 rounded-2xl p-4 flex flex-col gap-3">
+                           <div className="flex justify-between items-start">
+                              <div>
+                                 <h4 className="text-sm font-bold text-on-surface leading-tight">
+                                    {formatSubject(getExamSubject(exam))}
+                                 </h4>
+                                 <p className="text-[9px] text-on-surface-variant font-bold uppercase tracking-widest mt-0.5">Mock Exam</p>
+                              </div>
+                              <div className="text-right">
+                                 <p className="text-xs font-bold text-primary">{exam.score} / {exam.total}</p>
+                                 <p className="text-[10px] font-bold text-on-surface-variant opacity-70">
+                                    {exam.createdAt?.toDate ? exam.createdAt.toDate().toLocaleDateString() : "Just now"}
+                                 </p>
+                              </div>
+                           </div>
+                           
+                           {/* Score Bar */}
+                           <div className="w-full h-1.5 bg-surface rounded-full overflow-hidden">
+                              <div 
+                                 className={`h-full transition-all duration-500 ${scorePct >= 75 ? 'bg-green-500' : scorePct >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                 style={{ width: `${scorePct}%` }}
+                              />
+                           </div>
+
+                           <div className="flex gap-2 pt-1">
+                              <button
+                                 onClick={(e) => handleSharePerformance(exam, e)}
+                                 className="flex-1 py-2 text-[10px] font-bold bg-white border border-outline-variant/50 rounded-lg flex items-center justify-center gap-1.5"
+                              >
+                                 <Share2 className="w-3 h-3" /> Share Result
+                              </button>
+                              <button
+                                 onClick={() => navigate(`/review/${exam.id}`)}
+                                 className="flex-1 py-2 text-[10px] font-bold bg-primary text-white rounded-lg flex items-center justify-center gap-1.5"
+                              >
+                                 Review Exam <ArrowRight className="w-3 h-3" />
+                              </button>
+                           </div>
+                        </div>
+                      );
+                   })}
+                </div>
+                </>
               )}
             </div>
           </div>
@@ -498,15 +548,9 @@ export default function Dashboard() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => navigate("/tutor")}
-        className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-50 p-4 md:px-6 md:py-4 bg-surface text-on-surface font-bold text-sm rounded-full shadow-2xl shadow-primary/20 border border-outline-variant/60 flex items-center gap-3 group backdrop-blur-xl hover:border-primary/50 transition-all overflow-hidden"
+        className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-primary/90 transition-all border-2 border-white/20 cursor-pointer"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-primary group-hover:animate-pulse" />
-          </div>
-          <span className="hidden md:inline mr-2 tracking-wide">Study Coach</span>
-        </div>
+        <Bot className="w-7 h-7" />
       </motion.button>
 
       {/* Social Media Share Modal Overlay */}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image } from "lucide-react";
+import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image, ArrowLeft, Mic } from "lucide-react";
 import { useUser } from "../UserContext";
 import Markdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
+import { Logo } from "../components/Logo";
 import { db, auth } from "../firebase";
 import { 
   collection, 
@@ -77,7 +78,48 @@ export default function TutorPage() {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Initialize SpeechRecognition if available
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputValue(prev => prev ? prev + " " + transcript : transcript);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+      
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (err) {
+        console.error("Could not start speech recognition:", err);
+      }
+    }
+  };
 
   // Session History State
   const { profile } = useUser();
@@ -458,7 +500,6 @@ export default function TutorPage() {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col font-sans h-screen overflow-hidden relative w-full">
-       <Navbar />
        <div className="flex-1 flex flex-row relative overflow-hidden w-full h-full">
          {/* Backdrop on mobile and desktop */}
          {sidebarOpen && (
@@ -675,7 +716,7 @@ export default function TutorPage() {
           <header className="bg-surface px-4 py-3 sm:py-4 shadow-sm z-10 border-b border-outline-variant/30 flex items-center justify-between shrink-0">
              <div className="flex items-center gap-3 sm:gap-4 max-w-4xl mx-auto w-full">
                 <button
-                   onClick={() => navigate(-1)}
+                   onClick={() => navigate('/dashboard')}
                    className="p-2 -ml-2 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors"
                    aria-label="Go back"
                 >
@@ -695,11 +736,10 @@ export default function TutorPage() {
                    <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
                       <Sparkles className="w-5 h-5 text-primary" />
                    </div>
-                   <div>
-                      <h1 className="font-bold text-lg text-on-surface tracking-tight">AI Study Coach</h1>
-                      <p className="text-xs text-on-surface-variant font-medium flex items-center gap-1.5 mt-0.5">
-                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                         Online
+                   <div className="hidden sm:block">
+                      <p className="text-xs text-on-surface-variant font-bold flex items-center gap-1.5">
+                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                         TUTOR ONLINE
                       </p>
                    </div>
                 </div>
@@ -867,8 +907,19 @@ export default function TutorPage() {
                       onChange={e => setInputValue(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSend()}
                       placeholder="Ask questions or upload docs/images to generate questions..."
-                      className="w-full bg-surface-dim/50 border border-outline-variant/60 pl-12 pr-5 py-4 rounded-full text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60"
+                      className="w-full bg-surface-dim/50 border border-outline-variant/60 pl-12 pr-12 py-4 rounded-full text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60"
                    />
+
+                   {/* Microphone Button */}
+                   {recognitionRef.current && (
+                     <button
+                        onClick={toggleListening}
+                        className={`absolute right-3 p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse' : 'text-on-surface-variant/60 hover:text-primary hover:bg-primary/10'}`}
+                        title="Dictate with voice"
+                     >
+                       <Mic className="w-5 h-5" />
+                     </button>
+                   )}
                  </div>
                  <button
                     onClick={handleSend}

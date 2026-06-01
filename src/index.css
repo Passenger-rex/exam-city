@@ -352,3 +352,27 @@ body {
     margin: 1.5cm;
   }
 }
+
+/* Fix for html2canvas / html2pdf not supporting oklch colors from Tailwind v4 */
+.pdf-safe {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+.pdf-safe, .pdf-safe * {
+  /* Override any oklch transition/border/color variables if they exist */
+  color-scheme: light !important;
+}
+
+.pdf-safe .text-gray-800 { color: #1f2937 !important; }
+.pdf-safe .text-gray-700 { color: #374151 !important; }
+.pdf-safe .text-gray-600 { color: #4b5563 !important; }
+.pdf-safe .text-gray-500 { color: #6b7280 !important; }
+.pdf-safe .text-gray-400 { color: #9ca3af !important; }
+.pdf-safe .border-black { border-color: #000000 !important; }
+.pdf-safe .border-gray-300 { border-color: #d1d5db !important; }
+@media (max-width: 640px) {
+  html {
+    font-size: 14px; /* Global scale reduction for mobile */
+  }
+}

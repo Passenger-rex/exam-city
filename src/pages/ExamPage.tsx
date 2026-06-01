@@ -31,7 +31,7 @@ import {
 import { Logo } from "../components/Logo";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
-import html2pdf from "html2pdf.js";
+// removed html2pdf.js import
 
 export default function ExamPage() {
   const navigate = useNavigate();
@@ -501,33 +501,9 @@ export default function ExamPage() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleDownloadPDF = async () => {
-    const element = document.getElementById("print-content-area");
-    if (!element) return;
-    
-    setIsDownloadingPDF(true);
-
-    const optObj: any = {
-      margin:       0.4,
-      filename:     `${displaySubject.replace(/\s+/g, "_")}_Assessment.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
-    try {
-      await html2pdf().set(optObj).from(element).save();
-    } catch (err) {
-      console.error("html2pdf generation error:", err);
-    } finally {
-      setIsDownloadingPDF(false);
-    }
-  };
-
   if (printParam) {
     return (
-       <div id="print-content-area" className="min-h-screen bg-white text-black p-10 font-serif print:p-0 print:m-0 max-w-4xl mx-auto relative z-10">
+        <div id="print-content-area" className="min-h-screen bg-white text-black p-10 font-serif print:p-0 print:m-0 max-w-4xl mx-auto relative z-10 pdf-safe">
           {/* Floating Action Bar for screen display only (hidden in print) */}
           <div data-html2canvas-ignore="true" className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-md border border-gray-200 shadow-md px-4 py-3 rounded-full font-sans shadow-lg">
              <button
@@ -537,27 +513,10 @@ export default function ExamPage() {
                 ← Return to Review
              </button>
              <button
-                onClick={handleDownloadPDF}
-                disabled={isDownloadingPDF}
-                className="text-xs font-bold bg-green-600 hover:bg-green-700 text-white px-3.5 py-1.5 rounded-full transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
-             >
-                {isDownloadingPDF ? (
-                  <>
-                    <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="w-3.5 h-3.5" />
-                    Download PDF
-                  </>
-                )}
-             </button>
-             <button
                 onClick={() => window.print()}
-                className="text-xs font-bold bg-primary text-on-primary hover:bg-primary/90 px-3.5 py-1.5 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold bg-primary text-on-primary hover:bg-primary/90 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 cursor-pointer shadow-md"
              >
-                🖨️ Print Exam
+                <Printer className="w-4 h-4" /> Print Assessment Paper
              </button>
           </div>
 

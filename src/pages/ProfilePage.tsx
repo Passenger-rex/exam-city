@@ -27,6 +27,7 @@ import {
   Zap,
   LifeBuoy,
   X,
+  Paperclip,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { useUser } from "../UserContext";
@@ -51,6 +52,7 @@ export default function ProfilePage() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [supportCategory, setSupportCategory] = useState("Site Bug");
   const [supportMessage, setSupportMessage] = useState("");
+  const [supportAttachment, setSupportAttachment] = useState<File | null>(null);
   const [supportSubmitting, setSupportSubmitting] = useState(false);
   const [supportSuccess, setSupportSuccess] = useState("");
   const [supportError, setSupportError] = useState("");
@@ -88,6 +90,16 @@ export default function ProfilePage() {
     setSupportSuccess("");
 
     try {
+      let attachmentUrl = "";
+      if (supportAttachment) {
+        // Convert to base64 for embedding in the document as we don't have a direct storage hook set up easily without bucket config
+        const reader = new FileReader();
+        attachmentUrl = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(supportAttachment);
+        });
+      }
+
       // Save feedback document to Firestore feedbacks collection
       await addDoc(collection(db, "feedbacks"), {
         userId: auth.currentUser?.uid || "anonymous",
@@ -95,11 +107,13 @@ export default function ProfilePage() {
         email: auth.currentUser?.email || "unknown@student.com",
         rating: `[SUPPORT: ${supportCategory}]`,
         message: cleanMsg,
+        attachment: attachmentUrl, // Store base64 or URL
         createdAt: new Date(),
       });
 
       setSupportSuccess("Support ticket submitted! Our administration team will process your inquiry shortly.");
       setSupportMessage("");
+      setSupportAttachment(null);
     } catch (err: any) {
       console.error(err);
       setSupportError("Failed to submit support ticket: " + err.message);
@@ -279,23 +293,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-surface-dim text-on-surface font-body-md flex flex-col w-full">
-      <Navbar />
-
-      {/* Mobile Top Navigation (only visible under md:breakpoint) */}
-      <nav className="bg-surface/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 border-b border-outline-variant/30 md:hidden">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="p-2 hover:bg-surface-dim group rounded-full transition-colors flex items-center"
-            >
-              <ArrowLeft className="w-6 h-6 text-on-surface-variant group-hover:text-primary transition-colors" />
-            </button>
-            <Logo />
-          </div>
-        </div>
-      </nav>
-
       <div className="flex-1 min-w-0 overflow-y-auto w-full">
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full">
         <motion.div
@@ -304,6 +301,13 @@ export default function ProfilePage() {
           transition={{ duration: 0.5 }}
         >
           <div className="bg-surface p-6 sm:p-10 rounded-[24px] sm:rounded-[32px] border border-outline-variant/50 shadow-sm bento-card">
+            <button
+               onClick={() => navigate("/dashboard")}
+               className="mb-8 flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-semibold text-sm group"
+            >
+               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+               Back to Dashboard
+            </button>
             <h1 className="text-2xl sm:text-3xl font-extrabold font-headline-md mb-2">
               Profile Settings
             </h1>
@@ -744,6 +748,34 @@ export default function ProfilePage() {
                     </p>
                   )}
                 </div>
+
+                {supportCategory === "Payment Issue" && (
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                    <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                      Proof of Payment (Optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => setSupportAttachment(e.target.files?.[0] || null)}
+                        className="hidden"
+                        id="support-attachment"
+                      />
+                      <label 
+                        htmlFor="support-attachment"
+                        className="w-full flex items-center gap-3 px-4 py-3 bg-surface-dim border border-dashed border-outline-variant rounded-2xl hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center border border-outline-variant group-hover:border-primary/30 transition-colors">
+                           <Paperclip className="w-4 h-4 text-on-surface-variant group-hover:text-primary" />
+                        </div>
+                        <span className="text-xs font-medium text-on-surface-variant truncate">
+                          {supportAttachment ? supportAttachment.name : "Upload screenshot or receipt"}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {supportError && (
                   <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl flex items-center gap-2">

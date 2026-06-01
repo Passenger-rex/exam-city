@@ -37,38 +37,15 @@ export function Navbar() {
     }
   };
 
+  const isAdmin = user.email?.toLowerCase() === "johntobismart@gmail.com";
+
   const menuItems = [
     {
-      path: "/dashboard",
-      name: "Dashboard",
-      icon: BookOpen,
-      color: "text-primary",
-    },
-    {
-      path: "/tutor",
-      name: "AI Study Coach",
-      icon: Sparkles,
-      color: "text-amber-500",
-    },
-    {
-      path: "/profile",
-      name: "Profile Settings",
-      icon: UserIcon,
-      color: "text-blue-500",
-    },
-  ];
-
-  // johntobismart@gmail.com alone should have access to admin control
-  const isAdmin = user.email && user.email.toLowerCase() === "johntobismart@gmail.com";
-
-  if (isAdmin) {
-    menuItems.push({
       path: "/admin",
-      name: "Admin Control",
+      name: "Admin Center",
       icon: Shield,
-      color: "text-red-500",
-    });
-  }
+    },
+  ].filter(item => isAdmin || item.path !== "/admin");
 
   const userInitial = user.email?.charAt(0).toUpperCase() || "S";
   const userDisplayName = profile?.name || user.displayName || (user.email ? user.email.split("@")[0].split(/[^a-zA-Z]/).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).filter(Boolean).join(" ") : "Student Scholar");
@@ -84,7 +61,7 @@ export function Navbar() {
             </Link>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1.5 ml-4">
               {menuItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
@@ -92,13 +69,13 @@ export function Navbar() {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
                       isActive
-                        ? "bg-primary text-white shadow-sm shadow-primary/10"
-                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface-dim/70"
+                        ? "bg-primary/10 text-primary"
+                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface-dim"
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : item.color}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? "text-primary" : "text-on-surface-variant/70"}`} />
                     <span>{item.name}</span>
                   </Link>
                 );
@@ -107,42 +84,37 @@ export function Navbar() {
           </div>
 
           {/* Right: Badge, User Info, Actions */}
-          <div className="hidden md:flex items-center gap-4">
-            {profile?.tier !== "pro" && (
-              <button
-                onClick={() => navigate("/profile")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 to-primary/15 text-primary border border-primary/20 text-xs font-bold hover:from-amber-500/20 hover:to-primary/20 transition-all cursor-pointer group"
-              >
-                <Award className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
-                <span>Refer 12 friends for FREE PRO</span>
-              </button>
-            )}
-
-            <div className={`text-[10px] uppercase tracking-widest font-bold px-2.5 py-1 rounded-full ${profile?.tier === "pro" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 ring-1 ring-amber-200" : "bg-surface-dim text-on-surface-variant"}`}>
+          <div className="hidden md:flex items-center gap-6 pl-4">
+            <div className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-md border ${profile?.tier === "pro" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
               {profile?.tier === "pro" ? "PRO" : "FREE"}
             </div>
 
-            <div className="flex items-center gap-2.5 pl-2 border-l border-outline-variant/30">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/10" title={user.email || ""}>
-                {userInitial}
-              </div>
-              <div className="text-left hidden lg:block max-w-[120px]">
-                <p className="text-xs font-bold text-on-surface truncate">
+            <div 
+              onClick={() => navigate("/profile")}
+              className="flex items-center gap-3 pl-6 border-l border-outline-variant/30 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <div className="text-right hidden lg:block">
+                <p className="text-xs font-bold text-on-surface">
                   {userDisplayName}
                 </p>
+                <p className="text-[10px] text-on-surface-variant opacity-70">
+                  {user.email?.toLowerCase()}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-surface-dim text-primary flex items-center justify-center font-bold text-sm border border-outline-variant transition-colors hover:border-primary/50" title={user.email || ""}>
+                {userInitial}
               </div>
             </div>
 
             <button
               onClick={handleSignOut}
               disabled={isSigningOut}
-              title="Log Out"
-              className="p-2 rounded-xl text-on-surface-variant hover:text-error hover:bg-error/5 transition-colors cursor-pointer border border-transparent hover:border-error/10 disabled:opacity-50"
+              className="p-2.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/5 transition-all cursor-pointer border border-transparent hover:border-error/20"
             >
               {isSigningOut ? (
                 <div className="w-4 h-4 border-2 border-on-surface-variant border-t-transparent rounded-full animate-spin" />
               ) : (
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4.5 h-4.5" />
               )}
             </button>
           </div>
@@ -199,7 +171,7 @@ export function Navbar() {
                         : "text-on-surface-variant hover:text-on-surface hover:bg-surface-dim"
                     }`}
                   >
-                    <Icon className={`w-4.5 h-4.5 ${isActive ? "text-white" : item.color}`} />
+                    <Icon className={`w-4.5 h-4.5 ${isActive ? "text-white" : "text-primary"}`} />
                     <span>{item.name}</span>
                   </Link>
                 );

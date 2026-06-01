@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Lock, Key, Play, Layers, Search, Zap, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CurriculumManager } from "../utils/CurriculumManager";
+import { db } from "../firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
 interface ExamConfigModalProps {
   isOpen: boolean;
@@ -205,24 +207,35 @@ export function ExamConfigModal({
 
   const DIFFICULTY_LEVELS = getDifficultyLevelsForSubject(subject);
 
-  const subjectsList = [
-    "Accounting", "Agricultural Science", "Anatomy", "Basic Science", "Basic Technology", 
-    "Biochemistry", "Biology", "Biotechnology", "Botany", "Business Studies", 
-    "Chemical Engineering", "Chemistry", "Civic Education", "Civil Engineering", 
-    "Clinical Biochemistry", "Clinical Immunology", "Commerce", "Community Medicine", 
-    "Computer Engineering", "CRK", "Current Affairs", "Dermatology", "Economics", 
-    "Electrical Engineering", "Embryology", "English", "English Literature", 
-    "ENT", "Fine Art", "Fluid Mechanics", "Food Science", "French", 
-    "Further Mathematics", "Genetics", "Geography", "Geology", "Geophysics", 
-    "Hausa", "Hematology", "History", "Home Economics", "Igbo", "Insurance", 
-    "Internal Medicine", "IRK", "Mathematics", "Mechanical Engineering", "Medical Biochemistry", 
-    "Medical Histology", "Medical Microbiology", "Medical Parasitology", "Medicine", 
-    "Meteorology", "Microbiology", "Molecular Biology", "Neuroanatomy", "Obstetrics and Gynecology", 
-    "Ophthalmology", "Pathology", "Pediatrics", "Petroleum Engineering", "Pharmacology", 
-    "Physical Education", "Physics", "Physiology", "Psychiatry", "Radiology", 
-    "Statistics", "Strength of Materials", "Structural Engineering", "Surgery", 
-    "Technical Drawing", "Thermodynamics", "Yoruba", "Zoology"
-  ];
+  const [subjectsList, setSubjectsList] = useState<string[]>([
+    "Biology", "Chemistry", "English", "Mathematics", "Physics"
+  ]);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const q = query(collection(db, "curriculums"), orderBy("name"));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const names: string[] = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (data.name) names.push(data.name);
+          });
+          setSubjectsList(names);
+          // if current subject is not in list, fallback to first
+          if (names.length > 0 && !names.includes(subject)) {
+             setSubject(names[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching subjects from firebase:", err);
+      }
+    };
+    if (isOpen) {
+       fetchSubjects();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
