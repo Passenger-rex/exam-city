@@ -4,7 +4,7 @@ import { X, Lock, Key, Play, Layers, Search, Zap, ChevronDown, Check } from "luc
 import { useNavigate } from "react-router-dom";
 import { CurriculumManager } from "../utils/CurriculumManager";
 import { db } from "../firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 
 interface ExamConfigModalProps {
   isOpen: boolean;
@@ -180,6 +180,24 @@ export function ExamConfigModal({
     const fetchDynamicTopics = async () => {
       setIsLoadingTopics(true);
       try {
+        // Query Firestore collection "curriculums" for the chosen subject to support live admin edits
+        const q = query(collection(db, "curriculums"), where("name", "==", subject));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty && isMounted) {
+          const docData = snap.docs[0].data();
+          const levelTopics = docData.topicsByLevel?.[difficulty] || docData.topics;
+          if (Array.isArray(levelTopics) && levelTopics.length > 0) {
+            setDynamicTopics(levelTopics);
+            const initialMeta = CurriculumManager.getCurriculumMetadata(subject, difficulty);
+            setCurriculumScope(initialMeta.scope);
+            setCurriculumDifficulty(initialMeta.difficultyRating);
+            setIsLoadingTopics(false);
+            return;
+          }
+        }
+
+        // Fallback to API if not in Firestore
         const response = await fetch(`/api/curriculum-topics?subject=${encodeURIComponent(subject)}&level=${difficulty}`);
         if (!response.ok) throw new Error(`HTTP error ${response.status}`);
         const data = await response.json();
@@ -220,12 +238,17 @@ export function ExamConfigModal({
           const names: string[] = [];
           snap.forEach(doc => {
             const data = doc.data();
-            if (data.name) names.push(data.name);
+            if (data.name) {
+              const trimmedName = String(data.name).trim();
+              if (trimmedName) names.push(trimmedName);
+            }
           });
-          setSubjectsList(names);
+          // Deduplicate names to prevent React duplicate key errors in lists
+          const uniqueNames = Array.from(new Set(names));
+          setSubjectsList(uniqueNames);
           // if current subject is not in list, fallback to first
-          if (names.length > 0 && !names.includes(subject)) {
-             setSubject(names[0]);
+          if (uniqueNames.length > 0 && !uniqueNames.includes(subject)) {
+             setSubject(uniqueNames[0]);
           }
         }
       } catch (err) {
@@ -369,7 +392,7 @@ export function ExamConfigModal({
                       Suggested Curriculum Topics for {subject}:
                     </div>
                     <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto custom-scrollbar pr-1">
-                      {dynamicTopics.map((t) => (
+                      {Array.from(new Set(dynamicTopics || [])).map((t) => (
                         <button
                           key={t}
                           type="button"

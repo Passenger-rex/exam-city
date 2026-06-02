@@ -388,12 +388,13 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 
       const randomEntropy = Math.floor(Math.random() * 1000000000);
       
-      const prompt = `Generate exactly ${limitNum} novel, high-quality mock exam multiple choice questions for the subject: "${subjectStr}". 
+      const prompt = `Generate exactly ${limitNum} novel, academically challenging, and high-quality mock exam multiple choice questions for the subject: "${subjectStr}". 
       ${yearInstruction} 
       ${topicInstruction}
       
       The questions MUST:
-      1. Be entirely novel and highly varied. Do NOT repeat standard, common examples. (Internal seed: ${randomEntropy})
+      1. Be entirely novel and highly varied. Absolutely NO duplication, repetition, or overlapping concepts. Vary the settings, values, variables, clinical presentations, or theoretical problems across all questions. (Internal entropy seed: ${randomEntropy})
+      2. NEVER be too simple. Every single question must be sophisticated, require multiple cognitive steps, and match the absolute rigor of the chosen level ("${level}"). For instance, ask about specific processes, complex calculations, or comparative deep mechanics, rather than simple rote recall of concepts.
       ${levelInstruction}
       ${clinicalInstruction}
       4. Ensure the questions perfectly match the curriculum of secondary school mock exams (e.g., WAEC, NECO, UTME/JAMB) if applicable.

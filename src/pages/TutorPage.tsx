@@ -79,6 +79,7 @@ export default function TutorPage() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -86,37 +87,85 @@ export default function TutorPage() {
     // Initialize SpeechRecognition if available
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputValue(prev => prev ? prev + " " + transcript : transcript);
-      };
-      
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-      
-      recognition.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setIsListening(false);
-      };
-      
-      recognitionRef.current = recognition;
+      setIsSpeechSupported(true);
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInputValue(prev => prev ? prev + " " + transcript : transcript);
+        };
+        
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+        
+        recognition.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+        
+        recognitionRef.current = recognition;
+      } catch (err) {
+        console.error("Speech init error:", err);
+      }
+    } else {
+      // Proactively support displaying the button for visual completion, even in constrained preview environments
+      setIsSpeechSupported(true);
     }
   }, []);
 
   const toggleListening = () => {
     if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
       try {
-        recognitionRef.current?.start();
+        recognitionRef.current?.stop();
+      } catch (e) {}
+      setIsListening(false);
+    } else {
+      if (!recognitionRef.current) {
+        // Double-check support on click
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          try {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            
+            recognition.onresult = (event: any) => {
+              const transcript = event.results[0][0].transcript;
+              setInputValue(prev => prev ? prev + " " + transcript : transcript);
+            };
+            
+            recognition.onend = () => {
+              setIsListening(false);
+            };
+            
+            recognition.onerror = (event: any) => {
+              console.error("Speech recognition error", event.error);
+              setIsListening(false);
+            };
+            
+            recognitionRef.current = recognition;
+            recognition.start();
+            setIsListening(true);
+            return;
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        alert("Web Speech API is not supported or accessible in this preview container environment. Please use Google Chrome, Safari, or Edge for full speech features.");
+        return;
+      }
+      try {
+        recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
         console.error("Could not start speech recognition:", err);
+        setIsListening(false);
       }
     }
   };
@@ -911,11 +960,11 @@ export default function TutorPage() {
                    />
 
                    {/* Microphone Button */}
-                   {recognitionRef.current && (
+                   {isSpeechSupported && (
                      <button
                         onClick={toggleListening}
-                        className={`absolute right-3 p-2 rounded-full transition-colors flex items-center justify-center ${isListening ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse' : 'text-on-surface-variant/60 hover:text-primary hover:bg-primary/10'}`}
-                        title="Dictate with voice"
+                        className={`absolute right-3 p-2 rounded-full transition-colors flex items-center justify-center z-10 cursor-pointer ${isListening ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse' : 'text-on-surface-variant/60 hover:text-primary hover:bg-primary/10'}`}
+                        title="Dictate clinical reasoning with voice"
                      >
                        <Mic className="w-5 h-5" />
                      </button>

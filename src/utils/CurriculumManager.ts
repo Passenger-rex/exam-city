@@ -10,7 +10,7 @@ export interface SubjectCurriculum {
 }
 
 export class CurriculumManager {
-  private static defaultTopics: Record<string, string[]> = {
+  public static defaultTopics: Record<string, string[]> = {
     "Anatomy": ["Gross Anatomy", "Histology Core", "Embryology Base", "Neuroanatomy Intro", "Musculoskeletal System", "Cardiovascular Anatomy", "Cardiovascular & Blood Physiology", "Respiratory & Renal Anatomy", "Lymphatic System", "Central Nervous System"],
     "Anatomy: Extremities (Locomotor)": ["Pectoral Girdle & Axilla", "Brachial Plexus & Arm Anatomy", "Forearm & Hand compartments", "Gluteal Region & Thigh", "Popliteal Fossa & Leg", "Ankle, Foot & Joint Mechanics"],
     "Basic Science": ["Living & Non-Living Things", "Matter & Energy", "The Human Body", "Environment", "Reproductive Health", "Forces & Motion"],
@@ -399,5 +399,89 @@ export class CurriculumManager {
     }
 
     return { scope, difficultyRating };
+  }
+
+  /**
+   * Returns all defined subject names in the curriculum configuration
+   */
+  public static getAllSubjects(): string[] {
+    return Object.keys(this.defaultTopics);
+  }
+
+  /**
+   * Generates a level-to-topics map for all supported difficulty levels of a subject
+   */
+  public static getAllTopicsByLevel(subject: string): Record<string, string[]> {
+    const levels = [
+       "standard", "undergrad", "advanced", "postgrad", "professional",
+       "100_sci", "200_sci", "300_sci", "400_sci",
+       "200_eng", "300_eng", "400_eng", "500_eng",
+       "200", "300", "400", "500", "600"
+    ];
+    const map: Record<string, string[]> = {};
+    for (const lvl of levels) {
+       map[lvl] = this.getSubTopics(subject, lvl);
+    }
+    return map;
+  }
+
+  /**
+   * Returns a default category group for a given subject to improve predictive classification
+   */
+  public static getDefaultGroup(subject: string): string {
+    const sub = String(subject).toLowerCase().trim();
+    
+    // Medical keywords
+    if (
+      sub.includes("anatomy") || sub.includes("biochem") || sub.includes("immunology") || 
+      sub.includes("medicine") || sub.includes("dermatology") || sub.includes("embryology") || 
+      sub.includes("ent") || sub.includes("hematology") || sub.includes("histology") || 
+      sub.includes("microbiology") || sub.includes("parasitology") || sub.includes("obstetrics") || 
+      sub.includes("ophthalmology") || sub.includes("pathology") || sub.includes("pediatrics") || 
+      sub.includes("pharmacology") || sub.includes("physiology") || sub.includes("psychiatry") || 
+      sub.includes("radiology") || sub.includes("surgery") || sub.includes("biology") || 
+      sub.includes("botany") || sub.includes("zoology") || sub.includes("genetics") || 
+      sub.includes("molecular biology") || sub.includes("biotechnology") || sub.includes("food science")
+    ) {
+      return "Medical";
+    }
+
+    // Engineering keywords
+    if (
+      sub.includes("engineering") || sub.includes("fluid mechanics") || 
+      sub.includes("strength of materials") || sub.includes("thermodynamics") || 
+      sub.includes("technology") || sub.includes("technical drawing")
+    ) {
+      return "Engineering";
+    }
+
+    // Humanities keywords
+    if (
+      sub.includes("english") || sub.includes("literature") || sub.includes("french") || 
+      sub.includes("art") || sub.includes("hausa") || sub.includes("igbo") || 
+      sub.includes("yoruba") || sub.includes("history") || sub.includes("civic") || 
+      sub.includes("crk") || sub.includes("irk") || sub.includes("current affairs")
+    ) {
+      return "Humanities";
+    }
+
+    // Science keywords
+    if (
+      sub.includes("science") || sub.includes("chemistry") || sub.includes("physics") || 
+      sub.includes("mathematics") || sub.includes("geography") || sub.includes("geology") || 
+      sub.includes("geophysics") || sub.includes("meteorology") || sub.includes("statistics")
+    ) {
+      return "Science";
+    }
+
+    // Social Science
+    if (
+      sub.includes("business") || sub.includes("economics") || 
+      sub.includes("commerce") || sub.includes("insurance")
+    ) {
+      return "Social Sciences";
+    }
+
+    return "General";
   }
 }
