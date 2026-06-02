@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
-import dotenv from "dotenv";
-dotenv.config({ override: true });
+import { Client } from "@notionhq/client";
 
 import { OpenAI } from "openai";
 import { executeAIFallback } from "./src/ai-fallback";
@@ -394,13 +393,13 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       
       The questions MUST:
       1. Be entirely novel and highly varied. Absolutely NO duplication, repetition, or overlapping concepts. Vary the settings, values, variables, clinical presentations, or theoretical problems across all questions. (Internal entropy seed: ${randomEntropy})
-      2. NEVER be too simple. Every single question must be sophisticated, require multiple cognitive steps, and match the absolute rigor of the chosen level ("${level}"). For instance, ask about specific processes, complex calculations, or comparative deep mechanics, rather than simple rote recall of concepts.
+      2. Strictly follow the STANDARD CURRICULUM of the chosen level ("${level}"). They must not be too simple, requiring multiple cognitive steps or applied knowledge, but they MUST remain strictly within the established examinable topics for this level, avoiding un-examinable edge cases.
+      3. For secondary levels (e.g. 100 level, SSCE, Jamb), perfectly match the syllabus of standard boards (WAEC, NECO, UTME). For higher levels, match the rigorous curriculum of premier institutions.
       ${levelInstruction}
       ${clinicalInstruction}
-      4. Ensure the questions perfectly match the curriculum of secondary school mock exams (e.g., WAEC, NECO, UTME/JAMB) if applicable.
-      5. Use precise modern nomenclature and maintain terminology appropriate for the target exam level.
-      6. Provide highly plausible distractors (incorrect options). The distinctions between correct and incorrect options should be clear but require real understanding to discern.
-      7. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
+      4. Use precise modern nomenclature and maintain terminology appropriate for the target exam level.
+      5. Provide highly plausible distractors (incorrect options). The distinctions between correct and incorrect options should be clear but require real understanding to discern.
+      6. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
       
       IMPORTANT FOR MATHEMATICS/SCIENCE:
       - DO NOT use dollar signs ($) or LaTeX.
@@ -806,6 +805,142 @@ function startStaticServer() {
     console.log(`Static server running on http://localhost:${PORT}`);
   });
 }
+
+// Notion Sync API Endpoint
+app.post("/api/sync-notion", async (req, res) => {
+  const { notionToken, databaseId, dataSets } = req.body;
+  if (!notionToken || !databaseId) {
+    return res.status(400).json({ success: false, error: "Missing Notion integration token or database ID" });
+  }
+
+  try {
+    const notion = new Client({ auth: notionToken });
+    
+    // Verify database exists
+    let dbInfo: any;
+    try {
+      dbInfo = await notion.databases.retrieve({ database_id: databaseId });
+    } catch (err: any) {
+      if (err.code === "object_not_found" || err.status === 404) {
+        throw new Error(`Cannot find Notion database. CRITICAL FIX: Open your database page in Notion, click '...' (top right), go to 'Connections', click 'Connect to' and select your integration. Original error: ${err.message}`);
+      }
+      throw err;
+    }
+    
+    if (!dbInfo) {
+      throw new Error("Could not access the Notion Database. Make sure the database is shared with your integration tool.");
+    }
+
+    const availableProperties = dbInfo.properties || {};
+    let titlePropKey = Object.keys(availableProperties).find(k => availableProperties[k].type === "title") || "Name";
+
+    // Try creating entries for the datasets (we'll just append them to the database).
+    for (const dataSet of dataSets) {
+       const { tabName, headers, rows } = dataSet;
+       
+       for (const row of rows) {
+          let titleVal = "Data row";
+          if (row.length > 0) titleVal = String(row[0]); // first column as Title if nothing else
+
+          let rowContent = "";
+          headers.forEach((h: string, i: number) => {
+             rowContent += `**${h}**: ${row[i]}\n`;
+          });
+          
+          const propertiesToMap: Record<string, any> = {};
+          
+          const titleText = `${tabName}: ${titleVal.substring(0, 50)}`;
+
+          // Map title property
+          propertiesToMap[titlePropKey] = {
+             title: [
+                { text: { content: titleText } }
+             ]
+          };
+
+          // Dynamically map existing properties
+          headers.forEach((h: string, i: number) => {
+             const propKey = Object.keys(availableProperties).find(k => k.toLowerCase() === h.toLowerCase());
+             if (propKey && availableProperties[propKey].type !== "title") {
+                const pType = availableProperties[propKey].type;
+                const val = String(row[i]);
+                if (!val || val === "N/A" || val === "undefined") return;
+
+                if (pType === "rich_text") {
+                   propertiesToMap[propKey] = { rich_text: [ { type: "text", text: { content: val.substring(0, 2000) } } ] };
+                } else if (pType === "number") {
+                   const num = Number(val);
+                   if (!isNaN(num)) propertiesToMap[propKey] = { number: num };
+                } else if (pType === "select") {
+                   propertiesToMap[propKey] = { select: { name: val.substring(0, 100) } };
+                } else if (pType === "date") {
+                   try {
+                     const d = new Date(val);
+                     if (!isNaN(d.getTime())) propertiesToMap[propKey] = { date: { start: d.toISOString() } };
+                   } catch(e) {}
+                } else if (pType === "checkbox") {
+                   propertiesToMap[propKey] = { checkbox: val.toLowerCase() === "true" || val === "1" };
+                } else if (pType === "url") {
+                   if (val.startsWith("http")) propertiesToMap[propKey] = { url: val.substring(0, 2000) };
+                } else if (pType === "email") {
+                   if (val.includes("@")) propertiesToMap[propKey] = { email: val };
+                } else if (pType === "phone_number") {
+                   propertiesToMap[propKey] = { phone_number: val.substring(0, 100) };
+                }
+             }
+          });
+
+          // Look for an existing page with this exact title
+          let existingPageId: string | null = null;
+          try {
+             const searchResponse: any = await notion.databases.query({
+                database_id: databaseId,
+                filter: {
+                   property: titlePropKey,
+                   title: {
+                      equals: titleText
+                   }
+                }
+             });
+             
+             if (searchResponse.results && searchResponse.results.length > 0) {
+                existingPageId = searchResponse.results[0].id;
+             }
+          } catch(e) {
+             console.error("Error searching for existing page", e);
+          }
+
+          if (existingPageId) {
+             await notion.pages.update({
+                page_id: existingPageId,
+                properties: propertiesToMap
+             });
+          } else {
+             await notion.pages.create({
+                parent: { database_id: databaseId },
+                properties: propertiesToMap,
+                children: [
+                   {
+                      object: 'block',
+                      type: 'paragraph',
+                      paragraph: {
+                         rich_text: [
+                            { type: 'text', text: { content: rowContent.substring(0, 2000) } }
+                         ]
+                      }
+                   }
+                ]
+             });
+          }
+       }
+    }
+
+    res.json({ success: true, message: "Synced to Notion Database successfully!" });
+  } catch (err: any) {
+    console.error("[Notion Sync] Error:", err.message);
+    res.status(500).json({ success: false, error: err.message || "Failed to sync with Notion API" });
+  }
+});
 
 // API 404 Not Found Handler
 app.use((req, res, next) => {

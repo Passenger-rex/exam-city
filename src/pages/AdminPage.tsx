@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { collection, addDoc, serverTimestamp, getDocs, orderBy, query, doc, getDoc, setDoc, where, updateDoc, deleteDoc } from "firebase/firestore";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { Upload, Database, CheckCircle2, AlertCircle, FileSpreadsheet, Edit2, Trash2, Check, X, Plus, Search, Sparkles, Info, LayoutGrid, Layers, RefreshCw } from "lucide-react";
+import { Upload, Database, CheckCircle2, AlertCircle, Edit2, Trash2, Check, X, Plus, Search, Sparkles, Info, LayoutGrid, Layers, RefreshCw } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Navbar } from "../components/Navbar";
 import { useUser } from "../UserContext";
@@ -132,10 +132,8 @@ export default function AdminPage() {
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [sheetUrl, setSheetUrl] = useState("");
-  const [configuredSheetId, setConfiguredSheetId] = useState("");
-  const [isSavingConfig, setIsSavingConfig] = useState(false);
-
+  const [notionToken, setNotionToken] = useState("");
+  const [notionDbId, setNotionDbId] = useState("");
   const [curriculums, setCurriculums] = useState<{id: string, name: string, topics: string[], topicsByLevel?: Record<string, string[]>, group?: string}[]>([]);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [newSubjectIcon, setNewSubjectIcon] = useState("");
@@ -153,8 +151,32 @@ export default function AdminPage() {
   const [editingTopicName, setEditingTopicName] = useState("");
 
   const [verificationResults, setVerificationResults] = useState<Record<string, { verified: boolean; hasMismatches: boolean; mismatches: string[]; levelMismatches: string[] }>>({});
-  const [adminTab, setAdminTab] = useState<"curriculum" | "upload" | "sheets">("curriculum");
+  const [adminTab, setAdminTab] = useState<"curriculum" | "upload" | "notion">("curriculum");
   const [subjectSearchQuery, setSubjectSearchQuery] = useState("");
+
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const loadNotionSettings = async () => {
+      try {
+        const configRef = doc(db, "settings", "notion");
+        const docSnap = await getDoc(configRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.token) setNotionToken(data.token);
+          if (data.dbId) setNotionDbId(data.dbId);
+          if (data.lastSyncTime) setLastSyncTime(data.lastSyncTime.toDate());
+        }
+      } catch (err) {
+        console.error("Error loading notion config", err);
+      }
+    };
+    loadNotionSettings();
+  }, []);
+
+  useEffect(() => {
+    setStatus("");
+  }, [adminTab]);
 
   useEffect(() => {
     const fetchCurriculums = async () => {
@@ -541,23 +563,6 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    const loadConfigObj = async () => {
-      try {
-        const configRef = doc(db, "settings", "google_sheets");
-        const docSnap = await getDoc(configRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.spreadsheetId) setConfiguredSheetId(data.spreadsheetId);
-          if (data.spreadsheetUrl) setSheetUrl(data.spreadsheetUrl);
-        }
-      } catch (err) {
-        console.error("Error loading config", err);
-      }
-    };
-    loadConfigObj();
-  }, [db]);
-
-  useEffect(() => {
     if (!activeSubjectId) return;
     const cur = curriculums.find(c => c.id === activeSubjectId);
     if (!cur) return;
@@ -626,188 +631,130 @@ export default function AdminPage() {
     }
   };
 
-  const syncAllToMasterSheet = async () => {
-    setIsSyncing(true);
-    setStatus("Syncing Master Database...");
-    setSheetUrl("");
+  const syncAllToNotionDatabase = async (isAutoSync = false) => {
+    if (!notionToken || !notionDbId) {
+      if (!isAutoSync) alert("Please enter your Notion Integration Token and Database ID first.");
+      return;
+    }
+    
+    if (isAutoSync && !lastSyncTime) return; // Cannot auto sync without a previous sync baseline
+    
+    if (!isAutoSync) {
+       setIsSyncing(true);
+       setStatus("Syncing Exam City data to Notion Database...");
+    }
     
     try {
-      let token = sessionStorage.getItem("google_access_token");
+      if (!isAutoSync) setStatus("Preparing analytics data...");
       
-      if (!token) {
-        setStatus("Authorizing Google Sheets...");
-        const provider = new GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-        const result = await signInWithPopup(auth, provider);
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        if (credential?.accessToken) {
-           token = credential.accessToken;
-           sessionStorage.setItem("google_access_token", token);
-        } else {
-           throw new Error("Failed to get Google Access Token");
-        }
+      let fQuery, rQuery, uQuery;
+      if (isAutoSync && lastSyncTime) {
+         fQuery = query(collection(db, "feedbacks"), where("createdAt", ">", lastSyncTime));
+         rQuery = query(collection(db, "reviews"), where("createdAt", ">", lastSyncTime));
+         uQuery = query(collection(db, "users"), where("createdAt", ">", lastSyncTime));
+      } else {
+         fQuery = query(collection(db, "feedbacks"), orderBy("createdAt", "desc"));
+         rQuery = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
+         uQuery = collection(db, "users");
+      }
+      
+      const [fSnap, rSnap, uSnap] = await Promise.all([
+         getDocs(fQuery),
+         getDocs(rQuery),
+         getDocs(uQuery)
+      ]);
+      
+      if (isAutoSync && fSnap.empty && rSnap.empty && uSnap.empty) {
+         return; // Nothing new to sync
       }
 
-      // 1. Fetch Feedbacks & Complaints
-      setStatus("Fetching Feedbacks...");
-      const qFeedbacks = query(collection(db, "feedbacks"), orderBy("createdAt", "desc"));
-      const fSnap = await getDocs(qFeedbacks);
-      const feedbackRows = [["Date", "User ID", "Name", "Email", "Category/Type", "Message", "Attachment URL/Data"]];
-      fSnap.forEach(d => {
-        const data = d.data();
+      const feedbackRows = fSnap.docs.map(d => {
+        const data = d.data() as any;
         const date = data.createdAt?.toDate?.()?.toISOString() || (data.createdAt ? new Date(data.createdAt).toISOString() : "N/A");
-        feedbackRows.push([date, data.userId || "", data.name || "", data.email || "", String(data.rating || ""), data.message || "", data.attachment || "No Attachment"]);
+        const attachmentDetail = data.attachment || data.fileUrl || data.imageUrl || "No Attachment";
+        return [d.id, date, data.userId || "", data.name || "", data.email || "", String(data.rating || ""), data.message || "", attachmentDetail];
       });
 
-      // 2. Fetch Reviews
-      setStatus("Fetching App Reviews...");
-      const qReviews = query(collection(db, "reviews"), orderBy("createdAt", "desc"));
-      const rSnap = await getDocs(qReviews);
-      const reviewRows = [["Date", "User ID", "Rating", "Review"]];
-      rSnap.forEach(d => {
-        const data = d.data();
-        const date = data.createdAt?.toDate?.()?.toISOString() || new Date(data.createdAt).toISOString();
-        reviewRows.push([date, data.userId || "", String(data.rating || ""), data.review || ""]);
+      const reviewRows = rSnap.docs.map(d => {
+        const data = d.data() as any;
+        const date = data.createdAt?.toDate?.()?.toISOString() || (data.createdAt ? new Date(data.createdAt).toISOString() : "N/A");
+        return [d.id, date, data.userId || "", String(data.rating || ""), data.review || ""];
       });
 
-      // 3. Fetch Premium Users
-      setStatus("Fetching Premium Users...");
-      const qUsers = query(collection(db, "users"), where("tier", "==", "pro"));
-      const uSnap = await getDocs(qUsers);
-      const userRows = [["Join Date", "Full Name", "Email", "User ID", "Exams Taken"]];
-      uSnap.forEach(d => {
-        const data = d.data();
-        const date = data.createdAt?.toDate?.()?.toISOString() || "N/A";
-        userRows.push([date, data.name || "", data.email || "", d.id, String(data.examCount || 0)]);
+      const userRows = uSnap.docs.map(d => {
+        const data = d.data() as any;
+        const dateRegistered = data.createdAt?.toDate?.()?.toISOString() || "N/A";
+        const datePremium = data.tier === "pro" ? (data.premiumSince?.toDate?.()?.toISOString() || dateRegistered) : "N/A";
+        return [d.id, dateRegistered, datePremium, String(data.tier || "free").toUpperCase(), data.name || "", data.email || "", String(data.examCount || 0)];
       });
 
-      let spreadsheetId = configuredSheetId.trim();
-
-      if (!spreadsheetId) {
-        setStatus("Creating Master Google Sheet...");
-        const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            properties: { title: `Exam City Master Database` },
-            sheets: [
-              { properties: { title: "Complaints & Feedbacks" } },
-              { properties: { title: "App Reviews" } },
-              { properties: { title: "Premium Users" } },
-              { properties: { title: "Subject Curriculum" } }
-            ]
-          })
-        });
-
-        if (!createRes.ok) {
-          const errMsg = await createRes.text();
-          let detail = "";
-          try {
-             const cleanedObj = JSON.parse(errMsg);
-             detail = cleanedObj.error?.message || errMsg;
-          } catch(e) {
-             detail = errMsg;
-          }
-          throw new Error(`Failed to create Master Google Sheet: ${detail}`);
+      const dataSets = [
+        { 
+          tabName: "Complaints & Feedbacks", 
+          headers: ["Record ID", "Date Submitted", "User ID", "Name", "Email", "Category/Type", "Message", "Attachment/Details"],
+          rows: feedbackRows
+        },
+        { 
+          tabName: "App Reviews", 
+          headers: ["Record ID", "Date Submitted", "User ID", "Rating", "Review"], 
+          rows: reviewRows 
+        },
+        { 
+          tabName: "All Users Database", 
+          headers: ["Record ID", "Date Registered", "Date Upgraded (Premium)", "Tier", "Full Name", "Email", "Exams Taken"], 
+          rows: userRows 
         }
-        const sheetData = await createRes.json();
-        spreadsheetId = sheetData.spreadsheetId;
-        const newUrl = sheetData.spreadsheetUrl;
-        
-        setConfiguredSheetId(spreadsheetId);
-        setSheetUrl(newUrl);
+      ].filter(d => d.rows.length > 0);
 
-        await setDoc(doc(db, "settings", "google_sheets"), {
-          spreadsheetId,
-          spreadsheetUrl: newUrl,
-          updatedAt: serverTimestamp()
-        });
-      }
+      if (dataSets.length === 0) return;
 
-      setStatus("Syncing data to tabs...");
-
-      const syncTab = async (tabName: string, headers: string[], rows: any[][]) => {
-         setStatus(`Syncing ${tabName}...`);
-         
-         if (tabName === "Subject Curriculum") {
-            // First clear the sheet values in that tab
-            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${tabName}'!A1:Z1000:clear`, {
-               method: "POST",
-               headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
-            });
-            // Then PUT the new values
-            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${tabName}'!A1?valueInputOption=USER_ENTERED`, {
-               method: "PUT",
-               headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-               body: JSON.stringify({ values: [headers, ...rows] })
-            });
-            return;
-         }
-
-         // 1. Check if sheet is empty by trying to get first row
-         const getRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${tabName}'!A1:1`, {
-            headers: { "Authorization": `Bearer ${token}` }
-         });
-         const getData = await getRes.json();
-         const isSheetEmpty = !getData.values || getData.values.length === 0;
-
-         // 2. Prepare payload: Include headers only if empty
-         const valuesToSync = isSheetEmpty ? [headers, ...rows] : rows;
-         
-         if (valuesToSync.length === 0) return;
-
-         // 3. Append data
-         await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${tabName}'!A1:append?valueInputOption=USER_ENTERED`, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ values: valuesToSync })
-         });
-      };
-
-      const curriculumRows = [["Subject Name", "Icon", "Topics (Comma Separated)"]];
-      curriculums.forEach(c => {
-         curriculumRows.push([c.name, (c as any).icon || "None", c.topics.join(", ")]);
+      if (!isAutoSync) setStatus("Transmitting to backend Notion sync engine (Clearing old records)...");
+      
+      const response = await fetch("/api/sync-notion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          notionToken, 
+          databaseId: notionDbId, 
+          dataSets,
+          clearDatabase: !isAutoSync // True if this is a manual full sync
+        })
       });
 
-      try {
-        await syncTab("Complaints & Feedbacks", ["Date", "User ID", "Name", "Email", "Category/Type", "Message", "Attachment URL/Data"], feedbackRows.slice(1));
-        await syncTab("App Reviews", ["Date", "User ID", "Rating", "Review"], reviewRows.slice(1));
-        await syncTab("Premium Users", ["Join Date", "Full Name", "Email", "User ID", "Exams Taken"], userRows.slice(1));
-        await syncTab("Subject Curriculum", ["Subject Name", "Icon", "Topics (Comma Separated)"], curriculumRows.slice(1));
-      } catch (tabErr: any) {
-        // If tabs missing, we might need a batch update to create them
-        console.error("Tab sync error - attempting to create tabs", tabErr);
-        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-                requests: [
-                    { addSheet: { properties: { title: "Complaints & Feedbacks" } } },
-                    { addSheet: { properties: { title: "App Reviews" } } },
-                    { addSheet: { properties: { title: "Premium Users" } } },
-                    { addSheet: { properties: { title: "Subject Curriculum" } } }
-                ]
-            })
-        });
-        // Retry sync once
-        await syncTab("Complaints & Feedbacks", ["Date", "User ID", "Name", "Email", "Category/Type", "Message", "Attachment URL/Data"], feedbackRows.slice(1));
-        await syncTab("App Reviews", ["Date", "User ID", "Rating", "Review"], reviewRows.slice(1));
-        await syncTab("Premium Users", ["Join Date", "Full Name", "Email", "User ID", "Exams Taken"], userRows.slice(1));
-        await syncTab("Subject Curriculum", ["Subject Name", "Icon", "Topics (Comma Separated)"], curriculumRows.slice(1));
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Notion Sync failed on server.");
       }
-
-      setStatus("Success! Master Database synced successfully.");
-      const configRef = doc(db, "settings", "google_sheets");
-      const docSnap = await getDoc(configRef);
-      if (docSnap.exists()) setSheetUrl(docSnap.data().spreadsheetUrl);
       
+      const newSyncTime = new Date();
+      setLastSyncTime(newSyncTime);
+      await setDoc(doc(db, "settings", "notion"), {
+        token: notionToken,
+        dbId: notionDbId,
+        lastSyncTime: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      if (!isAutoSync) setStatus("Success! Exported to Notion Database successfully.");
     } catch (err: any) {
       console.error(err);
-      setStatus("Error: " + err.message);
+      if (!isAutoSync) setStatus("Error: " + err.message);
     } finally {
-      setIsSyncing(false);
+      if (!isAutoSync) setIsSyncing(false);
     }
   };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (notionToken && notionDbId) {
+      interval = setInterval(() => {
+        if (!isSyncing) syncAllToNotionDatabase(true);
+      }, 30000); // Background auto-sync every 30 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [notionToken, notionDbId, isSyncing, lastSyncTime]);
 
   return (
     <div id="admin-root-container" className="min-h-screen bg-neutral-50/50 dark:bg-neutral-950 font-sans text-neutral-800 dark:text-neutral-100 flex flex-col w-full selection:bg-indigo-500/15 selection:text-indigo-600">
@@ -843,7 +790,7 @@ export default function AdminPage() {
                  Admin Settings Hub
                </h1>
                <p className="text-neutral-500 dark:text-neutral-400 font-medium text-sm max-w-2xl leading-relaxed">
-                 Fully manage the learning syllabus, add live overrides, import parsed question banks, and sync Sheets databases seamlessly.
+                 Fully manage the learning syllabus, add live overrides, and import parsed question banks seamlessly.
                </p>
             </div>
             <button
@@ -856,42 +803,42 @@ export default function AdminPage() {
           </div>
 
           {/* Interactive Navigation Tab Switches */}
-          <div id="admin-tab-switcher" className="inline-flex p-1 bg-neutral-100 dark:bg-neutral-900/80 rounded-xl border border-neutral-200/60 dark:border-neutral-800/80 shadow-inner w-full max-w-md gap-1">
+          <div id="admin-tab-switcher" className="inline-flex p-1 bg-neutral-100 dark:bg-neutral-900/80 rounded-xl border border-neutral-200/60 dark:border-neutral-800/80 shadow-inner w-full max-w-2xl gap-1">
              <button
                 id="admin-tab-curriculum"
                 onClick={() => setAdminTab("curriculum")}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-6 rounded-lg text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer ${
                    adminTab === "curriculum" 
                       ? "bg-white dark:bg-neutral-800 text-neutral-850 dark:text-white shadow-sm ring-1 ring-neutral-200/40 dark:ring-neutral-700/60" 
-                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-white/50 dark:hover:bg-neutral-800/50"
                 }`}
              >
-                <Layers className="w-3.5 h-3.5" />
+                <Layers className="w-4 h-4" />
                 <span>Curriculum</span>
              </button>
              <button
                 id="admin-tab-upload"
                 onClick={() => setAdminTab("upload")}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-6 rounded-lg text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer ${
                    adminTab === "upload" 
                       ? "bg-white dark:bg-neutral-800 text-neutral-850 dark:text-white shadow-sm ring-1 ring-neutral-200/40 dark:ring-neutral-700/60" 
-                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-white/50 dark:hover:bg-neutral-800/50"
                 }`}
              >
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-4 h-4" />
                 <span>Upload Question Bank</span>
              </button>
              <button
-                id="admin-tab-sheets"
-                onClick={() => setAdminTab("sheets")}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
-                   adminTab === "sheets" 
+                id="admin-tab-notion"
+                onClick={() => setAdminTab("notion")}
+                className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-6 rounded-lg text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer ${
+                   adminTab === "notion" 
                       ? "bg-white dark:bg-neutral-800 text-neutral-850 dark:text-white shadow-sm ring-1 ring-neutral-200/40 dark:ring-neutral-700/60" 
-                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-white/50 dark:hover:bg-neutral-800/50"
                 }`}
              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Google Sheets Sync</span>
+                <Database className="w-4 h-4" />
+                <span>Notion Database Sync</span>
              </button>
           </div>
 
@@ -1421,7 +1368,7 @@ export default function AdminPage() {
                       accept=".json"
                       onChange={handleFileUpload}
                       className="hidden"
-                      disabled={isUploading || isSyncing}
+                      disabled={isUploading}
                     />
                   </label>
 
@@ -1454,69 +1401,72 @@ export default function AdminPage() {
                 </div>
             )}
 
-            {/* TAB 3: WORKSPACE GOOGLE SHEETS SYNC */}
-            {adminTab === "sheets" && (
-                <div id="card-sheets-panel" className="bg-white dark:bg-neutral-900 p-6 sm:p-10 rounded-3xl border border-neutral-200 dark:border-neutral-800/80 shadow-md shadow-neutral-100/40 dark:shadow-none space-y-8 max-w-4xl animate-fade-in animate-duration-200">
+            {adminTab === "notion" && (
+                <div id="card-notion-panel" className="bg-white dark:bg-neutral-900 p-6 sm:p-10 rounded-3xl border border-neutral-200 dark:border-neutral-800/80 shadow-md shadow-neutral-100/40 dark:shadow-none space-y-8 max-w-4xl animate-fade-in animate-duration-200">
                   <div className="flex items-center gap-4 pb-6 border-b border-neutral-100 dark:border-neutral-800">
-                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                      <FileSpreadsheet className="w-6 h-6" />
+                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+                      <Database className="w-6 h-6" />
                     </div>
                     <div>
                       <h2 className="text-xl sm:text-2xl font-extrabold text-neutral-900 dark:text-white">
-                        Master Sheets Analytics Link
+                        Notion API Server Sync
                       </h2>
                       <p className="text-neutral-500 dark:text-neutral-400 font-medium text-xs sm:text-sm">
-                        Synchronize user reports, feedback logs, activity dashboards, and dynamic syllabus configurations with Google Workspace.
+                        Automatically export user metrics, curriculum configurations, and feedback logs securely to your Notion workspace DB.
                       </p>
                     </div>
                   </div>
 
-                  {/* Browser Sandbox restrictions explanation warning */}
-                  <div className="p-4.5 bg-amber-500/[0.03] border border-amber-500/20 rounded-2xl text-xs text-neutral-800 dark:text-neutral-205 flex items-start gap-3">
-                    <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5 animate-pulse" />
-                    <div className="space-y-1.5">
-                       <span className="font-extrabold text-amber-700 dark:text-amber-400 block uppercase tracking-wider text-[10px]">Browser Iframe Sandbox Notice</span>
-                       <p className="leading-relaxed text-neutral-550 dark:text-neutral-400 text-xs font-semibold">
-                          Embedded iframe preview panels strictly block external Google authorization popups due to cross-origin sandbox restrictions.
-                          If Google authentication yields credentials issues or fails to display, click the <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">"Open in New Tab"</span> arrow icon on the upper-right corner of this AI Studio sandbox window.
-                          This boots your application standalone, allowing Google login overlays to authenticate normally.
-                       </p>
-                    </div>
-                  </div>
+                  <div className="space-y-5">
+                    <div className="space-y-4">
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest pl-1">Notion Integration Token</label>
+                        <input
+                          type="password"
+                          placeholder="secret_XXXXXXXXXXXX"
+                          value={notionToken}
+                          onChange={(e) => setNotionToken(e.target.value)}
+                          className="w-full px-4 py-3 bg-neutral-50 top-0 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm font-mono text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    {sheetUrl ? (
-                      <div className="p-5 bg-neutral-50 dark:bg-neutral-950/40 rounded-2xl border border-neutral-200 dark:border-neutral-800/80 flex justify-between items-center shadow-inner">
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400 font-semibold">
-                          <span className="text-neutral-400 dark:text-neutral-500 block text-[10px] uppercase font-bold tracking-wider mb-1">Target Google Spreadsheet</span>{" "}
-                          <a href={sheetUrl} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline inline-flex items-center gap-1.5 text-sm">
-                            Master Analytics Live Database <Sparkles className="w-4 h-4" />
-                          </a>
-                        </div>
-                        <Database className="w-5 h-5 text-indigo-500/50" />
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-extrabold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest pl-1">Notion Database ID</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 8f9b9... (from database link)"
+                          value={notionDbId}
+                          onChange={(e) => setNotionDbId(e.target.value)}
+                          className="w-full px-4 py-3 bg-neutral-50 top-0 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm font-mono text-neutral-700 dark:text-neutral-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                        />
                       </div>
-                    ) : (
-                      <div className="p-5 bg-neutral-50 dark:bg-neutral-950/20 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 text-center text-xs text-neutral-450 dark:text-neutral-550 italic font-semibold">
-                         No master spreadsheet created yet. Initializing sync will automatically build and link a dynamic Google Sheet.
-                      </div>
+
+                    </div>
+
+
+
+                    <button
+                       onClick={() => syncAllToNotionDatabase(false)}
+                       disabled={isSyncing || !notionToken || !notionDbId}
+                       className="w-full mt-4 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl flex justify-center items-center gap-3 transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-600/10 active:scale-[0.98]"
+                    >
+                       {isSyncing ? (
+                         <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                       ) : (
+                         <>
+                           <RefreshCw className="w-5 h-5 animate-pulse" />
+                           <span>Sync to Notion Database</span>
+                         </>
+                       )}
+                    </button>
+                    {lastSyncTime && (
+                       <div className="text-center mt-2 space-y-1">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Last automated delta-sync was {lastSyncTime.toLocaleString()}</p>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-extrabold uppercase tracking-widest">Background Auto-Sync Active (30s interval)</p>
+                       </div>
                     )}
                   </div>
-                  
-                  <button
-                     id="btn-sync-sheets"
-                     onClick={syncAllToMasterSheet}
-                     disabled={isSyncing || isUploading}
-                     className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl flex justify-center items-center gap-3 transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-600/10 active:scale-[0.98]"
-                  >
-                     {isSyncing ? (
-                       <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                     ) : (
-                       <>
-                         <FileSpreadsheet className="w-5 h-5 animate-bounce" />
-                         <span>Authorize & Sync Master Sheets</span>
-                       </>
-                     )}
-                  </button>
                 </div>
             )}
 
