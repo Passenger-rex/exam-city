@@ -14,6 +14,8 @@ import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import CheckoutPage from "./pages/CheckoutPage";
 import TutorPage from "./pages/TutorPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import { PageTransition } from "./components/PageTransition";
 import { UserProvider } from "./UserContext";
 
@@ -103,6 +105,22 @@ function AnimatedRoutes() {
           element={
             <PageTransition>
               <AdminPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/privacy"
+          element={
+            <PageTransition>
+              <PrivacyPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/terms"
+          element={
+            <PageTransition>
+              <TermsPage />
             </PageTransition>
           }
         />

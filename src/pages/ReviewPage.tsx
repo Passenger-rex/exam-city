@@ -18,6 +18,8 @@ import { ReviewModal } from "../components/ReviewModal";
 import { motion } from "motion/react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 export default function ReviewPage() {
   const { resultId } = useParams();
@@ -257,7 +259,7 @@ export default function ReviewPage() {
                     {idx + 1}
                   </div>
                   <h3 className="text-base sm:text-lg lg:text-xl font-bold font-headline-md leading-relaxed markdown-body">
-                    <Markdown rehypePlugins={[rehypeRaw]}>
+                    <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                       {q.question_html || q.question_text}
                     </Markdown>
                   </h3>
@@ -296,7 +298,7 @@ export default function ReviewPage() {
                           className={`p-4 rounded-2xl border-2 flex justify-between items-center ${bgClass} markdown-body`}
                         >
                           <div className={`text-sm sm:text-base font-medium flex-1 ${textClass}`}>
-                             <Markdown rehypePlugins={[rehypeRaw]}>
+                             <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                                {val}
                              </Markdown>
                           </div>
@@ -321,7 +323,7 @@ export default function ReviewPage() {
                         Explanation
                       </h4>
                       <div className="text-on-surface-variant font-medium text-sm sm:text-base leading-relaxed markdown-body">
-                        <Markdown rehypePlugins={[rehypeRaw]}>
+                        <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                           {q.explanation}
                         </Markdown>
                       </div>
@@ -353,7 +355,7 @@ export default function ReviewPage() {
                                </div>
                             ) : (
                                <div className="markdown-body prose prose-primary prose-sm sm:prose-base max-w-none text-on-surface-variant">
-                                  <Markdown rehypePlugins={[rehypeRaw]}>{aiExplanations[q.id].text}</Markdown>
+                                  <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>{aiExplanations[q.id].text}</Markdown>
                                </div>
                             )}
                          </div>

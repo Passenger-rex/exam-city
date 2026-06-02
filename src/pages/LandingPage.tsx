@@ -343,9 +343,16 @@ export default function LandingPage() {
       <footer className="bg-surface-dim pt-20 pb-10 px-6 border-t border-outline-variant/50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <Logo />
-          <p className="text-on-surface-variant font-medium text-sm">
-            &copy; 2026 exam city. All rights reserved.
-          </p>
+          <div className="text-center md:text-left">
+            <p className="text-on-surface-variant font-medium text-sm">
+              &copy; 2026 exam city. All rights reserved.
+            </p>
+            <div className="flex justify-center md:justify-start gap-4 mt-2 text-xs font-semibold text-on-surface-variant/70">
+              <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <span>•</span>
+              <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+            </div>
+          </div>
           <div className="flex gap-4">
             <span 
               className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"

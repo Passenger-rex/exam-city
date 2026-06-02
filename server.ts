@@ -340,7 +340,8 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
           option: cleanOptions,
           answer: cleanAnswer,
           solution: formatMath(item.solution || item.explanation || "No explanation provided."),
-          examyear: item.examyear || item.year || "Past Question"
+          examyear: item.examyear || item.year || "Past Question",
+          image: item.image || item.image_url || undefined
         };
       });
 
@@ -402,10 +403,9 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       6. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
       
       IMPORTANT FOR MATHEMATICS/SCIENCE:
-      - DO NOT use dollar signs ($) or LaTeX.
-      - Use HTML tags: <sup> for exponents (e.g., x<sup>2</sup>) and <sub> for subscripts (e.g., log<sub>2</sub>).
-      - Use standard symbols for sets (e.g., {1, 2, 3}, ∩, ∪) and division.
-      - Ensure all mathematical and scientific notation is clean and correctly formatted using HTML tags where needed.
+      - Use inline LaTeX formatting with standard MathJax delimiters: use single dollar signs $...$ for inline equations, and double dollar signs $$...$$ for block/display equations.
+      - Ensure mathematical expressions, fractions (\frac{a}{b}), subscripts, superscripts, algebras, and symbols are well-formatted in standard LaTeX.
+      - DO NOT use raw HTML tags (like <sup> or <sub>) for mathematical equations.
       
       Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
       
@@ -893,15 +893,36 @@ app.post("/api/sync-notion", async (req, res) => {
           // Look for an existing page with this exact title
           let existingPageId: string | null = null;
           try {
-             const searchResponse: any = await notion.databases.query({
-                database_id: databaseId,
-                filter: {
-                   property: titlePropKey,
-                   title: {
-                      equals: titleText
-                   }
-                }
-             });
+             let searchResponse: any;
+             if (typeof (notion.databases as any).query === 'function') {
+               searchResponse = await (notion.databases as any).query({
+                  database_id: databaseId,
+                  filter: {
+                     property: titlePropKey,
+                     title: {
+                        equals: titleText
+                     }
+                  }
+               });
+             } else {
+               const rawResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+                   method: 'POST',
+                   headers: {
+                       'Authorization': `Bearer ${notionToken}`,
+                       'Notion-Version': '2022-06-28',
+                       'Content-Type': 'application/json'
+                   },
+                   body: JSON.stringify({
+                      filter: {
+                         property: titlePropKey,
+                         title: {
+                            equals: titleText
+                         }
+                      }
+                   })
+               });
+               searchResponse = await rawResponse.json();
+             }
              
              if (searchResponse.results && searchResponse.results.length > 0) {
                 existingPageId = searchResponse.results[0].id;

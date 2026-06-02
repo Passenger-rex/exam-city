@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import {
   signInWithEmailAndPassword,
@@ -11,6 +11,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
+  sendEmailVerification,
 } from "firebase/auth";
 import { 
   doc, 
@@ -250,6 +251,33 @@ export default function AuthPage() {
         const res = await signInWithEmailAndPassword(auth, email, password);
         await handleAuthSuccess(res.user.uid);
       } else {
+        // Enforce approved domains check to verify real emails
+        const emailLower = email.trim().toLowerCase();
+        const domain = emailLower.split("@")[1] || "";
+        
+        const approvedDomains = [
+          "gmail.com",
+          "yahoo.com",
+          "yahoo.co.uk",
+          "yahoo.com.ng",
+          "outlook.com",
+          "outlook.co.uk",
+          "outlook.com.ng",
+          "hotmail.com",
+          "live.com",
+          "icloud.com",
+          "aol.com",
+          "proton.me",
+          "protonmail.com"
+        ];
+        
+        const isApproved = approvedDomains.some(d => domain === d || domain.endsWith("." + d));
+        if (!isApproved) {
+          setError("Registration is limited to approved, authentic email domains (e.g. @gmail.com, @yahoo.com, or @outlook.com) to maintain platform integrity.");
+          setLoading(false);
+          return;
+        }
+
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
@@ -273,13 +301,14 @@ export default function AuthPage() {
                  referrerId: refCode,
                  referredId: userCredential.user.uid,
                  createdAt: serverTimestamp()
-              });
+               });
            } catch(e) {
               console.error("Failed to add referral record", e);
            }
         }
 
         await handleAuthSuccess(userCredential.user.uid);
+        return;
       }
     } catch (err: any) {
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
@@ -581,13 +610,13 @@ export default function AuthPage() {
 
         <p className="text-center mt-8 text-on-surface-variant font-medium text-sm">
           By continuing, you agree to our{" "}
-          <a href="#" className="text-primary hover:underline">
+          <Link to="/terms" className="text-primary hover:underline">
             Terms of Service
-          </a>{" "}
+          </Link>{" "}
           and{" "}
-          <a href="#" className="text-primary hover:underline">
+          <Link to="/privacy" className="text-primary hover:underline">
             Privacy Policy
-          </a>
+          </Link>
           .
         </p>
       </motion.div>

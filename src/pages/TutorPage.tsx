@@ -725,7 +725,7 @@ export default function TutorPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold text-on-surface truncate leading-none">
-                    {user?.displayName || "Student User"}
+                    {user?.displayName || "Student"}
                   </p>
                   <p className="text-[9px] text-on-surface-variant/60 font-medium truncate mt-0.5 leading-none">
                     {user?.email}

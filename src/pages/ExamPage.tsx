@@ -26,11 +26,14 @@ import {
   Volume2,
   X,
   Printer,
-  FileDown
+  FileDown,
+  GraduationCap
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 // removed html2pdf.js import
 
 export default function ExamPage() {
@@ -524,13 +527,11 @@ export default function ExamPage() {
           <div className="fixed inset-0 pointer-events-none flex flex-col justify-around items-center select-none opacity-[0.035] print:opacity-[0.025] -z-10 overflow-hidden mix-blend-multiply">
              {[1, 2, 3].map((i) => (
                <div key={i} className="flex flex-col items-center rotate-[-30deg] transform scale-125 my-14">
-                  <div className="flex items-center gap-2">
-                    <span className="font-sans font-black uppercase tracking-[0.1em] text-[65px] text-gray-400">exam city</span>
-                    <svg className="text-gray-400 w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-                       <polyline points="21 4 9 20 2 12" />
-                    </svg>
+                  <div className="flex items-center gap-4">
+                    <GraduationCap className="w-24 h-24 text-gray-800" />
+                    <span className="font-sans font-black uppercase tracking-[0.1em] text-[75px] text-gray-800">Exam City</span>
                   </div>
-                  <span className="font-sans font-bold tracking-[0.3em] text-[10px] uppercase mt-1 text-gray-500">Authentic Assessment Series</span>
+                  <span className="font-sans font-bold tracking-[0.3em] text-[10px] uppercase mt-2 text-gray-800">Authentic Assessment Series</span>
                </div>
              ))}
           </div>
@@ -566,7 +567,7 @@ export default function ExamPage() {
                      <span className="font-bold text-base min-w-[1.5rem] mt-0.5">{idx + 1}.</span>
                      <div className="flex-1">
                        <div className="mb-4 text-base leading-relaxed text-justify markdown-body">
-                         <Markdown rehypePlugins={[rehypeRaw]}>
+                         <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                            {q.question_html || q.question_text}
                          </Markdown>
                        </div>
@@ -582,7 +583,7 @@ export default function ExamPage() {
                                <div key={key} className={`flex gap-3 text-base ${isCorrect ? 'font-bold text-green-700 bg-green-50 p-1 -m-1 rounded' : ''} markdown-body`}>
                                   <span className="font-bold uppercase">({key})</span>
                                   <div className="flex-1">
-                                    <Markdown rehypePlugins={[rehypeRaw]}>
+                                    <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                                       {val}
                                     </Markdown>
                                   </div>
@@ -594,7 +595,7 @@ export default function ExamPage() {
                        {answersParam && q.explanation && (
                          <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-blue-900 rounded-r-md italic markdown-body">
                            <span className="font-bold uppercase not-italic block mb-1">Solution / Explanation:</span>
-                           <Markdown rehypePlugins={[rehypeRaw]}>
+                           <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                               {q.explanation}
                            </Markdown>
                          </div>
@@ -773,7 +774,8 @@ export default function ExamPage() {
             >
               <div className="text-base sm:text-lg md:text-2xl font-headline-md font-bold mb-5 sm:mb-8 md:mb-10 text-on-surface leading-relaxed prose prose-p:my-0 prose-img:max-w-full prose-img:rounded-xl break-words w-full markdown-body">
                 <Markdown 
-                  rehypePlugins={[rehypeRaw]}
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeRaw, rehypeKatex]}
                 >
                   {currentQ?.question_html || currentQ?.question_text}
                 </Markdown>
@@ -822,7 +824,7 @@ export default function ExamPage() {
                         <div
                           className={`text-[15px] sm:text-[15px] md:text-base font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full pt-1 sm:pt-0 markdown-body ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
                         >
-                          <Markdown rehypePlugins={[rehypeRaw]}>
+                          <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                              {val}
                           </Markdown>
                         </div>
