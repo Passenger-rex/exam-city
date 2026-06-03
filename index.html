@@ -64,6 +64,20 @@
 
       // Call default consent setup before loading Google Tag (GTM)
       gtag('consent', 'default', initialConsent);
+
+      // Log initial load configurations for developer verification
+      console.log(
+        '%c🛡️ [Exam City Consent V2 - Loaded Stored Preferences] %cGTM Ready. Default states:',
+        'color: #4f46e5; font-weight: bold; font-size: 11px; background: #f3f4f6; padding: 3px 6px; border-radius: 4px;',
+        'color: #111827; font-weight: normal; font-size: 11px;'
+      );
+      console.table({
+        'necessary_storage (Required)': { 'state': 'GRANTED (Always On)', 'target_system': 'Exam City Session / Core App' },
+        'analytics_storage (Statistics)': { 'state': initialConsent.analytics_storage.toUpperCase(), 'target_system': 'Google Analytics V4 (G-28LNT4E756)' },
+        'ad_storage (Marketing)': { 'state': initialConsent.ad_storage.toUpperCase(), 'target_system': 'Google Ads / Tag Manager' },
+        'ad_user_data (User Data)': { 'state': initialConsent.ad_user_data.toUpperCase(), 'target_system': 'Google Consent Mode V2' },
+        'ad_personalization (Personalization)': { 'state': initialConsent.ad_personalization.toUpperCase(), 'target_system': 'Google Marketing Signals' }
+      });
     </script>
 
     <title>EXAM CITY</title>
@@ -77,12 +91,9 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-
     <script>
-      // Operational Consent Banner and Real-Time GTM Update Utility
+      // Operational Cookiebot-style Consent Banner and Real-Time GTM Update System
       (function() {
-        if (getCookieConsent()) return;
-
         function setCookie(name, value) {
           var date = new Date();
           date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
@@ -90,102 +101,145 @@
           document.cookie = name + "=" + value + expires + "; path=/; SameSite=Lax; Secure";
         }
 
+        // Global functions exposed to window so they can be re-triggered anytime!
+        window.ExamCityConsent = {
+          showBanner: function() {
+            createConsentBanner();
+          },
+          getDetailedStatus: function() {
+            var consent = getCookieConsent();
+            if (consent === 'accepted') {
+              return { analytics: 'Allowed', marketing: 'Allowed' };
+            } else if (consent === 'rejected') {
+              return { analytics: 'Denied', marketing: 'Denied' };
+            } else if (consent && consent.indexOf('custom_') === 0) {
+              var parts = consent.split('_');
+              return {
+                analytics: parts[1] === 'y' ? 'Allowed' : 'Denied',
+                marketing: parts[2] === 'y' ? 'Allowed' : 'Denied'
+              };
+            }
+            return { analytics: 'Denied', marketing: 'Denied' }; // Def default
+          },
+          logToConsole: function(source, stateStr, analyticsState, marketingState) {
+            console.log(
+              '%c🛡️ [Exam City Consent V2 - ' + source + '] %cUser action verified. Updated Google Consent settings:',
+              'color: #059669; font-weight: bold; font-size: 11px; background: #ecfdf5; padding: 3px 6px; border-radius: 4px;',
+              'color: #111827; font-weight: normal; font-size: 11px;'
+            );
+            console.table({
+              'necessary_storage (Required)': { 'state': 'GRANTED (Always On)', 'consent_payload': 'granted' },
+              'analytics_storage (Statistics)': { 'state': analyticsState.toUpperCase(), 'consent_payload': analyticsState },
+              'ad_storage (Marketing)': { 'state': marketingState.toUpperCase(), 'consent_payload': marketingState },
+              'ad_user_data (User Data)': { 'state': marketingState.toUpperCase(), 'consent_payload': marketingState },
+              'ad_personalization (Personalization)': { 'state': marketingState.toUpperCase(), 'consent_payload': marketingState }
+            });
+          }
+        };
+
         function createConsentBanner() {
+          // Check if already on screen to avoid duplication
+          if (document.getElementById("exam-city-cookie-banner")) return;
+
           // Inject custom Keyframes and interactive styles
-          var style = document.createElement("style");
-          style.innerHTML = `
-            @keyframes eccb-pulse {
-              0% { box-shadow: 0 8px 24px rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.35); }
-              100% { box-shadow: 0 8px 30px rgba(99,102,241,0.4); border-color: rgb(129,140,248); }
-            }
-            .eccb-switch input:checked + .eccb-slider {
-              background-color: #4f46e5 !important;
-            }
-            .eccb-switch input:checked + .eccb-slider:before {
-              transform: translateX(18px) !important;
-            }
-            .eccb-slider:before {
-              position: absolute;
-              content: "";
-              height: 16px;
-              width: 16px;
-              left: 3px;
-              bottom: 3px;
-              background-color: white;
-              transition: .3s ease;
-              border-radius: 50%;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            }
-            #exam-city-cookie-banner {
-              backdrop-filter: blur(24px) saturate(180%);
-              -webkit-backdrop-filter: blur(24px) saturate(180%);
-            }
-            @media (max-width: 539px) {
+          var style = document.getElementById("eccb-dynamic-style");
+          if (!style) {
+            style = document.createElement("style");
+            style.id = "eccb-dynamic-style";
+            style.innerHTML = `
+              @keyframes eccb-pulse {
+                0% { box-shadow: 0 8px 24px rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.35); }
+                100% { box-shadow: 0 8px 30px rgba(99,102,241,0.4); border-color: rgb(129,140,248); }
+              }
+              .eccb-switch input:checked + .eccb-slider {
+                background-color: #4f46e5 !important;
+              }
+              .eccb-switch input:checked + .eccb-slider:before {
+                transform: translateX(18px) !important;
+              }
+              .eccb-slider:before {
+                position: absolute;
+                content: "";
+                height: 16px;
+                width: 16px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: .3s ease;
+                border-radius: 50%;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              }
               #exam-city-cookie-banner {
-                bottom: 12px !important;
-                width: calc(100% - 24px) !important;
-                padding: 16px 16px 18px 16px !important;
-                border-radius: 12px !important;
+                backdrop-filter: blur(24px) saturate(180%);
+                -webkit-backdrop-filter: blur(24px) saturate(180%);
               }
-              #exam-city-cookie-banner h4 {
-                font-size: 14.5px !important;
-                margin-bottom: 6px !important;
+              @media (max-width: 539px) {
+                #exam-city-cookie-banner {
+                  bottom: 12px !important;
+                  width: calc(100% - 24px) !important;
+                  padding: 16px 16px 18px 16px !important;
+                  border-radius: 12px !important;
+                }
+                #exam-city-cookie-banner h4 {
+                  font-size: 14.5px !important;
+                  margin-bottom: 6px !important;
+                }
+                #exam-city-cookie-banner p {
+                  font-size: 12.5px !important;
+                  line-height: 1.5 !important;
+                }
+                #eccb-button-bar {
+                  flex-direction: column !important;
+                  align-items: stretch !important;
+                  gap: 12px !important;
+                  padding-top: 12px !important;
+                }
+                #btn-cookie-manage {
+                  justify-content: center !important;
+                  padding: 6px 0 !important;
+                  font-size: 12px !important;
+                  width: 100% !important;
+                }
+                #eccb-actions-row {
+                  display: flex !important;
+                  flex-direction: row !important;
+                  width: 100% !important;
+                  gap: 8px !important;
+                }
+                #btn-cookie-reject, #btn-cookie-accept {
+                  flex: 1 !important;
+                  text-align: center !important;
+                  padding: 10px 8px !important;
+                  font-size: 12px !important;
+                  justify-content: center !important;
+                  display: inline-flex !important;
+                  align-items: center !important;
+                }
+                #eccb-custom-list > div {
+                  flex-direction: column !important;
+                  align-items: flex-start !important;
+                  gap: 10px !important;
+                  padding: 10px 12px !important;
+                }
+                #eccb-custom-list > div > div {
+                  padding-right: 0 !important;
+                }
+                #eccb-custom-list > div > span, #eccb-custom-list > div > label {
+                  align-self: flex-end !important;
+                  margin-top: 2px !important;
+                }
+                #eccb-pref-actions {
+                  padding-top: 10px !important;
+                }
+                #btn-cookie-save-pref {
+                  width: 100% !important;
+                  text-align: center !important;
+                  justify-content: center !important;
+                }
               }
-              #exam-city-cookie-banner p {
-                font-size: 12.5px !important;
-                line-height: 1.5 !important;
-              }
-              #eccb-button-bar {
-                flex-direction: column !important;
-                align-items: stretch !important;
-                gap: 12px !important;
-                padding-top: 12px !important;
-              }
-              #btn-cookie-manage {
-                justify-content: center !important;
-                padding: 6px 0 !important;
-                font-size: 12px !important;
-                width: 100% !important;
-              }
-              #eccb-actions-row {
-                display: flex !important;
-                flex-direction: row !important;
-                width: 100% !important;
-                gap: 8px !important;
-              }
-              #btn-cookie-reject, #btn-cookie-accept {
-                flex: 1 !important;
-                text-align: center !important;
-                padding: 10px 8px !important;
-                font-size: 12px !important;
-                justify-content: center !important;
-                display: inline-flex !important;
-                align-items: center !important;
-              }
-              #eccb-custom-list > div {
-                flex-direction: column !important;
-                align-items: flex-start !important;
-                gap: 10px !important;
-                padding: 10px 12px !important;
-              }
-              #eccb-custom-list > div > div {
-                padding-right: 0 !important;
-              }
-              #eccb-custom-list > div > span, #eccb-custom-list > div > label {
-                align-self: flex-end !important;
-                margin-top: 2px !important;
-              }
-              #eccb-pref-actions {
-                padding-top: 10px !important;
-              }
-              #btn-cookie-save-pref {
-                width: 100% !important;
-                text-align: center !important;
-                justify-content: center !important;
-              }
-            }
-          `;
-          document.head.appendChild(style);
+            `;
+            document.head.appendChild(style);
+          }
 
           var container = document.createElement("div");
           container.id = "exam-city-cookie-banner";
@@ -282,7 +336,7 @@
             container.style.transform = "translate(-50%, 0)";
           }, 150);
 
-          // Click Events
+          // Click Events inside full banner
           document.getElementById("btn-cookie-accept").addEventListener("click", function() {
             submitConsent('accepted');
           });
@@ -291,7 +345,6 @@
             submitConsent('rejected');
           });
 
-          // Toggle Configurations Action
           document.getElementById("btn-cookie-manage").addEventListener("click", function() {
             document.getElementById("eccb-main-view").style.display = "none";
             document.getElementById("eccb-preferences-view").style.display = "flex";
@@ -326,6 +379,7 @@
               'marketing_consent': marketingVal
             });
 
+            window.ExamCityConsent.logToConsole('Custom Preference Update', prefStr, analyticsVal, marketingVal);
             dismissBanner();
           });
 
@@ -345,6 +399,7 @@
               'consent_status': preference
             });
 
+            window.ExamCityConsent.logToConsole(preference === 'accepted' ? 'Allow All Action' : 'Reject All Action', preference, option, option);
             dismissBanner();
           }
 
@@ -357,11 +412,19 @@
           }
         }
 
+        // Initialize banner triggers
+        function initConsentSubsystem() {
+          // If cookie doesn't exist yet, show full banner automatically
+          if (!getCookieConsent()) {
+            createConsentBanner();
+          }
+        }
+
         // Initialize banner injection once DOM structure permits
         if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", createConsentBanner);
+          document.addEventListener("DOMContentLoaded", initConsentSubsystem);
         } else {
-          createConsentBanner();
+          initConsentSubsystem();
         }
       })();
     </script>
