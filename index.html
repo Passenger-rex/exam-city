@@ -50,6 +50,16 @@
           'ad_user_data': 'granted',
           'ad_personalization': 'granted'
         };
+      } else if (savedConsent && savedConsent.indexOf('custom_') === 0) {
+        var parts = savedConsent.split('_');
+        var hasAnalytics = parts[1] === 'y';
+        var hasMarketing = parts[2] === 'y';
+        initialConsent = {
+          'ad_storage': hasMarketing ? 'granted' : 'denied',
+          'analytics_storage': hasAnalytics ? 'granted' : 'denied',
+          'ad_user_data': hasMarketing ? 'granted' : 'denied',
+          'ad_personalization': hasMarketing ? 'granted' : 'denied'
+        };
       }
 
       // Call default consent setup before loading Google Tag (GTM)
