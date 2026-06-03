@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="vU9oiR-2jFt3GmnDP25m_45I0GIGJZZh8ivAqeLOwac" />
+    <script>
+      // Gracefully prevent unhandled third-party or cross-origin script errors (e.g., from consent banners, trackers)
+      // inside sandboxed preview iframes from causing fatal app failure states.
+      window.addEventListener('error', function(event) {
+        if (event.message === 'Script error.' || (event.filename && !event.filename.includes(window.location.host))) {
+          console.warn('Silenced third-party or cross-origin script error:', event.message, 'at', event.filename);
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
+    <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="28d9da4e-1e89-4c59-b0e7-725450ee1d88" data-blockingmode="auto" type="text/javascript"></script>
     <title>EXAM CITY</title>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-28LNT4E756"></script>

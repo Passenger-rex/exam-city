@@ -16,7 +16,8 @@ import {
   User,
   Bot,
   Shield,
-  Lock
+  Lock,
+  Linkedin
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
@@ -421,6 +422,16 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex gap-4">
+            <a 
+              href="https://www.linkedin.com/company/exam-city/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+              aria-label="LinkedIn"
+              id="linkedin-footer-link"
+            >
+              <Linkedin className="w-4 h-4" />
+            </a>
             <span 
               className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
               aria-label="Favorites"
