@@ -19,12 +19,20 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Upgrade endpoint removed since it's handled via Flutterwave webhook and client-side setup
 
 app.use((req, res, next) => {
-  console.log(`[Router] ${req.method} ${req.url}`);
+  // Normalize original user request path for sitemaps if rewritten under serverless environments (Vercel/Netlify)
+  const forwardedUri = req.headers['x-forwarded-uri'] || req.headers['x-original-url'] || req.headers['x-matched-path'];
+  if (forwardedUri && typeof forwardedUri === 'string') {
+    const cleanPath = forwardedUri.split('?')[0];
+    if (cleanPath === '/sitemap.xml') {
+      req.url = '/sitemap.xml';
+    }
+  }
+  console.log(`[Router] ${req.method} ${req.url} (Forwarded URI: ${forwardedUri || 'none'})`);
   next();
 });
 
 // Dynamic Sitemap URL Generator
-app.get(["/sitemap.xml", "/api/sitemap.xml"], (req, res) => {
+app.get(["/sitemap.xml", "/api/sitemap.xml", "/.netlify/functions/api/sitemap.xml"], (req, res) => {
   const host = req.get("host") || "examcity.qzz.io";
   const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
