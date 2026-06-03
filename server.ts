@@ -25,7 +25,7 @@ app.use((req, res, next) => {
 
 // Dynamic Sitemap URL Generator
 app.get("/sitemap.xml", (req, res) => {
-  const host = req.get("host") || "acemock.com";
+  const host = req.get("host") || "examcity.qzz.io";
   const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
   const currentDate = new Date().toISOString().split("T")[0];
