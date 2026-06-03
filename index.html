@@ -15,21 +15,346 @@
         }
       }, true);
     </script>
-    <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="28d9da4e-1e89-4c59-b0e7-725450ee1d88" data-blockingmode="auto" type="text/javascript"></script>
+    <!-- Google Consent Mode V2 Initialization -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+
+      // Utility to read cookie value
+      function getCookieConsent() {
+        var nameEQ = "exam_city_cookie_consent=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+          var c = ca[i];
+          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+          if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+      }
+
+      // Read saved consent value (if any)
+      var savedConsent = getCookieConsent();
+      
+      // Configure default consent parameters based on saved cookie or default denied
+      var initialConsent = {
+        'ad_storage': 'denied',
+        'analytics_storage': 'denied',
+        'ad_user_data': 'denied',
+        'ad_personalization': 'denied'
+      };
+
+      if (savedConsent === 'accepted') {
+        initialConsent = {
+          'ad_storage': 'granted',
+          'analytics_storage': 'granted',
+          'ad_user_data': 'granted',
+          'ad_personalization': 'granted'
+        };
+      }
+
+      // Call default consent setup before loading Google Tag (GTM)
+      gtag('consent', 'default', initialConsent);
+    </script>
+
     <title>EXAM CITY</title>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-28LNT4E756"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-28LNT4E756');
     </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      // Operational Consent Banner and Real-Time GTM Update Utility
+      (function() {
+        if (getCookieConsent()) return;
+
+        function setCookie(name, value) {
+          var date = new Date();
+          date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+          var expires = "; expires=" + date.toUTCString();
+          document.cookie = name + "=" + value + expires + "; path=/; SameSite=Lax; Secure";
+        }
+
+        function createConsentBanner() {
+          // Inject custom Keyframes and interactive styles
+          var style = document.createElement("style");
+          style.innerHTML = `
+            @keyframes eccb-pulse {
+              0% { box-shadow: 0 8px 24px rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.35); }
+              100% { box-shadow: 0 8px 30px rgba(99,102,241,0.4); border-color: rgb(129,140,248); }
+            }
+            .eccb-switch input:checked + .eccb-slider {
+              background-color: #4f46e5 !important;
+            }
+            .eccb-switch input:checked + .eccb-slider:before {
+              transform: translateX(18px) !important;
+            }
+            .eccb-slider:before {
+              position: absolute;
+              content: "";
+              height: 16px;
+              width: 16px;
+              left: 3px;
+              bottom: 3px;
+              background-color: white;
+              transition: .3s ease;
+              border-radius: 50%;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            #exam-city-cookie-banner {
+              backdrop-filter: blur(24px) saturate(180%);
+              -webkit-backdrop-filter: blur(24px) saturate(180%);
+            }
+            @media (max-width: 539px) {
+              #exam-city-cookie-banner {
+                bottom: 12px !important;
+                width: calc(100% - 24px) !important;
+                padding: 16px 16px 18px 16px !important;
+                border-radius: 12px !important;
+              }
+              #exam-city-cookie-banner h4 {
+                font-size: 14.5px !important;
+                margin-bottom: 6px !important;
+              }
+              #exam-city-cookie-banner p {
+                font-size: 12.5px !important;
+                line-height: 1.5 !important;
+              }
+              #eccb-button-bar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                padding-top: 12px !important;
+              }
+              #btn-cookie-manage {
+                justify-content: center !important;
+                padding: 6px 0 !important;
+                font-size: 12px !important;
+                width: 100% !important;
+              }
+              #eccb-actions-row {
+                display: flex !important;
+                flex-direction: row !important;
+                width: 100% !important;
+                gap: 8px !important;
+              }
+              #btn-cookie-reject, #btn-cookie-accept {
+                flex: 1 !important;
+                text-align: center !important;
+                padding: 10px 8px !important;
+                font-size: 12px !important;
+                justify-content: center !important;
+                display: inline-flex !important;
+                align-items: center !important;
+              }
+              #eccb-custom-list > div {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
+                padding: 10px 12px !important;
+              }
+              #eccb-custom-list > div > div {
+                padding-right: 0 !important;
+              }
+              #eccb-custom-list > div > span, #eccb-custom-list > div > label {
+                align-self: flex-end !important;
+                margin-top: 2px !important;
+              }
+              #eccb-pref-actions {
+                padding-top: 10px !important;
+              }
+              #btn-cookie-save-pref {
+                width: 100% !important;
+                text-align: center !important;
+                justify-content: center !important;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+
+          var container = document.createElement("div");
+          container.id = "exam-city-cookie-banner";
+          container.style.cssText = "position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px); width: calc(100% - 32px); max-width: 620px; background-color: #ffffff; color: #1f2937; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 20px 48px rgba(0,0,0,0.15); padding: 24px; font-family: system-ui, -apple-system, sans-serif; z-index: 999999; opacity: 0; transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);";
+          
+          container.innerHTML = `
+            <!-- Main General View -->
+            <div id="eccb-main-view" style="display: flex; flex-direction: column; gap: 18px;">
+              <div style="text-align: left;">
+                <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 750; color: #111827; letter-spacing: -0.012em;">This website uses cookies</h4>
+                <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: #4b5563; font-weight: 400;">
+                  We use cookies to personalize content, to provide social media features and to analyse our traffic. We also share information about your use of our site with our social media, advertising and analytics partners who may combine it with other information that you’ve provided to them or that they’ve collected from your use of their services. See our <a href="/privacy" style="color: #4f46e5; text-decoration: underline; font-weight: 500;">Privacy Policy</a> details.
+                </p>
+              </div>
+              
+              <div id="eccb-button-bar" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; border-top: 1px solid #f3f4f6; padding-top: 16px;">
+                <button id="btn-cookie-manage" style="background: transparent; border: none; color: #4f46e5; cursor: pointer; padding: 8px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.color='#312e81';" onmouseout="this.style.color='#4f46e5';">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg>
+                  Customize settings
+                </button>
+                <div id="eccb-actions-row" style="display: flex; gap: 8px; align-items: center;">
+                  <button id="btn-cookie-reject" style="background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; cursor: pointer; padding: 10px 18px; border-radius: 8px; font-size: 12.5px; font-weight: 650; outline: none; transition: all 0.15s;" onmouseover="this.style.backgroundColor='#f3f4f6'; this.style.borderColor='#d1d5db';" onmouseout="this.style.backgroundColor='#f9fafb'; this.style.borderColor='#e5e7eb';">
+                    Reject all
+                  </button>
+                  <button id="btn-cookie-accept" style="background-color: #111827; border: none; color: #ffffff; cursor: pointer; padding: 10px 22px; border-radius: 8px; font-size: 12.5px; font-weight: 750; outline: none; transition: all 0.15s;" onmouseover="this.style.backgroundColor='#1f2937';" onmouseout="this.style.backgroundColor='#111827';">
+                    Allow all
+                  </button>
+                </div>
+              </div>
+            </div>
+ 
+            <!-- Custom Setup Preference View (Accordion Container) -->
+            <div id="eccb-preferences-view" style="display: none; flex-direction: column; gap: 18px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f3f4f6; padding-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="color: #4f46e5; display: inline-flex;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                  <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #111827; letter-spacing: -0.015em;">Custom Preferences</h4>
+                </div>
+                <button id="btn-cookie-back" style="background: transparent; border: none; color: #4b5563; font-size: 12px; font-weight: 750; cursor: pointer; padding: 6px 8px; display: flex; align-items: center; gap: 4px; transition: color 0.15s; border-radius: 8px;" onmouseover="this.style.color='#111827'; this.style.backgroundColor='#f3f4f6';" onmouseout="this.style.color='#4b5563'; this.style.backgroundColor='transparent';">
+                  &larr; Back
+                </button>
+              </div>
+ 
+              <!-- Custom Options list -->
+              <div style="display: flex; flex-direction: column; gap: 10px; max-height: 240px; overflow-y: auto; padding-right: 4px;" id="eccb-custom-list">
+                <!-- Essential (Always On) -->
+                <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="text-align: left; padding-right: 12px;">
+                    <div style="font-size: 13px; font-weight: 750; color: #111827;">Required Cookies</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 3.5px; line-height: 1.4;">Necessary for security, session states, and diagnostic continuity.</div>
+                  </div>
+                  <span style="color: #059669; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.02em;">Always On</span>
+                </div>
+ 
+                <!-- Analytics -->
+                <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="text-align: left; padding-right: 12px;">
+                    <div style="font-size: 13px; font-weight: 750; color: #111827;">Analytics & Performance</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 3.5px; line-height: 1.4;">Allows us to understand system load, active page traffic, and features usage to optimize your experience.</div>
+                  </div>
+                  <label class="eccb-switch" style="position: relative; display: inline-block; width: 40px; height: 22px; shrink: 0;">
+                    <input type="checkbox" id="chk-cookie-analytics" checked style="opacity: 0; width: 0; height: 0;">
+                    <span class="eccb-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #d1d5db; transition: .3s; border-radius: 34px;"></span>
+                  </label>
+                </div>
+ 
+                <!-- Marketing/Personalization -->
+                <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="text-align: left; padding-right: 12px;">
+                    <div style="font-size: 13px; font-weight: 750; color: #111827;">Marketing & Advertising</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 3.5px; line-height: 1.4;">Supports tracking outreach campaigns and performance evaluation indicators.</div>
+                  </div>
+                  <label class="eccb-switch" style="position: relative; display: inline-block; width: 40px; height: 22px; shrink: 0;">
+                    <input type="checkbox" id="chk-cookie-marketing" checked style="opacity: 0; width: 0; height: 0;">
+                    <span class="eccb-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #d1d5db; transition: .3s; border-radius: 34px;"></span>
+                  </label>
+                </div>
+              </div>
+ 
+              <!-- Action button inside preferences view -->
+              <div id="eccb-pref-actions" style="display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #f3f4f6; padding-top: 14px;">
+                <button id="btn-cookie-save-pref" style="background-color: #111827; border: none; color: #ffffff; cursor: pointer; padding: 10px 22px; border-radius: 8px; font-size: 12.5px; font-weight: 750; outline: none; transition: all 0.15s;" onmouseover="this.style.backgroundColor='#1f2937';" onmouseout="this.style.backgroundColor='#111827';">
+                  Save Selected Preferences
+                </button>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(container);
+
+          // Animate sliding/loading from bottom center with smooth spring feel
+          setTimeout(function() {
+            container.style.opacity = "1";
+            container.style.transform = "translate(-50%, 0)";
+          }, 150);
+
+          // Click Events
+          document.getElementById("btn-cookie-accept").addEventListener("click", function() {
+            submitConsent('accepted');
+          });
+
+          document.getElementById("btn-cookie-reject").addEventListener("click", function() {
+            submitConsent('rejected');
+          });
+
+          // Toggle Configurations Action
+          document.getElementById("btn-cookie-manage").addEventListener("click", function() {
+            document.getElementById("eccb-main-view").style.display = "none";
+            document.getElementById("eccb-preferences-view").style.display = "flex";
+          });
+
+          document.getElementById("btn-cookie-back").addEventListener("click", function() {
+            document.getElementById("eccb-preferences-view").style.display = "none";
+            document.getElementById("eccb-main-view").style.display = "flex";
+          });
+
+          document.getElementById("btn-cookie-save-pref").addEventListener("click", function() {
+            var isAnalyticsGranted = document.getElementById("chk-cookie-analytics").checked;
+            var isMarketingGranted = document.getElementById("chk-cookie-marketing").checked;
+            
+            var prefStr = (isAnalyticsGranted && isMarketingGranted) ? 'accepted' : 'custom_' + (isAnalyticsGranted ? 'y' : 'n') + '_' + (isMarketingGranted ? 'y' : 'n');
+            setCookie("exam_city_cookie_consent", prefStr);
+
+            var analyticsVal = isAnalyticsGranted ? 'granted' : 'denied';
+            var marketingVal = isMarketingGranted ? 'granted' : 'denied';
+
+            gtag('consent', 'update', {
+              'ad_storage': marketingVal,
+              'analytics_storage': analyticsVal,
+              'ad_user_data': marketingVal,
+              'ad_personalization': marketingVal
+            });
+
+            window.dataLayer.push({
+              'event': 'cookie_consent_update',
+              'consent_status': prefStr,
+              'analytics_consent': analyticsVal,
+              'marketing_consent': marketingVal
+            });
+
+            dismissBanner();
+          });
+
+          function submitConsent(preference) {
+            setCookie("exam_city_cookie_consent", preference);
+            
+            var option = preference === 'accepted' ? 'granted' : 'denied';
+            gtag('consent', 'update', {
+              'ad_storage': option,
+              'analytics_storage': option,
+              'ad_user_data': option,
+              'ad_personalization': option
+            });
+
+            window.dataLayer.push({
+              'event': 'cookie_consent_update',
+              'consent_status': preference
+            });
+
+            dismissBanner();
+          }
+
+          function dismissBanner() {
+            container.style.opacity = "0";
+            container.style.transform = "translate(-50%, 20px)";
+            setTimeout(function() {
+              container.remove();
+            }, 500);
+          }
+        }
+
+        // Initialize banner injection once DOM structure permits
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", createConsentBanner);
+        } else {
+          createConsentBanner();
+        }
+      })();
+    </script>
   </body>
 </html>
 

@@ -131,11 +131,11 @@ export default function TermsPage() {
           <div className="mt-12 pt-8 border-t border-outline-variant/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-semibold text-on-surface-variant">
             <div className="flex items-center gap-2 bg-surface-container py-2.5 px-4 rounded-xl border border-outline-variant/30">
               <Mail className="w-4 h-4 text-primary" />
-              <span>johntobismart@gmail.com</span>
+              <span>passengerdev@googlegroups.com</span>
             </div>
             <div className="flex items-center gap-2 bg-surface-container py-2.5 px-4 rounded-xl border border-outline-variant/30">
               <Globe className="w-4 h-4 text-primary" />
-              <span>examcity.netlify.app</span>
+              <span>examcity.qzz.io</span>
             </div>
           </div>
         </motion.div>
