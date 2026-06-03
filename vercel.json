@@ -6,10 +6,6 @@
       "destination": "/api/index"
     },
     {
-      "source": "/sitemap.xml",
-      "destination": "/api/index"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

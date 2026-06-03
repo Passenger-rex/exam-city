@@ -3,11 +3,6 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/sitemap.xml"
-  to = "/.netlify/functions/api/sitemap.xml"
-  status = 200
-
-[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
