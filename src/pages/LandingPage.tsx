@@ -14,7 +14,9 @@ import {
   Sun,
   Target,
   User,
-  Bot
+  Bot,
+  Shield,
+  Lock
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
@@ -336,6 +338,71 @@ export default function LandingPage() {
                </motion.div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Trust & Transparency Section */}
+      <section className="relative py-20 px-5 md:px-6 z-10 border-t border-outline-variant/30 bg-surface/50 backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider mb-4 border border-primary/20">
+              <Shield className="w-3.5 h-3.5" />
+              <span>Trust & Transparency</span>
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-on-surface mb-3">
+              Your Data. Fully Protected.
+            </h2>
+            <p className="text-on-surface-variant max-w-2xl mx-auto font-medium text-sm sm:text-base leading-relaxed">
+              At <strong className="text-on-surface">Exam City</strong>, we are transparent about our identity, features, and the ways we protect and use your information.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Column 1: Brand Representation */}
+            <div className="bg-surface border border-outline-variant/50 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 border border-primary/20">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-on-surface mb-3">01. App & Brand Identity</h3>
+              <p className="text-on-surface-variant font-medium text-sm leading-relaxed">
+                <strong className="text-on-surface">Exam City</strong> is a dedicated student-success software. We make study tools, authentic testing modules, and educational feedback systems. We explicitly state our brand on every page, maintaining absolute alignment who we are and what we build.
+              </p>
+            </div>
+
+            {/* Column 2: App Functionality */}
+            <div className="bg-surface border border-outline-variant/50 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300">
+              <div className="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center mb-6 border border-secondary/20">
+                <Target className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-on-surface mb-3">02. Fully Described Features</h3>
+              <p className="text-on-surface-variant font-medium text-sm leading-relaxed">
+                Our platform provides clear, real features to help students review: from generating dynamic past paper assessments aligned to custom grade-levels and academic subjects, to conducting smart tutor chat discussions, uploading study notes or summaries, and tracking historical quiz performance.
+              </p>
+            </div>
+
+            {/* Column 3: Data Requests & Purpose */}
+            <div className="bg-surface border border-outline-variant/40 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300 relative overflow-hidden ring-1 ring-primary/20">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full pointer-events-none"></div>
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 border border-primary/30">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-on-surface mb-3">03. Transparent Data Use</h3>
+              <p className="text-on-surface-variant font-medium text-sm leading-relaxed">
+                We only request user data that is strictly essential for service operation: your email/name to handle secure sign-in verification and progress monitoring, and uploaded files (such as PDFs, DOCX, and screenshots) to extract textual study matter so our AI generator can formulate customized mock questions.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 p-5 bg-surface-dim/50 border border-outline-variant/40 rounded-2xl text-left flex flex-col sm:flex-row items-center gap-4 justify-between">
+            <p className="text-xs font-semibold text-on-surface-variant leading-relaxed">
+              We pledge to never sell your documents, monitor your off-app activity, or share data with non-educational advertising entities. Read our complete policies for absolute detail.
+            </p>
+            <div className="inline-flex gap-4 shrink-0 text-xs font-bold">
+              <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+              <span className="text-outline-variant">|</span>
+              <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+            </div>
+          </div>
         </div>
       </section>
 
