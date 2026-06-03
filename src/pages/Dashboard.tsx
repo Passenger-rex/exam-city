@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [recentExams, setRecentExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [isSubDropdownOpen, setIsSubDropdownOpen] = useState(false);
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -377,21 +378,69 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3 shrink-0">
                   {/* Subject Dropdown Filter */}
                   <div className="relative">
-                    <select
-                      value={selectedSubject}
-                      onChange={(e) => setSelectedSubject(e.target.value)}
-                      className="appearance-none bg-surface-dim hover:bg-surface-dim/80 text-on-surface font-semibold text-xs py-2 sm:py-2.5 pl-3 sm:pl-4 pr-8 sm:pr-10 rounded-xl border border-outline-variant/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-sans"
+                    <button
+                      onClick={() => setIsSubDropdownOpen(!isSubDropdownOpen)}
+                      className="bg-surface-dim hover:bg-surface-dim/80 text-on-surface font-semibold text-xs py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl border border-outline-variant/60 outline-none hover:border-primary/50 transition-all flex items-center gap-2 cursor-pointer relative z-10"
                     >
-                      <option value="all">All Subjects</option>
-                      {uniqueSubjects.map((sub) => (
-                        <option key={sub} value={sub}>
-                          {formatSubject(sub)}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-on-surface-variant">
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </div>
+                      <BookOpen className="w-3.5 h-3.5 text-primary" />
+                      <span>{selectedSubject === "all" ? "All Subjects" : formatSubject(selectedSubject)}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isSubDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isSubDropdownOpen && (
+                        <>
+                          {/* Invisible Backdrop overlay to dismiss */}
+                          <div 
+                            className="fixed inset-0 z-10 cursor-default" 
+                            onClick={() => setIsSubDropdownOpen(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute right-0 mt-2 w-56 sm:w-64 bg-surface rounded-2xl border border-outline-variant/75 shadow-lg max-h-72 overflow-y-auto overflow-hidden divide-y divide-outline-variant/30 custom-scrollbar z-25 py-1.5"
+                          >
+                            <div className="px-3.5 py-1.5 text-[10px] font-extrabold text-on-surface-variant/55 uppercase tracking-wider">
+                              Filter Results
+                            </div>
+                            
+                            <button
+                              onClick={() => {
+                                setSelectedSubject("all");
+                                setIsSubDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                selectedSubject === "all"
+                                  ? "bg-primary/8 text-primary"
+                                  : "text-on-surface hover:bg-surface-dim/60"
+                              }`}
+                            >
+                              <span>All Subjects</span>
+                              {selectedSubject === "all" && <Check className="w-3.5 h-3.5" />}
+                            </button>
+
+                            {uniqueSubjects.map((sub) => (
+                              <button
+                                key={sub}
+                                onClick={() => {
+                                  setSelectedSubject(sub);
+                                  setIsSubDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-all flex items-center justify-between truncate cursor-pointer ${
+                                  selectedSubject === sub
+                                    ? "bg-primary/8 text-primary"
+                                    : "text-on-surface hover:bg-surface-dim/60"
+                                }`}
+                              >
+                                <span className="truncate">{formatSubject(sub)}</span>
+                                {selectedSubject === sub && <Check className="w-3.5 h-3.5" />}
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {selectedSubject !== "all" && (

@@ -528,10 +528,54 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
   }
 });
 
+// Helper for pure JS PDF text extraction if pdf-parse crashes/fails
+function extractTextFromPdfRaw(buffer: Buffer): string {
+  const content = buffer.toString("binary");
+  const streamRegex = /stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
+  let matches;
+  let textResult = "";
+  
+  while ((matches = streamRegex.exec(content)) !== null) {
+    const streamContent = matches[1];
+    // Match plain text strings inside parentheses Tj or TJ
+    const textBlocks = streamContent.match(/\(([^)]*)\)\s*(?:Tj|TJ)/g);
+    if (textBlocks) {
+      for (const block of textBlocks) {
+        const textMatch = block.match(/\(([^)]*)\)/);
+        if (textMatch && textMatch[1]) {
+          let cleanStr = textMatch[1]
+            .replace(/\\([\d]{3})/g, (m, oct) => String.fromCharCode(parseInt(oct, 8)))
+            .replace(/\\r/g, "\r")
+            .replace(/\\n/g, "\n")
+            .replace(/\\t/g, "\t")
+            .replace(/\\(.)/g, "$1");
+          textResult += cleanStr + " ";
+        }
+      }
+    }
+  }
+
+  if (!textResult.trim()) {
+    // Regex to find raw parenthesis text strings
+    const plainTextRegex = /\(([^)]+)\)/g;
+    let plainMatches;
+    let count = 0;
+    while ((plainMatches = plainTextRegex.exec(content)) !== null && count < 1500) {
+      const candidate = plainMatches[1].trim();
+      if (candidate.length > 3 && /^[a-zA-Z0-9\s.,!?:;'"()-]+$/.test(candidate)) {
+        textResult += candidate + " ";
+        count++;
+      }
+    }
+  }
+
+  return textResult.trim();
+}
+
 // Process Study Material File Endpoint via Gemini/Groq Fallbacks
 app.post("/api/process-file", async (req, res) => {
   try {
-    const { fileBase64, mimeType = "", fileName = "", action, message, level = "standard" } = req.body;
+    const { fileBase64, mimeType = "", fileName = "", action, message, level = "standard", subject = "" } = req.body;
     
     if (!fileBase64) {
       return res.status(400).json({ success: false, error: "File content is required." });
@@ -566,17 +610,22 @@ app.post("/api/process-file", async (req, res) => {
         res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
         const examPrompt = `We need to generate between 25 and 30 high-quality mock exam multiple choice questions based STRICTLY and ONLY on the uploaded image named: "${fileName}".
-        First, deduce the specific subject name of the exam from the file name "${fileName}" and the visual content of the image. The deduced subject should be precise (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Pathophysiology", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
+        ${subject ? `The user has explicitly specified the subject for this exam as: "${subject}". Please use exactly "${subject}" as the subject value in your final JSON output instead of deducing a new name.` : `First, deduce the specific subject name of the exam from the file name "${fileName}" and the visual content of the image. The deduced subject should be precise (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Pathophysiology", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.`}
         
         CRITICAL DIFFICULTY AND ACADEMIC LEVEL REQUIREMENT:
         ${levelInstruction}
         ${clinicalInstruction}
         
-        The generated questions MUST be perfectly synced and linked with the actual topics, concepts, and content of the image. The questions must test clinical reasoning, critical thinking, or multi-step problem solving. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All questions must test very hard high-level concepts and specific topics from the document.
+        CRITICAL QUALITY AND DIVERSITY DIRECTIVES:
+        1. DO NOT MAKE THE QUESTIONS TOO ALIKE. Generate a highly varied set of questions in terms of phrasing, grammatical structure, cognitive depth, and sentence flow. Do not use the exact same template (e.g., do not start multiple questions with identical clinical vignettes or 'A 45-year-old patient presents with...').
+        2. BALANCE CLINICAL CONTEXT: If the academic level or uploaded content is non-clinical or focuses on basic sciences (like pure Gross Anatomy, Botany, Physics, etc.), do not force heavy clinical diagnoses or patient scenarios. Let questions match the actual native style, focus, and terminology of the curriculum material.
+        3. DIVERSIFY COGNITIVE DEPTHS: Distribute questions across factual recall, critical analysis, multi-step calculation or scientific proof (where math/science are present), case-based scenario applications, and direct conceptual interpretation.
+        4. OUTLINE UNIQUE CONCEPTS: Every question must test a completely distinct fact, process, anatomical relation, or concept from the content. No two questions should test virtually identical points.
+        5. EXCELLENT OPTIONS & JUXTAPOSITION: Provide highly plausible distractors (incorrect options) that challenge the student to think, but have only one clearly and objectively correct answer.
         
         You must return your output strictly in JSON format matching this schema:
         {
-           "subject": "The deduced precise subject based on the filename and image content",
+           "subject": "${subject || "The deduced precise subject based on the filename and image content"}",
            "questions": [
               {
                  "id": "uq1",
@@ -613,7 +662,8 @@ app.post("/api/process-file", async (req, res) => {
            console.error("Image JSON parse error:", e, responseText);
            throw new Error("AI returned malformed JSON instead of a valid exam format.");
         }
-        res.json({ success: true, subject: (json.subject ? String(json.subject) : "Uploaded Study Material"), questions: json.questions || [] });
+        const finalSubject = subject ? String(subject) : (json.subject ? String(json.subject) : "Uploaded Study Material");
+        res.json({ success: true, subject: finalSubject, questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
       }
@@ -621,16 +671,25 @@ app.post("/api/process-file", async (req, res) => {
       // Document text extraction for PDF / DOCX / TXT
       let extractedText = "";
       if (mimeType.includes("pdf") || fileName.endsWith(".pdf")) {
+        const buffer = Buffer.from(fileBase64, "base64");
         try {
           const { createRequire } = await import("module");
           const require = createRequire(import.meta.url);
           const pdf = require("pdf-parse");
-          const buffer = Buffer.from(fileBase64, "base64");
           const pdfData = await pdf(buffer);
           extractedText = pdfData.text || "";
         } catch (pdfErr: any) {
-          console.error("PDF Extraction Error:", pdfErr);
-          throw new Error("Failed to extract readable text from PDF. " + (pdfErr.message || pdfErr));
+          console.warn("[PDF Parse] pdf-parse dependency errored, attempting stream extraction fallback...", pdfErr.message || pdfErr);
+          try {
+            extractedText = extractTextFromPdfRaw(buffer);
+          } catch (fallbackErr: any) {
+            console.error("[PDF Parse] Stream extraction fallback also errored:", fallbackErr.message || fallbackErr);
+            throw new Error("Failed to parse PDF file content. " + (pdfErr.message || pdfErr));
+          }
+        }
+        
+        if (!extractedText || extractedText.trim().length === 0) {
+          throw new Error("Failed to extract readable text from PDF. This may be a scanned image-only PDF. Please try copying the text or uploading screenshots/images of the pages instead.");
         }
       } else if (mimeType.includes("word") || mimeType.includes("officedocument") || fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
         try {
@@ -680,7 +739,7 @@ app.post("/api/process-file", async (req, res) => {
         res.json({ success: true, text: content || "No response generated." });
       } else if (action === "exam") {
         const examPrompt = `We need to generate between 25 and 30 high-quality mock exam multiple choice questions based STRICTLY and ONLY on the uploaded file named: "${fileName}".
-        First, deduce the specific subject name of the exam from the file title "${fileName}" and the content of the file. The deduced subject should be highly precise and clear (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Pathophysiology", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.
+        ${subject ? `The user has explicitly specified the subject for this exam as: "${subject}". Please use exactly "${subject}" as the subject value in your final JSON output instead of deducing a new name.` : `First, deduce the specific subject name of the exam from the file title "${fileName}" and the content of the file. The deduced subject should be highly precise and clear (e.g., "Organic Chemistry", "Anatomy", "Financial Accounting", "Pathophysiology", "Clinical Medicine") instead of generic terms. Do NOT default to "English" or "Uploaded Study Material" unless the content is genuinely english language.`}
         Below is the content of the file:
         
         --- FILE CONTENT START ---
@@ -691,11 +750,16 @@ app.post("/api/process-file", async (req, res) => {
         ${levelInstruction}
         ${clinicalInstruction}
         
-        The generated questions MUST be perfectly synced and linked with the specific topics, facts, concepts, and subject of the document content provided above. The questions must test clinical reasoning, deep analytical understanding, or complex problem-solving. Each question should test a clear and distinct high-level topic or concept from the content. For each question, provide 4 options (a, b, c, d) and assign the single correct answer, a brief step-by-step solution / explanation, and the source. All standard / premium questions must represent very hard high-level college and institute-style assessments.
+        CRITICAL QUALITY AND DIVERSITY DIRECTIVES:
+        1. DO NOT MAKE THE QUESTIONS TOO ALIKE. Generate a highly varied set of questions in terms of phrasing, grammatical structure, cognitive depth, and sentence flow. Do not use the exact same template (e.g., do not start multiple questions with identical clinical vignettes or 'A 45-year-old patient presents with...').
+        2. BALANCE CLINICAL CONTEXT: If the academic level or uploaded content is non-clinical or focuses on basic sciences (like pure Gross Anatomy, Botany, Physics, etc.), do not force heavy clinical diagnoses or patient scenarios. Let questions match the actual native style, focus, and terminology of the curriculum material.
+        3. DIVERSIFY COGNITIVE DEPTHS: Distribute questions across factual recall, critical analysis, multi-step calculation or scientific proof (where math/science are present), case-based scenario applications, and direct conceptual interpretation.
+        4. OUTLINE UNIQUE CONCEPTS: Every question must test a completely distinct fact, process, anatomical relation, or concept from the content. No two questions should test virtually identical points.
+        5. EXCELLENT OPTIONS & JUXTAPOSITION: Provide highly plausible distractors (incorrect options) that challenge the student to think, but have only one clearly and objectively correct answer.
         
         You must return your output strictly in JSON format matching this schema:
         {
-           "subject": "The deduced precise subject based on the filename and file content",
+           "subject": "${subject || "The deduced precise subject based on the filename and file content"}",
            "questions": [
               {
                  "id": "uq1",
@@ -727,7 +791,8 @@ app.post("/api/process-file", async (req, res) => {
            console.error("Text JSON parse error:", e, responseText);
            throw new Error("AI returned malformed JSON instead of a valid exam format.");
         }
-        res.json({ success: true, subject: (json.subject ? String(json.subject) : "Uploaded Study Material"), questions: json.questions || [] });
+        const finalSubject = subject ? String(subject) : (json.subject ? String(json.subject) : "Uploaded Study Material");
+        res.json({ success: true, subject: finalSubject, questions: json.questions || [] });
       } else {
         res.status(400).json({ success: false, error: "Invalid action." });
       }
@@ -735,10 +800,10 @@ app.post("/api/process-file", async (req, res) => {
   } catch (err: any) {
     console.warn("[File API] Caught error, engaging local file fallback generator:", err.message || err);
     try {
-      const { fileName = "Study Material", action = "tutor", level = "standard" } = req.body;
+      const { fileName = "Study Material", action = "tutor", level = "standard", subject = "" } = req.body;
       if (action === "exam") {
-        // Fallback to generating elegant questions based on study file name
-        const deducedSub = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim() || "Uploaded Material";
+        // Fallback to generating elegant questions based on study file name or selected subject
+        const deducedSub = subject || fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim() || "Uploaded Material";
         const fallbackQs = FallbackGenerator.generateFallbackQuestions(deducedSub, "", level, 15);
         return res.json({
           success: true,

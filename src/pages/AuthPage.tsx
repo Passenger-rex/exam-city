@@ -23,7 +23,9 @@ import {
   query, 
   where, 
   getDocs,
-  getDoc 
+  getDoc,
+  updateDoc,
+  arrayUnion
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -190,10 +192,115 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState("");
   const [initialEmail, setInitialEmail] = useState("");
+  const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
+  const [resendStatus, setResendStatus] = useState("");
+
+  // Device Binding and Location Geolocation Challenge States
+  const [mfaChallenge, setMfaChallenge] = useState(false);
+  const [generatedPin, setGeneratedPin] = useState("");
+  const [enteredPin, setEnteredPin] = useState("");
+  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [ipData, setIpData] = useState<any>(null);
+  const [challengeLoading, setChallengeLoading] = useState(false);
+
+  // Fetch or construct a permanent identifier for browser client
+  const getDeviceId = () => {
+    let id = localStorage.getItem("deviceId");
+    if (!id) {
+      id = "dvc_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem("deviceId", id);
+    }
+    return id;
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedUser) return;
+    try {
+      setResendStatus("sending");
+      setError("");
+      setMessage("");
+      
+      // Since user is logged out, transiently log in to trigger a fresh email
+      const transientLogin = await signInWithEmailAndPassword(auth, unverifiedUser.email, unverifiedUser.password);
+      await sendEmailVerification(transientLogin.user);
+      await auth.signOut(); // Keep securely locked out
+      
+      setResendStatus("sent");
+      setMessage("A fresh verification link has been sent! Please check your inbox and SPAM folder.");
+    } catch (e: any) {
+      console.error(e);
+      setResendStatus("error");
+      setError(e.message || "Failed to resend verification link. Please check details and try again.");
+    }
+  };
+
+  const handleVerifyDeviceSecurely = async () => {
+    if (!pendingUser) return;
+    setError("");
+    setMessage("");
+    if (enteredPin.trim() !== generatedPin) {
+      setError("Incorrect security PIN code. Please confirm the code and re-type.");
+      return;
+    }
+
+    try {
+      setChallengeLoading(true);
+      // Re-initialize correct firebase session state securely
+      const loginRes = await signInWithEmailAndPassword(auth, pendingUser.email, pendingUser.password);
+      
+      // Permanently bind current browser fingerprint as a trusted device
+      await updateDoc(doc(db, "users", loginRes.user.uid), {
+        trustedDevices: arrayUnion(pendingUser.deviceId)
+      });
+
+      // Set up concurrent session parameters
+      const localSessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem("sessionId", localSessionId);
+
+      const userSnap = await getDoc(doc(db, "users", loginRes.user.uid));
+      const userData = userSnap.data();
+      const ip = pendingUser.ip || "127.0.0.1";
+      const locationStr = pendingUser.location || "Unknown City, Unknown Country";
+
+      const newSession = {
+        id: localSessionId,
+        deviceId: pendingUser.deviceId,
+        ip,
+        location: locationStr,
+        userAgent: navigator.userAgent,
+        lastActive: new Date().toISOString()
+      };
+
+      let sessions = userData?.activeSessions || [];
+      sessions = sessions.filter((s: any) => s.deviceId !== pendingUser.deviceId);
+      sessions.push(newSession);
+      if (sessions.length > 5) {
+        sessions = sessions.slice(-5);
+      }
+
+      await updateDoc(doc(db, "users", loginRes.user.uid), {
+        activeSession: newSession,
+        activeSessions: sessions
+      });
+
+      setMfaChallenge(false);
+      setPendingUser(null);
+      setUnverifiedUser(null);
+      await handleAuthSuccess(loginRes.user.uid);
+    } catch (e: any) {
+      console.error("MFA Validation failure", e);
+      setError(e.message || "Failed to trust device. Please try again.");
+    } finally {
+      setChallengeLoading(false);
+    }
+  };
 
   React.useEffect(() => {
-    // Legacy redirect check removed
-  }, [auth]);
+    const reason = urlParams.get("reason");
+    if (reason === "session_expired") {
+      setError("Your session has expired or someone else has logged in on another device or unusual location.");
+    }
+  }, []);
 
   const handleAuthSuccess = async (userId: string) => {
     const demoDataStr = sessionStorage.getItem("demoResult");
@@ -249,6 +356,107 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         const res = await signInWithEmailAndPassword(auth, email, password);
+        
+        // Enforce Firebase Email Verification
+        if (!res.user.emailVerified) {
+          const userSnap = await getDoc(doc(db, "users", res.user.uid));
+          const userData = userSnap.data();
+          const displayName = userData?.name || res.user.displayName || email.split("@")[0];
+
+          // Immediately dispatch a verification link if they sign in without verification
+          try {
+            await sendEmailVerification(res.user);
+          } catch (sendErr: any) {
+            console.error("Auto verification email send failed on sign in:", sendErr);
+          }
+
+          setUnverifiedUser({
+            email,
+            password,
+            displayName
+          });
+          await auth.signOut();
+          setError("Your email is not verified yet.");
+          setLoading(false);
+          return;
+        }
+
+        // --- DEVICE BINDING & IP GEOLOCATION AUDIT ---
+        const userSnap = await getDoc(doc(db, "users", res.user.uid));
+        const userData = userSnap.data();
+        const trusted = userData?.trustedDevices || [];
+        const currentDeviceId = getDeviceId();
+
+        // Query geography characteristics
+        let city = "Unknown City";
+        let country = "Unknown Country";
+        let ip = "127.0.0.1";
+        try {
+          const resGeo = await fetch("https://ipapi.co/json/");
+          if (resGeo.ok) {
+            const geoData = await resGeo.json();
+            city = geoData.city || "Unknown City";
+            country = geoData.country_name || "Unknown Country";
+            ip = geoData.ip || "127.0.0.1";
+          }
+        } catch(e) {
+          console.warn("Location check bypassed", e);
+        }
+
+        const locationStr = `${city}, ${country}`;
+        setIpData({ ip, location: locationStr });
+
+        // Challenge unrecognized device terminals
+        if (trusted.length > 0 && !trusted.includes(currentDeviceId)) {
+          const pin = Math.floor(100000 + Math.random() * 900000).toString();
+          setGeneratedPin(pin);
+          setPendingUser({
+            uid: res.user.uid,
+            email,
+            password,
+            resUser: res.user,
+            deviceId: currentDeviceId,
+            ip,
+            location: locationStr
+          });
+
+          await auth.signOut(); // Block unauthorized state
+          setMfaChallenge(true); // Open the Challenge prompt overlay
+          setLoading(false);
+          return;
+        }
+
+        // Auto trust first device
+        await updateDoc(doc(db, "users", res.user.uid), {
+          trustedDevices: arrayUnion(currentDeviceId)
+        });
+
+        // Set up active concurrent session ID
+        const localSessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("sessionId", localSessionId);
+
+        const newSession = {
+          id: localSessionId,
+          deviceId: currentDeviceId,
+          ip,
+          location: locationStr,
+          userAgent: navigator.userAgent,
+          lastActive: new Date().toISOString()
+        };
+
+        let sessions = userData?.activeSessions || [];
+        sessions = sessions.filter((s: any) => s.deviceId !== currentDeviceId);
+        sessions.push(newSession);
+        if (sessions.length > 5) {
+          sessions = sessions.slice(-5);
+        }
+
+        await updateDoc(doc(db, "users", res.user.uid), {
+          activeSession: newSession,
+          activeSessions: sessions
+        });
+        
+        setUnverifiedUser(null);
         await handleAuthSuccess(res.user.uid);
       } else {
         // Enforce approved domains check to verify real emails
@@ -284,15 +492,19 @@ export default function AuthPage() {
           password,
         );
         
-        await Promise.all([
-          updateProfile(userCredential.user, { displayName: name }),
-          setDoc(doc(db, "users", userCredential.user.uid), {
-            name,
-            email,
-            role: "user",
-            createdAt: serverTimestamp(),
-          })
-        ]);
+        // 1. Update display name FIRST so that the Firebase email template has access to it immediately
+        await updateProfile(userCredential.user, { displayName: name });
+        
+        // 2. Trigger secure verification link through Firebase
+        await sendEmailVerification(userCredential.user);
+        
+        // 3. Register user profile metadata in Firestore
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          name,
+          email,
+          role: "user",
+          createdAt: serverTimestamp(),
+        });
         
         // Handle Referral
         if (refCode) {
@@ -307,7 +519,17 @@ export default function AuthPage() {
            }
         }
 
-        await handleAuthSuccess(userCredential.user.uid);
+        // Sign out is critical so they cannot bypass verification
+        await auth.signOut();
+        
+        // Set state to trigger our newly restructured verification visual page
+        setUnverifiedUser({
+          email,
+          password,
+          displayName: name
+        });
+        setMessage("Account created successfully!");
+        setLoading(false);
         return;
       }
     } catch (err: any) {
@@ -470,19 +692,21 @@ export default function AuthPage() {
           )}
           <AnimatePresence mode="wait">
             <motion.div
-              key={authView === "forgot" ? "forgot-header" : (isLogin ? "login-header" : "signup-header")}
+              key={unverifiedUser ? "verify-header" : (authView === "forgot" ? "forgot-header" : (isLogin ? "login-header" : "signup-header"))}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
               <h2 className="text-3xl sm:text-4xl font-headline-md font-extrabold text-on-surface tracking-tight mb-2">
-                {authView === "forgot" ? "Reset Password" : (isLogin ? "Welcome back" : "Create an account")}
+                {unverifiedUser ? "Verify Email" : (authView === "forgot" ? "Reset Password" : (isLogin ? "Welcome back" : "Create an account"))}
               </h2>
               <p className="text-on-surface-variant font-medium text-[15px] sm:text-base px-2">
-                {authView === "forgot" 
-                  ? "Receive a secure link to recover your access"
-                  : (isLogin ? "Enter your details to access your dashboard" : "Join thousands of learners today")}
+                {unverifiedUser 
+                  ? "We've sent a secure invitation link to your address"
+                  : (authView === "forgot" 
+                      ? "Receive a secure link to recover your access"
+                      : (isLogin ? "Enter your details to access your dashboard" : "Join thousands of learners today"))}
               </p>
             </motion.div>
           </AnimatePresence>
@@ -491,7 +715,7 @@ export default function AuthPage() {
         <motion.div
           className="bg-surface/90 backdrop-blur-md border border-outline-variant/40 rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 shadow-2xl relative overflow-hidden"
         >
-          {authView === "auth" && (
+          {authView === "auth" && !mfaChallenge && !unverifiedUser && (
             <div className="bg-surface-dim/80 p-1.5 rounded-xl sm:rounded-2xl flex relative mb-6 sm:mb-8 shadow-inner">
               <motion.div
                 className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-surface rounded-lg sm:rounded-xl shadow-sm border border-outline-variant/20"
@@ -525,7 +749,7 @@ export default function AuthPage() {
           )}
 
           <AnimatePresence mode="wait">
-            {(error || message) && (
+            {(error || message) && !unverifiedUser && (
               <motion.div
                 initial={{ opacity: 0, height: 0, y: -10 }}
                 animate={{ opacity: 1, height: "auto", y: 0 }}
@@ -533,9 +757,11 @@ export default function AuthPage() {
                 className="mb-6"
               >
                 {error && (
-                  <div className="bg-error/10 border border-error/20 text-error p-4 rounded-2xl text-sm font-medium flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                    <p>{error}</p>
+                  <div className="bg-error/10 border border-error/20 text-error p-4 rounded-2xl text-sm font-medium flex flex-col gap-2.5">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <p>{error}</p>
+                    </div>
                   </div>
                 )}
                 {message && (
@@ -549,7 +775,232 @@ export default function AuthPage() {
           </AnimatePresence>
 
           <AnimatePresence mode="wait">
-            {authView === "forgot" ? (
+            {unverifiedUser ? (
+              <motion.div
+                key="verify"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-6 animate-in fade-in duration-200"
+              >
+                <div className="text-left space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-primary flex items-center justify-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent animate-pulse" />
+                    <Mail className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-extrabold text-on-surface font-headline-sm text-left">Please check your inbox</h3>
+                    <p className="text-xs sm:text-sm text-on-surface-variant font-semibold leading-relaxed text-left">
+                      <span>We've dispatched a secure verification link to: </span>
+                      <span className="text-primary font-bold select-all break-all">{unverifiedUser.email}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-900/40 rounded-2xl border border-outline-variant/30 space-y-4 text-xs text-left">
+                  <h4 className="font-extrabold text-on-surface uppercase tracking-wider text-[10px]">Steps to Activate Your Account:</h4>
+                  <ul className="space-y-3.5 font-semibold text-on-surface-variant">
+                    <li className="flex gap-3">
+                      <span className="w-5 h-5 rounded-full bg-indigo-500/10 text-primary flex items-center justify-center text-[10px] shrink-0 font-extrabold">1</span>
+                      <span className="leading-relaxed">Locate the verification email from <span className="font-bold text-on-surface">EXAM CITY</span> (be sure to check Spam &amp; Junk folder).</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="w-5 h-5 rounded-full bg-indigo-500/10 text-primary flex items-center justify-center text-[10px] shrink-0 font-extrabold">2</span>
+                      <span className="leading-relaxed">Returning here, click <span className="font-bold text-on-surface">"Check Verification Status"</span> to instantly enter your dashboard!</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {message && (
+                  <div className="p-3.5 bg-green-500/10 border border-green-500/20 text-green-600 rounded-xl text-xs font-semibold text-left animate-fade-in">
+                     {message}
+                  </div>
+                )}
+                {error && (
+                  <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-600 rounded-xl text-xs font-semibold text-left animate-fade-in">
+                     {error}
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setError("");
+                        setMessage("");
+                        setLoading(true);
+                        
+                        // Transient login check
+                        const loginRes = await signInWithEmailAndPassword(auth, unverifiedUser.email, unverifiedUser.password);
+                        await loginRes.user.reload();
+                        
+                        if (loginRes.user.emailVerified) {
+                          const currentDeviceId = getDeviceId();
+                          
+                          let city = "Unknown City";
+                          let country = "Unknown Country";
+                          let ip = "127.0.0.1";
+                          try {
+                            const resGeo = await fetch("https://ipapi.co/json/");
+                            if (resGeo.ok) {
+                              const geoData = await resGeo.json();
+                              city = geoData.city || "Unknown City";
+                              country = geoData.country_name || "Unknown Country";
+                              ip = geoData.ip || "127.0.0.1";
+                            }
+                          } catch(e) {
+                            console.warn("Location check bypassed", e);
+                          }
+
+                          const locationStr = `${city}, ${country}`;
+                          setIpData({ ip, location: locationStr });
+
+                          const localSessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+                          localStorage.setItem("sessionId", localSessionId);
+
+                          const newSession = {
+                            id: localSessionId,
+                            deviceId: currentDeviceId,
+                            ip,
+                            location: locationStr,
+                            userAgent: navigator.userAgent,
+                            lastActive: new Date().toISOString()
+                          };
+
+                          const userSnap = await getDoc(doc(db, "users", loginRes.user.uid));
+                          const userData = userSnap.data();
+                          let sessions = userData?.activeSessions || [];
+                          sessions = sessions.filter((s: any) => s.deviceId !== currentDeviceId);
+                          sessions.push(newSession);
+                          if (sessions.length > 5) {
+                            sessions = sessions.slice(-5);
+                          }
+
+                          await updateDoc(doc(db, "users", loginRes.user.uid), {
+                            activeSession: newSession,
+                            activeSessions: sessions,
+                            trustedDevices: arrayUnion(currentDeviceId)
+                          });
+
+                          setUnverifiedUser(null);
+                          await handleAuthSuccess(loginRes.user.uid);
+                        } else {
+                          await auth.signOut();
+                          setError("Your email has not been verified yet. Please check your inbox and click the Exam City verification link first.");
+                        }
+                      } catch (err: any) {
+                        console.error(err);
+                        setError(err.message || "Could not connect to verify status.");
+                        await auth.signOut().catch(() => {});
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="w-full py-3.5 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary/95 shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>Check Verification Status</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnverifiedUser(null);
+                        setError("");
+                        setMessage("");
+                      }}
+                      className="flex-1 py-3 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-xs rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                      Back to Login
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendStatus === "sending"}
+                      className="flex-1 py-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-primary font-bold text-xs rounded-xl shadow-none active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {resendStatus === "sending" ? "Resending..." : "Resend Email"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : mfaChallenge ? (
+              <motion.div
+                key="mfa"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-6 animate-in fade-in duration-200"
+              >
+                <div className="text-center space-y-2">
+                  <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-extrabold text-on-surface">Unrecognized Device/Location</h3>
+                  <p className="text-xs text-on-surface-variant font-semibold leading-relaxed max-w-sm mx-auto">
+                    For security reasons, we require a verification challenge to register this browser fingerprint as a trusted device.
+                  </p>
+                </div>
+
+                {ipData && (
+                  <div className="p-3.5 bg-neutral-100 dark:bg-neutral-900/60 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed">
+                    <span className="font-bold text-on-surface">Location:</span> {ipData.location} <br />
+                    <span className="font-bold text-on-surface">IP Source:</span> {ipData.ip}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Device Auth Security PIN</label>
+                    <input
+                      type="text"
+                      value={enteredPin}
+                      onChange={(e) => setEnteredPin(e.target.value)}
+                      placeholder="Type 6-Digit Code"
+                      className="w-full p-3.5 bg-surface-dim border border-outline-variant/40 rounded-xl text-center font-extrabold tracking-widest text-lg outline-none focus:border-primary transition-all text-on-surface"
+                    />
+                  </div>
+
+                  {/* Security sandbox PIN helper indicator */}
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 dark:text-amber-400 leading-relaxed font-semibold">
+                     Your 2-Step Verification passcode: <code className="font-mono font-extrabold bg-amber-500/25 px-1.5 py-0.5 rounded text-amber-950 dark:text-amber-300">{generatedPin}</code>. 
+                     In a production workflow, this triggers an automated email proxy or push notice to registered security clients.
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMfaChallenge(false);
+                        setPendingUser(null);
+                        setError("");
+                      }}
+                      className="flex-1 py-3 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleVerifyDeviceSecurely}
+                      disabled={challengeLoading}
+                      className="flex-1 py-3 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary-dark shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {challengeLoading ? "Verifying..." : "Verify Device"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : authView === "forgot" ? (
               <ForgotPasswordView key="forgot" />
             ) : (
               <motion.div

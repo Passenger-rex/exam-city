@@ -803,7 +803,7 @@ export default function AdminPage() {
           </div>
 
           {/* Interactive Navigation Tab Switches */}
-          <div id="admin-tab-switcher" className="inline-flex p-1 bg-neutral-100 dark:bg-neutral-900/80 rounded-xl border border-neutral-200/60 dark:border-neutral-800/80 shadow-inner w-full max-w-2xl gap-1">
+          <div id="admin-tab-switcher" className="flex flex-col sm:inline-flex sm:flex-row p-1 bg-neutral-100 dark:bg-neutral-900/80 rounded-xl border border-neutral-200/60 dark:border-neutral-800/80 shadow-inner w-full max-w-2xl gap-1">
              <button
                 id="admin-tab-curriculum"
                 onClick={() => setAdminTab("curriculum")}
@@ -864,7 +864,7 @@ export default function AdminPage() {
                   <div className="flex flex-col lg:flex-row gap-8">
                      
                      {/* LEFT COLUMN: Subjects List with Search bar */}
-                     <div id="sidebar-subject-list" className="w-full lg:w-1/3 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 flex flex-col gap-4 min-h-[520px]">
+                     <div id="sidebar-subject-list" className="w-full lg:w-1/3 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 flex flex-col gap-4 min-h-[280px] lg:min-h-[520px]">
                         <div className="space-y-3 flex flex-col">
                            <div className="flex justify-between items-center">
                              <h3 className="font-extrabold text-xs tracking-wider text-neutral-400 dark:text-neutral-500 uppercase">Syllabus Index</h3>
@@ -1102,7 +1102,7 @@ export default function AdminPage() {
                      </div>
 
                      {/* RIGHT COLUMN: Active Selected Subject's Topics list */}
-                     <div id="topics-override-manager" className="w-full lg:w-2/3 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 flex flex-col min-h-[520px]">
+                     <div id="topics-override-manager" className="w-full lg:w-2/3 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 flex flex-col min-h-[280px] lg:min-h-[520px]">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 border-b border-neutral-200 dark:border-neutral-800 pb-3.5">
                            <h3 className="font-bold text-sm sm:text-base text-neutral-900 dark:text-white flex items-center gap-2">
                               Syllabus Schema: <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{curriculums.find(c => c.id === activeSubjectId)?.name || 'Select subject'}</span>

@@ -28,6 +28,11 @@ import {
   LifeBuoy,
   X,
   Paperclip,
+  Laptop,
+  Smartphone,
+  Trash2,
+  Globe,
+  Shield,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { useUser } from "../UserContext";
@@ -60,6 +65,103 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Concurrent device/session management states
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [deviceModalOpen, setDeviceModalOpen] = useState(false);
+  const [deviceLoading, setDeviceLoading] = useState(false);
+
+  // Helper to structure nice labels out of raw agent metadata
+  const getDeviceFromUA = (ua: string) => {
+    if (!ua) return { name: "Unknown System", isMobile: false };
+    const lower = ua.toLowerCase();
+    let os = "Unknown OS";
+    let browser = "Web Browser";
+
+    if (lower.includes("windows")) os = "Windows";
+    else if (lower.includes("macintosh") || lower.includes("mac os")) os = "macOS";
+    else if (lower.includes("iphone") || lower.includes("ipad")) os = "iOS";
+    else if (lower.includes("android")) os = "Android";
+    else if (lower.includes("linux")) os = "Linux";
+
+    if (lower.includes("chrome") || lower.includes("crios")) browser = "Chrome";
+    else if (lower.includes("firefox")) browser = "Firefox";
+    else if (lower.includes("safari") && !lower.includes("chrome")) browser = "Safari";
+    else if (lower.includes("edge")) browser = "Edge";
+    else if (lower.includes("opr") || lower.includes("opera")) browser = "Opera";
+
+    return {
+      name: `${browser} on ${os}`,
+      isMobile: lower.includes("mobile") || lower.includes("android") || lower.includes("iphone")
+    };
+  };
+
+  const handleLogoutSession = async (sessionId: string) => {
+    if (!auth.currentUser) return;
+    try {
+      setDeviceLoading(true);
+      setError("");
+      setMessage("");
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        let sessions = data.activeSessions || [];
+        sessions = sessions.filter((s: any) => s.id !== sessionId);
+
+        let updatePayload: any = { activeSessions: sessions };
+        if (sessionId === currentSessionId) {
+          updatePayload.activeSession = null;
+        }
+
+        await setDoc(userDocRef, updatePayload, { merge: true });
+        setActiveSessions(sessions);
+        
+        if (sessionId === currentSessionId) {
+          await auth.signOut();
+          navigate("/login");
+        } else {
+          setMessage("Selected trusted device session has been revoked successfully.");
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError("Failed to terminate session credentials safely: " + e.message);
+    } finally {
+      setDeviceLoading(false);
+    }
+  };
+
+  const handleLogoutAllOtherSessions = async () => {
+    if (!auth.currentUser || !currentSessionId) return;
+    try {
+      setDeviceLoading(true);
+      setError("");
+      setMessage("");
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        const sessions = data.activeSessions || [];
+        const currentSess = sessions.find((s: any) => s.id === currentSessionId);
+        
+        const remainingSessions = currentSess ? [currentSess] : [];
+        await setDoc(userDocRef, {
+          activeSessions: remainingSessions,
+          activeSession: currentSess || null
+        }, { merge: true });
+        
+        setActiveSessions(remainingSessions);
+        setMessage("All other active session instances logged out successfully.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError("Failed to revoke sister sessions: " + e.message);
+    } finally {
+      setDeviceLoading(false);
+    }
+  };
 
   const [referralCount, setReferralCount] = useState(0);
   const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([]);
@@ -134,7 +236,9 @@ export default function ProfilePage() {
             if (userDoc.exists()) {
               setName(userDoc.data().name || "");
               setGroupMembersList(userDoc.data().groupMembers || []);
+              setActiveSessions(userDoc.data().activeSessions || []);
             }
+            setCurrentSessionId(localStorage.getItem("sessionId"));
 
             const refQ = query(
               collection(db, "referrals"),
@@ -391,6 +495,25 @@ export default function ProfilePage() {
                       className="w-full pl-12 pr-4 py-3.5 bg-surface-dim border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-2xl outline-none transition-all font-medium text-on-surface"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-outline-variant/30">
+                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" /> Active Devices &amp; Sessions
+                </h2>
+                <div className="p-4 bg-outline-variant/10 rounded-2xl border border-outline-variant/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="text-left">
+                     <p className="font-bold text-sm text-on-surface">You are active on {activeSessions.length || 1} trusted terminal{activeSessions.length !== 1 ? "s" : ""}</p>
+                     <p className="text-xs text-on-surface-variant font-semibold mt-0.5">Control concurrent session instances to secure account data from unauthorized lookups.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDeviceModalOpen(true)}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-surface text-on-surface hover:bg-surface-dim font-bold text-xs rounded-xl border border-outline-variant/60 shadow-sm active:scale-[0.98] transition-all cursor-pointer text-center shrink-0"
+                  >
+                     Manage Devices
+                  </button>
                 </div>
               </div>
 
@@ -816,6 +939,117 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {deviceModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-surface w-full max-w-[500px] rounded-[28px] overflow-hidden shadow-2xl border border-outline-variant/30 flex flex-col max-h-[85vh] text-left relative"
+            >
+              <div className="px-6 py-5 border-b border-outline-variant/30 flex justify-between items-center shrink-0 bg-surface/50 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-on-surface leading-tight">Manage Sessions</h3>
+                    <p className="text-xs text-on-surface-variant font-semibold">Active credentials on other hardware portals</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeviceModalOpen(false)}
+                  className="p-2 hover:bg-surface-dim rounded-full transition-colors text-on-surface-variant cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar flex-1">
+                {activeSessions.length > 1 && (
+                  <div className="flex justify-between items-center bg-red-500/5 hover:bg-red-500/10 p-3 rounded-2xl border border-red-500/10 transition-colors">
+                     <span className="text-[11px] font-bold text-red-700 dark:text-red-400">Kill all other active desktop and mobile access keys.</span>
+                     <button
+                       type="button"
+                       disabled={deviceLoading}
+                       onClick={handleLogoutAllOtherSessions}
+                       className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-[11px] rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shadow-sm hover:shadow-md"
+                     >
+                       Sign Out Others
+                     </button>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {activeSessions.map((session: any) => {
+                    const devInfo = getDeviceFromUA(session.userAgent);
+                    const isCurrent = session.id === currentSessionId;
+                    
+                    return (
+                      <div 
+                        key={session.id}
+                        className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${isCurrent ? 'bg-green-500/5 border-green-500/20' : 'bg-surface-dim border-outline-variant/40 hover:border-primary/20'}`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${isCurrent ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-surface border-outline-variant/50 text-neutral-500'}`}>
+                            {devInfo.isMobile ? (
+                              <Smartphone className="w-5.5 h-5.5" />
+                            ) : (
+                              <Laptop className="w-5.5 h-5.5" />
+                            )}
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-sm text-on-surface truncate">
+                                {devInfo.name}
+                              </span>
+                              {isCurrent && (
+                                <span className="shrink-0 px-2.5 py-0.5 bg-green-500/10 border border-green-500/20 text-green-600 rounded-full text-[9px] font-extrabold uppercase tracking-wide">
+                                  Current Unit
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-on-surface-variant font-semibold mt-0.5 flex items-center gap-1">
+                              <Globe className="w-3 h-3 text-outline" />
+                              <span>IP: {session.ip || "127.0.0.1"} ({session.location || "Unknown Location"})</span>
+                            </p>
+                            <span className="text-[10px] font-medium text-neutral-400 block mt-0.5">
+                              Last action: {session.lastActive ? new Date(session.lastActive).toLocaleString() : 'Recent'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={deviceLoading}
+                          onClick={() => handleLogoutSession(session.id)}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 ${isCurrent ? 'text-red-500 hover:bg-red-500/10 border-red-500/25 bg-red-500/5' : 'text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 border-outline-variant/40'}`}
+                          title={isCurrent ? "Self Sign Out" : "Terminate Session"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-surface-dim border-t border-outline-variant/30 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDeviceModalOpen(false)}
+                  className="px-5 py-2 bg-surface hover:bg-outline-variant/20 border border-outline-variant text-on-surface font-semibold text-xs rounded-xl cursor-pointer transition-all active:scale-[0.98]"
+                >
+                  Close Console
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

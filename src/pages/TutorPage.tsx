@@ -185,6 +185,39 @@ export default function TutorPage() {
   const [isFileUploading, setIsFileUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [documentDifficulty, setDocumentDifficulty] = useState<string>("standard");
+  const [documentSubject, setDocumentSubject] = useState<string>("Biology");
+  const [subjectsList, setSubjectsList] = useState<string[]>([
+    "Biology", "Chemistry", "English", "Mathematics", "Physics"
+  ]);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const { getDocs } = await import("firebase/firestore");
+        const q = query(collection(db, "curriculums"), orderBy("name"));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const names: string[] = [];
+          snap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.name) {
+              const trimmedName = String(data.name).trim();
+              if (trimmedName) names.push(trimmedName);
+            }
+          });
+          const uniqueNames = Array.from(new Set(names));
+          if (uniqueNames.length > 0) {
+            setSubjectsList(uniqueNames);
+            setDocumentSubject((prev) => uniqueNames.includes(prev) ? prev : uniqueNames[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching subjects in TutorPage:", err);
+      }
+    };
+    fetchSubjects();
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -243,6 +276,7 @@ export default function TutorPage() {
           fileName: selectedFile.name,
           action: action,
           level: documentDifficulty,
+          subject: documentSubject,
           message: action === "tutor" ? "Summarize this file and list 5 important conceptual questions we can study." : ""
         })
       });
@@ -881,6 +915,17 @@ export default function TutorPage() {
                   </div>
                   
                   <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto shrink-0">
+                    <select
+                      value={documentSubject}
+                      onChange={(e) => setDocumentSubject(e.target.value)}
+                      className="w-full sm:w-36 py-2.5 px-3 bg-surface-dim border border-outline-variant/40 rounded-xl outline-none text-xs font-semibold cursor-pointer appearance-none text-on-surface"
+                      disabled={isLoading}
+                    >
+                      {subjectsList.map((sub) => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                    </select>
+
                     <select
                       value={documentDifficulty}
                       onChange={(e) => setDocumentDifficulty(e.target.value)}

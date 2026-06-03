@@ -27,6 +27,53 @@ const UserContext = createContext<UserContextType>({
 
 export const useUser = () => useContext(UserContext);
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -68,6 +115,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         clearTimeout(safetyTimeout);
         if (docSnap.exists()) {
           const data = docSnap.data();
+
+          // Real-time Concurrent Session Enforcement Check
+          const localSessionId = localStorage.getItem("sessionId");
+          if (localSessionId && data.activeSession?.id && data.activeSession.id !== localSessionId) {
+            console.warn("Active concurrent session collision detected! Terminating old session...");
+            auth.signOut().then(() => {
+               localStorage.removeItem("sessionId");
+               window.location.href = "/login?reason=session_expired";
+            });
+            return;
+          }
+
           let currentTier = data.tier || "free";
           
           const PRO_EMAILS = [
@@ -109,14 +168,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           });
 
           // Secondary checks for community-based tiers (referrals/groups)
-          if (currentTier !== "pro") {
+          if (currentTier !== "pro" && user.emailVerified) {
             try {
               const { collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
               
               // Check Referrals
-              const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
-              const refSnap = await getDocs(refQ);
-              if (refSnap.size >= 12) {
+              let refSnap;
+              try {
+                const refQ = query(collection(db, "referrals"), where("referrerId", "==", user.uid));
+                refSnap = await getDocs(refQ);
+              } catch (err) {
+                handleFirestoreError(err, OperationType.LIST, "referrals");
+              }
+              
+              if (refSnap && refSnap.size >= 12) {
                 await updateDoc(userRef, { tier: "pro", proType: "referrals" });
                 // Note: The onSnapshot will fire again from the updateDoc
                 return;
@@ -124,9 +189,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
               // Check if we are in someone else's Study Group
               if (user.email) {
-                const groupsQ = query(collection(db, "users"), where("groupMembers", "array-contains", user.email.toLowerCase().trim()));
-                const groupsSnap = await getDocs(groupsQ);
-                if (!groupsSnap.empty) {
+                let groupsSnap;
+                try {
+                  const groupsQ = query(collection(db, "users"), where("groupMembers", "array-contains", user.email.toLowerCase().trim()));
+                  groupsSnap = await getDocs(groupsQ);
+                } catch (err) {
+                  handleFirestoreError(err, OperationType.LIST, "users");
+                }
+                
+                if (groupsSnap && !groupsSnap.empty) {
                   setProfile(prev => ({
                     ...prev,
                     tier: "pro",

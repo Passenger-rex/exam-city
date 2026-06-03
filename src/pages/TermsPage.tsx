@@ -10,14 +10,14 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-surface-dim text-on-surface flex flex-col selection:bg-primary/20">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 px-6 py-4">
+      <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 px-4 sm:px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <Logo className="text-xl md:text-2xl" />
+            <Logo className="text-lg sm:text-xl md:text-2xl" />
           </Link>
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-full bg-surface-container hover:bg-surface-dim hover:text-primary transition-all cursor-pointer border border-outline-variant/30"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-semibold rounded-full bg-surface-container hover:bg-surface-dim hover:text-primary transition-all cursor-pointer border border-outline-variant/30"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Go Back</span>
@@ -26,29 +26,29 @@ export default function TermsPage() {
       </header>
 
       {/* Content */}
-      <main className="flex-grow max-w-4xl w-full mx-auto px-6 py-12 md:py-16">
+      <main className="flex-grow max-w-4xl w-full mx-auto px-3 sm:px-6 py-6 md:py-16">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="bg-surface border border-outline-variant/50 rounded-3xl p-8 md:p-12 shadow-sm"
+          className="bg-surface border border-outline-variant/50 rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 shadow-sm"
         >
           {/* Cover Section */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <BookOpen className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-xs font-bold text-primary uppercase tracking-widest">Platform Guidelines</span>
+            <span className="text-[10px] sm:text-xs font-bold text-primary uppercase tracking-widest">Platform Guidelines</span>
           </div>
 
-          <h1 className="text-4xl font-black text-on-surface tracking-tight mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-on-surface tracking-tight mb-4">
             Terms of Service
           </h1>
-          <p className="text-sm text-on-surface-variant mb-10 leading-relaxed font-medium">
+          <p className="text-xs sm:text-sm text-on-surface-variant mb-8 sm:mb-10 leading-relaxed font-medium">
             Last Updated: June 2, 2026. Please read these Terms of Service carefully before registering, subscribing, or interacting with the Exam City academic training portals.
           </p>
 
-          <div className="border-t border-outline-variant/50 pt-8 space-y-10">
+          <div className="border-t border-outline-variant/50 pt-6 sm:pt-8 space-y-8 sm:space-y-10">
             {/* Agreement */}
             <section className="bg-amber-50/45 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl p-5 flex gap-4">
               <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-500 flex-shrink-0 mt-0.5" />
