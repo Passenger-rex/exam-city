@@ -26,7 +26,8 @@ import {
   getDoc,
   updateDoc,
   arrayUnion,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -301,8 +302,6 @@ export default function AuthPage() {
   React.useEffect(() => {
     if (!mfaChallenge || !generatedPin || !pendingUser) return;
 
-    let subscriptionSupabase: any = null;
-
     const handleSuccessfulVerification = async () => {
       try {
         setChallengeLoading(true);
@@ -354,35 +353,19 @@ export default function AuthPage() {
       }
     };
 
-    if (isSupabaseConfigured && supabase) {
-      console.log(`[Supabase Realtime] Listening on login_verifications table for ID: ${generatedPin}`);
-      subscriptionSupabase = supabase
-        .channel(`login_verifications_${generatedPin}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "login_verifications",
-            filter: `id=eq.${generatedPin}`,
-          },
-          (payload) => {
-            const data = payload.new;
-            if (data && data.verified === true && data.used === true) {
-              console.log("[Supabase Realtime] Verification event detected, executing log-in.");
-              handleSuccessfulVerification();
-            }
-          }
-        )
-        .subscribe();
-    } else {
-      console.warn("Supabase is not configured. Verification listeners cannot attach.");
-    }
+    const unsubscribe = onSnapshot(doc(db, "login_verifications", generatedPin), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.verified === true && data.used === true) {
+          console.log("[Firestore Realtime] Verification event detected, executing log-in.");
+          handleSuccessfulVerification();
+          deleteDoc(doc(db, "login_verifications", generatedPin)).catch(console.error);
+        }
+      }
+    });
 
     return () => {
-      if (subscriptionSupabase && supabase) {
-        supabase.removeChannel(subscriptionSupabase);
-      }
+      unsubscribe();
     };
   }, [mfaChallenge, generatedPin, pendingUser]);
 
@@ -516,36 +499,28 @@ export default function AuthPage() {
           const createdAt = new Date().toISOString();
           const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
 
-          if (isSupabaseConfigured && supabase) {
-            try {
-              const { error: insertErr } = await supabase
-                .from("login_verifications")
-                .insert([{
-                  id: verificationToken,
-                  uid: res.user.uid,
-                  email: email,
-                  device_id: currentDeviceId,
-                  ip: ip,
-                  location: locationStr,
-                  created_at: createdAt,
-                  expires_at: expiresAt,
-                  verified: false,
-                  used: false
-                }]);
-              if (insertErr) {
-                console.error("Failed to insert verification token to Supabase:", insertErr);
-                throw insertErr;
-              }
-            } catch (supaErr: any) {
-              console.error("Supabase write failure:", supaErr);
-              throw supaErr;
-            }
-          } else {
-            console.warn("Supabase is not configured, cannot send verification email or challenge token.");
-            setError("Security challenge system is currently unavailable (Database not configured).");
-            await auth.signOut();
-            setLoading(false);
-            return;
+          try {
+            await setDoc(doc(db, "login_verifications", verificationToken), {
+              uid: res.user.uid,
+              email: email,
+              device_id: currentDeviceId,
+              ip: ip,
+              location: locationStr,
+              created_at: createdAt,
+              expires_at: expiresAt,
+              verified: false,
+              used: false
+            });
+
+            // Trigger backend email notification
+            fetch('/api/auth/send-verification-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, token: verificationToken })
+            }).catch(e => console.warn('Failed to send verification email request', e));
+          } catch (fireErr: any) {
+            console.error("Firestore write failure for login_verifications:", fireErr);
+            throw fireErr;
           }
 
           setGeneratedPin(verificationToken); // Store token in generatedPin state

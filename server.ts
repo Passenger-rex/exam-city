@@ -206,6 +206,39 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+app.post("/api/auth/send-verification-email", async (req, res) => {
+  try {
+    const { email, token } = req.body;
+    const resend = getResend();
+    if (!resend) return res.status(500).json({ error: "Resend not configured" });
+
+    const verificationLink = `${req.headers.origin || "http://localhost:3000"}/verify-login?token=${token}`;
+
+    const { error } = await resend.emails.send({
+      from: "AI Studio <noreply@resend.dev>",
+      to: email,
+      subject: "Security Alert: Verify New Device Login",
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
+          <h2 style="color: #000;">Unrecognized Device Login</h2>
+          <p>We detected a sign-in attempt from a new device.</p>
+          <p>Please click the button below to verify it's you and automatically sign in.</p>
+          <div style="margin: 32px 0;">
+            <a href="${verificationLink}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; border-width: 0;">Verify Device</a>
+          </div>
+          <p style="color: #666; font-size: 14px;">If you didn't attempt to sign in, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Failed to send device verification email:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/auth/verify-otp", async (req, res) => {
   try {
     const { userId, otpCode, trustDevice } = req.body;
