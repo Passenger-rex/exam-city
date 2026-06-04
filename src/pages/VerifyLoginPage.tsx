@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Loader2, XCircle } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export default function VerifyLoginPage() {
@@ -40,6 +40,17 @@ export default function VerifyLoginPage() {
           setStatus('error');
           setMessage('This verification link has expired. Please try signing in again.');
           return;
+        }
+
+        // --- SECURE TRUST BINDING ---
+        // Save the PC's original unauthorized device ID to the user's trustedDevices array
+        const userDocRef = doc(db, 'users', data.uid);
+        try {
+          await updateDoc(userDocRef, {
+            trustedDevices: arrayUnion(data.device_id)
+          });
+        } catch (profileErr) {
+          console.warn("Could not append trusted device footprint during direct VerifyLoginPage completion:", profileErr);
         }
 
         await updateDoc(docRef, {

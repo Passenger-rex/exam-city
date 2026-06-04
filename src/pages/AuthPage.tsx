@@ -305,17 +305,23 @@ export default function AuthPage() {
     const handleSuccessfulVerification = async () => {
       try {
         setChallengeLoading(true);
-        const loginRes = await signInWithEmailAndPassword(auth, pendingUser.email, pendingUser.password);
+        let uid = pendingUser.uid;
+        
+        // Re-authenticate only if signed out and credentials are fully present
+        if (!auth.currentUser && pendingUser.email && pendingUser.password) {
+          const loginRes = await signInWithEmailAndPassword(auth, pendingUser.email, pendingUser.password);
+          uid = loginRes.user.uid;
+        }
         
         // Permanently bind current browser fingerprint as a trusted device
-        await updateDoc(doc(db, "users", loginRes.user.uid), {
+        await updateDoc(doc(db, "users", uid), {
           trustedDevices: arrayUnion(pendingUser.deviceId)
         });
 
         const localSessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
         localStorage.setItem("sessionId", localSessionId);
 
-        const userSnap = await getDoc(doc(db, "users", loginRes.user.uid));
+        const userSnap = await getDoc(doc(db, "users", uid));
         const userData = userSnap.data();
         const ip = pendingUser.ip || "127.0.0.1";
         const locationStr = pendingUser.location || "Unknown City, Unknown Country";
@@ -336,7 +342,7 @@ export default function AuthPage() {
           sessions = sessions.slice(-5);
         }
 
-        await updateDoc(doc(db, "users", loginRes.user.uid), {
+        await updateDoc(doc(db, "users", uid), {
           activeSession: newSession,
           activeSessions: sessions
         });
@@ -344,7 +350,7 @@ export default function AuthPage() {
         setMfaChallenge(false);
         setPendingUser(null);
         setUnverifiedUser(null);
-        await handleAuthSuccess(loginRes.user.uid);
+        await handleAuthSuccess(uid);
       } catch (authErr: any) {
         console.error("Auto log-in after verification failed:", authErr);
         setError(authErr.message || "Failed to complete authentication automatically.");
@@ -369,12 +375,93 @@ export default function AuthPage() {
     };
   }, [mfaChallenge, generatedPin, pendingUser]);
 
+  const reason = urlParams.get("reason");
+
   React.useEffect(() => {
-    const reason = urlParams.get("reason");
     if (reason === "session_expired") {
       setError("Your session has expired or someone else has logged in on another device or unusual location.");
     }
-  }, []);
+
+    // Capture on-load unauthorized persistent sessions
+    const handleUnrecognizedDevicePersistent = async (user: any) => {
+      const currentDeviceId = getDeviceId();
+      try {
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const trusted = userData?.trustedDevices || [];
+          if (!trusted.includes(currentDeviceId)) {
+            let city = "Unknown City";
+            let country = "Unknown Country";
+            let ip = "127.0.0.1";
+            try {
+              const resGeo = await fetch("https://ipapi.co/json/");
+              if (resGeo.ok) {
+                const geoData = await resGeo.json();
+                city = geoData.city || "Unknown City";
+                country = geoData.country_name || "Unknown Country";
+                ip = geoData.ip || "127.0.0.1";
+              }
+            } catch (e) {
+              console.warn("Location check bypassed", e);
+            }
+            const locationStr = `${city}, ${country}`;
+            setIpData({ ip, location: locationStr });
+
+            const verificationToken = "tok_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            const createdAt = new Date().toISOString();
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+            await setDoc(doc(db, "login_verifications", verificationToken), {
+              uid: user.uid,
+              email: user.email || "",
+              device_id: currentDeviceId,
+              ip,
+              location: locationStr,
+              created_at: createdAt,
+              expires_at: expiresAt,
+              verified: false,
+              used: false
+            });
+
+            const emailRes = await fetch('/api/auth/send-verification-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user.email, token: verificationToken })
+            });
+            if (!emailRes.ok) {
+              const errData = await emailRes.json();
+              throw new Error(`Device verification email failed: ${errData.error || 'Server error'}`);
+            }
+
+            setGeneratedPin(verificationToken);
+            setPendingUser({
+              uid: user.uid,
+              email: user.email || "",
+              password: "",
+              resUser: user,
+              deviceId: currentDeviceId,
+              ip,
+              location: locationStr
+            });
+
+            setMfaChallenge(true);
+          }
+        }
+      } catch (err: any) {
+        console.error("Failed persistent device audit context:", err);
+        setError(err.message || "An error occurred setting up secure verification.");
+      }
+    };
+
+    const unsub = auth.onAuthStateChanged((user) => {
+      if (user && !mfaChallenge && !pendingUser) {
+        handleUnrecognizedDevicePersistent(user);
+      }
+    });
+
+    return () => unsub();
+  }, [reason, mfaChallenge, pendingUser]);
 
   const handleAuthSuccess = async (userId: string) => {
     const demoDataStr = sessionStorage.getItem("demoResult");
@@ -494,7 +581,7 @@ export default function AuthPage() {
         const currentDeviceId = getDeviceId();
 
         // Challenge unrecognized device terminals
-        if (trusted.length > 0 && !trusted.includes(currentDeviceId)) {
+        if (!trusted.includes(currentDeviceId)) {
           const verificationToken = "tok_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
           const createdAt = new Date().toISOString();
           const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
@@ -512,14 +599,18 @@ export default function AuthPage() {
               used: false
             });
 
-            // Trigger backend email notification
-            fetch('/api/auth/send-verification-email', {
+            // Trigger backend email notification and check for errors
+            const emailRes = await fetch('/api/auth/send-verification-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email, token: verificationToken })
-            }).catch(e => console.warn('Failed to send verification email request', e));
+            });
+            if (!emailRes.ok) {
+              const errData = await emailRes.json();
+              throw new Error(`Device verification email failed: ${errData.error || 'Server error'}`);
+            }
           } catch (fireErr: any) {
-            console.error("Firestore write failure for login_verifications:", fireErr);
+            console.error("MFA email or Firestore setup failure:", fireErr);
             throw fireErr;
           }
 
@@ -534,7 +625,6 @@ export default function AuthPage() {
             location: locationStr
           });
 
-          await auth.signOut(); // Block unauthorized state
           setMfaChallenge(true); // Open the Challenge prompt overlay
           setLoading(false);
           return;
@@ -613,10 +703,12 @@ export default function AuthPage() {
         await sendEmailVerification(userCredential.user);
         
         // 3. Register user profile metadata in Firestore
+        const currentDeviceId = getDeviceId();
         await setDoc(doc(db, "users", userCredential.user.uid), {
           name,
           email,
           role: "user",
+          trustedDevices: [currentDeviceId],
           createdAt: serverTimestamp(),
         });
         
@@ -703,13 +795,16 @@ export default function AuthPage() {
          sessionStorage.setItem("google_access_token", credential.accessToken);
       }
       
+      const currentDeviceId = getDeviceId();
       const userDocRef = doc(db, "users", result.user.uid);
       const userSnap = await getDoc(userDocRef);
+      
       if (!userSnap.exists()) {
         await setDoc(userDocRef, {
           name: result.user.displayName || "Google User",
           email: result.user.email,
           role: "user",
+          trustedDevices: [currentDeviceId], // trusted initial device
           createdAt: serverTimestamp(),
         });
         
@@ -723,6 +818,72 @@ export default function AuthPage() {
            } catch(e) {
               console.error("Failed to add referral record", e);
            }
+        }
+      } else {
+        // Enforce device audit for existing Google users
+        const userData = userSnap.data();
+        const trusted = userData?.trustedDevices || [];
+        
+        if (!trusted.includes(currentDeviceId)) {
+          // Identify location
+          let city = "Unknown City";
+          let country = "Unknown Country";
+          let ip = "127.0.0.1";
+          try {
+            const resGeo = await fetch("https://ipapi.co/json/");
+            if (resGeo.ok) {
+              const geoData = await resGeo.json();
+              city = geoData.city || "Unknown City";
+              country = geoData.country_name || "Unknown Country";
+              ip = geoData.ip || "127.0.0.1";
+            }
+          } catch (e) {
+            console.warn("Location check bypassed", e);
+          }
+          const locationStr = `${city}, ${country}`;
+          setIpData({ ip, location: locationStr });
+
+          const verificationToken = "tok_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+          const createdAt = new Date().toISOString();
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+          await setDoc(doc(db, "login_verifications", verificationToken), {
+            uid: result.user.uid,
+            email: result.user.email || "",
+            device_id: currentDeviceId,
+            ip,
+            location: locationStr,
+            created_at: createdAt,
+            expires_at: expiresAt,
+            verified: false,
+            used: false
+          });
+
+          // Trigger email block and error check
+          const emailRes = await fetch('/api/auth/send-verification-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: result.user.email, token: verificationToken })
+          });
+          if (!emailRes.ok) {
+            const errData = await emailRes.json();
+            throw new Error(`Device verification email failed: ${errData.error || 'Server error'}`);
+          }
+
+          setGeneratedPin(verificationToken);
+          setPendingUser({
+            uid: result.user.uid,
+            email: result.user.email || "",
+            password: "", // Google has no password
+            resUser: result.user,
+            deviceId: currentDeviceId,
+            ip,
+            location: locationStr,
+            isGoogle: true
+          });
+
+          setMfaChallenge(true);
+          return;
         }
       }
       

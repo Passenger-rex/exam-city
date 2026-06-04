@@ -4,11 +4,11 @@ service cloud.firestore {
     match /{document=**} { allow read, write: if false; }
 
     function isValidLoginVerification(data) {
-      return data.keys().hasAll(['uid', 'email', 'deviceId', 'ip', 'location', 'createdAt', 'expiresAt', 'verified', 'used'])
+      return data.keys().hasAll(['uid', 'email', 'device_id', 'ip', 'location', 'created_at', 'expires_at', 'verified', 'used'])
         && data.keys().size() == 9
         && data.uid is string && data.uid.size() <= 128
         && data.email is string && data.email.size() <= 256
-        && data.deviceId is string && data.deviceId.size() <= 128
+        && data.device_id is string && data.device_id.size() <= 128
         && data.ip is string && data.ip.size() <= 128
         && data.location is string && data.location.size() <= 256
         && data.verified is bool
