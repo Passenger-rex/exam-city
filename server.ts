@@ -239,6 +239,65 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
   }
 });
 
+app.post("/api/auth/send-welcome-email", async (req, res) => {
+  try {
+    const { email, name, token } = req.body;
+    const resend = getResend();
+    if (!resend) return res.status(500).json({ error: "Resend not configured" });
+
+    const verificationLink = `${req.headers.origin || "https://examcity.qzz.io"}/verify-email?token=${token}`;
+
+    const { error } = await resend.emails.send({
+      from: "Exam City <welcome@examcity.qzz.io>",
+      to: email,
+      subject: "Welcome to Exam City — Activate Your Account! 🎓",
+      html: `
+        <div style="font-family: 'Inter', -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <div style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 12px 20px; border-radius: 12px; font-weight: 800; font-size: 20px; letter-spacing: -0.5px;">
+              EXAM CITY
+            </div>
+          </div>
+          
+          <h2 style="font-size: 22px; font-weight: 800; color: #111827; margin-bottom: 16px; text-align: center; letter-spacing: -0.5px;">
+            Welcome to Exam City, ${name}! 🎉
+          </h2>
+          
+          <p style="font-size: 14px; line-height: 1.6; color: #374151; margin-bottom: 24px;">
+            Thank you for registering at Exam City, the ultimate platform for unlimited mock exams, past questions, and deep analytics with real-time timers and direct AI tutor assistance. We are thrilled to help you master your exam preparation!
+          </p>
+          
+          <p style="font-size: 14px; line-height: 1.6; color: #374151; margin-bottom: 24px; font-weight: 600;">
+            To complete your registration, secure your profile, and start taking web mock tests, please activate your account by clicking the button below:
+          </p>
+          
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+              Activate Account &amp; Start Exams
+            </a>
+          </div>
+          
+          <p style="font-size: 12px; line-height: 1.5; color: #6b7280; margin-bottom: 24px; text-align: center;">
+            Or copy and paste this URL into your browser:<br />
+            <a href="${verificationLink}" style="color: #4f46e5; text-decoration: underline; word-break: break-all;">${verificationLink}</a>
+          </p>
+          
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px; font-size: 12px; color: #9ca3af; text-align: center;">
+            <p style="margin-bottom: 8px;">If you didn't create an account with Exam City, you can safely ignore this email.</p>
+            <p>&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Failed to send welcome activation email:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/auth/verify-otp", async (req, res) => {
   try {
     const { userId, otpCode, trustDevice } = req.body;

@@ -168,7 +168,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           });
 
           // Secondary checks for community-based tiers (referrals/groups)
-          if (currentTier !== "pro" && user.emailVerified) {
+          if (currentTier !== "pro" && (user.emailVerified || data.emailVerified)) {
             try {
               const { collection, query, where, getDocs, updateDoc } = await import("firebase/firestore");
               

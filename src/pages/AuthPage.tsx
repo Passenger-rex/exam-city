@@ -205,6 +205,7 @@ export default function AuthPage() {
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [ipData, setIpData] = useState<any>(null);
   const [challengeLoading, setChallengeLoading] = useState(false);
+  const [mfaResendStatus, setMfaResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   // Fetch or construct a permanent identifier for browser client
   const getDeviceId = () => {
@@ -223,17 +224,64 @@ export default function AuthPage() {
       setError("");
       setMessage("");
       
-      // Since user is logged out, transiently log in to trigger a fresh email
-      const transientLogin = await signInWithEmailAndPassword(auth, unverifiedUser.email, unverifiedUser.password);
-      await sendEmailVerification(transientLogin.user);
-      await auth.signOut(); // Keep securely locked out
+      let token = unverifiedUser.activationToken;
+      if (!token) {
+        token = "act_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        // Save back with token
+        setUnverifiedUser((prev: any) => ({ ...prev, activationToken: token }));
+      }
+      
+      // Update/create verification record in Firestore
+      await setDoc(doc(db, "email_verifications", token), {
+        uid: auth.currentUser?.uid || "pending_activation",
+        email: unverifiedUser.email,
+        name: unverifiedUser.displayName || "Scholar",
+        createdAt: serverTimestamp(),
+        verified: false,
+        used: false,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      });
+
+      const emailRes = await fetch("/api/auth/send-welcome-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: unverifiedUser.email, name: unverifiedUser.displayName || "Scholar", token }),
+      });
+      if (!emailRes.ok) {
+        throw new Error("Failed to dispatch email via Resend.");
+      }
       
       setResendStatus("sent");
-      setMessage("A fresh verification link has been sent! Please check your inbox and SPAM folder.");
+      setMessage("A fresh activation link has been sent! Please check your inbox and SPAM folder.");
     } catch (e: any) {
       console.error(e);
       setResendStatus("error");
-      setError(e.message || "Failed to resend verification link. Please check details and try again.");
+      setError(e.message || "Failed to resend activation link. Please check details and try again.");
+    }
+  };
+
+  const handleResendMfaEmail = async () => {
+    if (!pendingUser || !generatedPin) return;
+    try {
+      setMfaResendStatus("sending");
+      setError("");
+      setMessage("");
+      const emailRes = await fetch("/api/auth/send-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: pendingUser.email, token: generatedPin })
+      });
+      if (!emailRes.ok) {
+        const errData = await emailRes.json();
+        throw new Error(errData.error || "Server response error during dispatch.");
+      }
+      setMfaResendStatus("sent");
+      setMessage("A secure verification email has been resent successfully!");
+      setTimeout(() => setMfaResendStatus("idle"), 5000);
+    } catch (e: any) {
+      console.error(e);
+      setMfaResendStatus("error");
+      setError(e.message || "Failed to resend verification alert. Please try again.");
     }
   };
 
@@ -550,33 +598,49 @@ export default function AuthPage() {
 
         const res = await signInWithEmailAndPassword(auth, email, password);
         
-        // Enforce Firebase Email Verification
-        if (!res.user.emailVerified) {
-          const userSnap = await getDoc(doc(db, "users", res.user.uid));
-          const userData = userSnap.data();
+        // Enforce Email Verification (check both Firebase and custom Firestore verified status)
+        const userSnap = await getDoc(doc(db, "users", res.user.uid));
+        const userData = userSnap.data();
+
+        if (!res.user.emailVerified && !userData?.emailVerified) {
           const displayName = userData?.name || res.user.displayName || email.split("@")[0];
 
-          // Immediately dispatch a verification link if they sign in without verification
+          // Generate custom welcome/activation token
+          const activationToken = "act_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+          await setDoc(doc(db, "email_verifications", activationToken), {
+            uid: res.user.uid,
+            email: email,
+            name: displayName,
+            createdAt: serverTimestamp(),
+            verified: false,
+            used: false,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          });
+
+          // Dispatch verification welcome email via Resend
           try {
-            await sendEmailVerification(res.user);
+            await fetch("/api/auth/send-welcome-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, name: displayName, token: activationToken }),
+            });
           } catch (sendErr: any) {
-            console.error("Auto verification email send failed on sign in:", sendErr);
+            console.error("Auto verification send-welcome-email failed on sign in:", sendErr);
           }
 
           setUnverifiedUser({
             email,
             password,
-            displayName
+            displayName,
+            activationToken
           });
           await auth.signOut();
-          setError("Your email is not verified yet.");
+          setError("Your email remains unverified.");
           setLoading(false);
           return;
         }
 
         // --- DEVICE BINDING & IP GEOLOCATION AUDIT ---
-        const userSnap = await getDoc(doc(db, "users", res.user.uid));
-        const userData = userSnap.data();
         const trusted = userData?.trustedDevices || [];
         const currentDeviceId = getDeviceId();
 
@@ -699,16 +763,37 @@ export default function AuthPage() {
         // 1. Update display name FIRST so that the Firebase email template has access to it immediately
         await updateProfile(userCredential.user, { displayName: name });
         
-        // 2. Trigger secure verification link through Firebase
-        await sendEmailVerification(userCredential.user);
+        // 2. Generate a custom validation token and register activation bridge
+        const activationToken = "act_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        await setDoc(doc(db, "email_verifications", activationToken), {
+          uid: userCredential.user.uid,
+          email: email,
+          name: name,
+          createdAt: serverTimestamp(),
+          verified: false,
+          used: false,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        });
+
+        // 3. Dispatch beautifully designed Welcome Activation email via Resend
+        try {
+          await fetch("/api/auth/send-welcome-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, name, token: activationToken }),
+          });
+        } catch (sendErr: any) {
+          console.error("Welcome email dispatch failed:", sendErr);
+        }
         
-        // 3. Register user profile metadata in Firestore
+        // 4. Register user profile metadata in Firestore
         const currentDeviceId = getDeviceId();
         await setDoc(doc(db, "users", userCredential.user.uid), {
           name,
           email,
           role: "user",
           trustedDevices: [currentDeviceId],
+          emailVerified: false,
           createdAt: serverTimestamp(),
         });
         
@@ -732,7 +817,8 @@ export default function AuthPage() {
         setUnverifiedUser({
           email,
           password,
-          displayName: name
+          displayName: name,
+          activationToken
         });
         setMessage("Account created successfully!");
         setLoading(false);
@@ -1065,35 +1151,48 @@ export default function AuthPage() {
             {unverifiedUser ? (
               <motion.div
                 key="verify"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 animate-in fade-in duration-200"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="space-y-6 text-left"
               >
-                <div className="text-left space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-primary flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent animate-pulse" />
-                    <Mail className="w-6 h-6 text-primary" />
+                <div className="space-y-4">
+                  <div className="relative inline-flex">
+                    <div className="absolute -inset-1 rounded-full bg-indigo-500/15 blur animate-pulse" />
+                    <div className="relative w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                      <Mail className="w-5 h-5" />
+                    </div>
                   </div>
+                  
                   <div className="space-y-1">
-                    <h3 className="text-xl font-extrabold text-on-surface font-headline-sm text-left">Please check your inbox</h3>
-                    <p className="text-xs sm:text-sm text-on-surface-variant font-semibold leading-relaxed text-left">
-                      <span>We've dispatched a secure verification link to: </span>
-                      <span className="text-primary font-bold select-all break-all">{unverifiedUser.email}</span>
+                    <h3 className="text-xl font-black text-on-surface tracking-tight leading-none">
+                      Check Your Inbox
+                    </h3>
+                    <p className="text-xs text-on-surface-variant font-medium leading-relaxed font-sans">
+                      We've dispatched a beautifully formatted welcome and activation email to verify your ownership of:
+                    </p>
+                    <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 font-mono break-all leading-relaxed">
+                      {unverifiedUser.email}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-4 bg-neutral-50 dark:bg-neutral-900/40 rounded-2xl border border-outline-variant/30 space-y-4 text-xs text-left">
-                  <h4 className="font-extrabold text-on-surface uppercase tracking-wider text-[10px]">Steps to Activate Your Account:</h4>
-                  <ul className="space-y-3.5 font-semibold text-on-surface-variant">
-                    <li className="flex gap-3">
-                      <span className="w-5 h-5 rounded-full bg-indigo-500/10 text-primary flex items-center justify-center text-[10px] shrink-0 font-extrabold">1</span>
-                      <span className="leading-relaxed">Locate the verification email from <span className="font-bold text-on-surface">EXAM CITY</span> (be sure to check Spam &amp; Junk folder).</span>
+                <div className="p-4 bg-neutral-100/50 dark:bg-neutral-900/40 border border-neutral-200/50 dark:border-neutral-800/80 rounded-xl space-y-3 text-xs">
+                  <h4 className="font-bold text-on-surface uppercase tracking-wider text-[10px] font-mono">
+                    Steps to Activate
+                  </h4>
+                  <ul className="space-y-2.5 font-medium text-on-surface-variant">
+                    <li className="flex gap-2.5 items-start">
+                      <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[9px] shrink-0 font-bold">1</span>
+                      <span className="leading-normal">Open the email from <strong className="font-semibold text-on-surface font-sans">Exam City</strong> (be sure to inspect your Spam/Junk folder).</span>
                     </li>
-                    <li className="flex gap-3">
-                      <span className="w-5 h-5 rounded-full bg-indigo-500/10 text-primary flex items-center justify-center text-[10px] shrink-0 font-extrabold">2</span>
-                      <span className="leading-relaxed">Returning here, click <span className="font-bold text-on-surface">"Check Verification Status"</span> to instantly enter your dashboard!</span>
+                    <li className="flex gap-2.5 items-start">
+                      <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[9px] shrink-0 font-bold">2</span>
+                      <span className="leading-normal">Tap the <strong className="font-semibold text-on-surface font-sans">"Activate Account &amp; Start Exams"</strong> button.</span>
+                    </li>
+                    <li className="flex gap-2.5 items-start">
+                      <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[9px] shrink-0 font-bold">3</span>
+                      <span className="leading-normal">Click <strong className="font-semibold text-on-surface font-sans">"Check Verification Status"</strong> below to launch your dashboard!</span>
                     </li>
                   </ul>
                 </div>
@@ -1122,7 +1221,10 @@ export default function AuthPage() {
                         const loginRes = await signInWithEmailAndPassword(auth, unverifiedUser.email, unverifiedUser.password);
                         await loginRes.user.reload();
                         
-                        if (loginRes.user.emailVerified) {
+                        const userSnap = await getDoc(doc(db, "users", loginRes.user.uid));
+                        const userData = userSnap.data();
+
+                        if (loginRes.user.emailVerified || userData?.emailVerified) {
                           const currentDeviceId = getDeviceId();
                           
                           let city = "Unknown City";
@@ -1155,8 +1257,6 @@ export default function AuthPage() {
                             lastActive: new Date().toISOString()
                           };
 
-                          const userSnap = await getDoc(doc(db, "users", loginRes.user.uid));
-                          const userData = userSnap.data();
                           let sessions = userData?.activeSessions || [];
                           sessions = sessions.filter((s: any) => s.deviceId !== currentDeviceId);
                           sessions.push(newSession);
@@ -1174,7 +1274,7 @@ export default function AuthPage() {
                           await handleAuthSuccess(loginRes.user.uid);
                         } else {
                           await auth.signOut();
-                          setError("Your email has not been verified yet. Please check your inbox and click the Exam City verification link first.");
+                          setError("Your account is not active yet. Please click the activation link in your welcome email first.");
                         }
                       } catch (err: any) {
                         console.error(err);
@@ -1224,71 +1324,77 @@ export default function AuthPage() {
             ) : mfaChallenge ? (
               <motion.div
                 key="mfa"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-6 animate-in fade-in duration-200"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="space-y-6 text-left"
               >
-                <div className="text-left space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                    <Shield className="w-6 h-6 animate-pulse" />
+                <div className="space-y-5">
+                  <div className="relative inline-flex">
+                    <div className="absolute -inset-1 rounded-full bg-indigo-500/20 blur animate-pulse" />
+                    <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                      <Shield className="w-7 h-7" />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black text-on-surface tracking-tight">Unrecognized Login</h3>
-                  <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
-                    For security reasons, we require a verification challenge to register this browser fingerprint as a trusted device.
-                  </p>
-                  
-                  <div className="p-4 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
-                    <p className="text-sm text-amber-800 dark:text-amber-400 font-semibold leading-relaxed">
-                      We've sent a verification link to your email address. Click the link to confirm it's you and continue signing in.
+
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black text-on-surface tracking-tight leading-none animate-in fade-in slide-in-from-top-2 duration-300">
+                      Secure Device Authorization
+                    </h3>
+                    <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
+                      We detected a login attempt from an unrecognized browser environment. For your ultimate account safety, a secure device validation alert has been sent to your registered email.
                     </p>
-                    <p className="text-xs text-on-surface-variant leading-relaxed">
-                      Please check <strong>{pendingUser?.email}</strong> and click the secure authorization link. This browser is listing as unrecognized device ID: <code className="font-mono bg-surface-dim px-1.5 py-0.5 rounded text-[10px] text-primary">{pendingUser?.deviceId}</code>
+                  </div>
+
+                  <div className="p-4 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-2xl flex items-start gap-4 shadow-sm animate-in fade-in slide-in-from-top-3 duration-300">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase tracking-widest font-mono">Recipient Address</span>
+                      <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 break-all leading-tight">
+                        {pendingUser?.email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/10 rounded-2xl space-y-4 shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest font-mono">
+                      Real-Time Security Listener
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs text-on-surface font-semibold leading-relaxed">
+                      Awaiting secure authentication confirmation...
+                    </p>
+                    <p className="text-[11px] text-on-surface-variant/85 leading-relaxed">
+                      Once you tap the link on your mobile, tablet, or desktop email client, this browser screen will immediately authorize, activate your session, and load your dashboard. You do not need to refresh this tab.
                     </p>
                   </div>
                 </div>
 
                 {ipData && (
-                  <div className="p-3.5 bg-neutral-100 dark:bg-neutral-900/60 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed text-left font-semibold">
-                    <span className="font-bold text-on-surface">Location:</span> {ipData.location} <br />
-                    <span className="font-bold text-on-surface">IP Source:</span> {ipData.ip}
+                  <div className="p-4 bg-neutral-100/60 dark:bg-neutral-900/40 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed font-semibold flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-on-surface-variant font-medium">Location Origin:</span>
+                      <span className="font-mono text-on-surface font-bold">{ipData.location}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-on-surface-variant font-medium">IP Connection:</span>
+                      <span className="font-mono text-on-surface font-bold">{ipData.ip}</span>
+                    </div>
                   </div>
                 )}
 
-                {/* Secure Listening Connection Indicator */}
-                <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl space-y-3 px-4 text-left">
-                  <div className="flex items-start gap-3">
-                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-indigo-500/10 text-indigo-500 mt-0.5 shrink-0">
-                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black text-on-surface">Waiting for Verification</span>
-                      <p className="text-[10px] text-on-surface-variant leading-normal">
-                        This screen will automatically sign you in as soon as you confirm the link in your email.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Subtle testing fallback trigger in case they cannot access external emails */}
-                  <div className="pt-2.5 border-t border-outline-variant/15 flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-on-surface-variant/70 uppercase tracking-widest font-mono">
-                      Tester Developer Tool
-                    </span>
-                    <p className="text-[10px] text-on-surface-variant leading-tight">
-                      To test verification locally, open this secure challenge authentication bridge:
-                    </p>
-                    <a
-                      href={`/verify-login?token=${generatedPin}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-bold text-primary hover:underline break-all"
-                    >
-                      {window.location.origin}/verify-login?token={generatedPin}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1297,9 +1403,18 @@ export default function AuthPage() {
                       setError("");
                       setMessage("");
                     }}
-                    className="w-full py-3.5 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer text-center"
+                    className="flex-1 py-3.5 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer text-center"
                   >
                     Cancel Sign-In
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResendMfaEmail}
+                    disabled={mfaResendStatus === "sending"}
+                    className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer text-center disabled:opacity-50"
+                  >
+                    {mfaResendStatus === "sending" ? "Resending Alert..." : mfaResendStatus === "sent" ? "Link Sent! ✓" : "Resend Alert Email"}
                   </button>
                 </div>
               </motion.div>
