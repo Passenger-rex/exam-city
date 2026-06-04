@@ -177,7 +177,7 @@ app.post("/api/auth/login", async (req, res) => {
       const resendClient = getResend();
       if (resendClient) {
         await resendClient.emails.send({
-          from: "AI Studio <onboarding@resend.dev>",
+          from: "AceMock Security <security@examcity.qzz.io>",
           to: email,
           subject: "New login attempt — verify it's you",
           html: `
@@ -215,7 +215,7 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
     const verificationLink = `${req.headers.origin || "http://localhost:3000"}/verify-login?token=${token}`;
 
     const { error } = await resend.emails.send({
-      from: "AI Studio <onboarding@resend.dev>",
+      from: "AceMock Security <security@examcity.qzz.io>",
       to: email,
       subject: "Security Alert: Verify New Device Login",
       html: `
@@ -413,7 +413,7 @@ app.post("/api/auth/resend-otp", async (req, res) => {
     const resendClient = getResend();
     if (resendClient) {
       await resendClient.emails.send({
-        from: "AI Studio <onboarding@resend.dev>",
+        from: "AceMock Security <security@examcity.qzz.io>",
         to: verification.email,
         subject: "New login attempt — verify it's you",
         html: `
@@ -503,7 +503,7 @@ app.get("/api/auth/check-attempts", async (req, res) => {
              .limit(10);
              
           await resendClient.emails.send({
-            from: "AI Studio <onboarding@resend.dev>",
+            from: "AceMock Security <security@examcity.qzz.io>",
             to: String(email),
             subject: "Suspicious login activity on your account",
             html: `
