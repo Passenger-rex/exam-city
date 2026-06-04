@@ -1,5 +1,5 @@
 {
-  "name": "AceMock",
+  "name": "Exam City",
   "description": "A platform for unlimited mock exams, past questions, and analytics with real-time timers and pro subscription support.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

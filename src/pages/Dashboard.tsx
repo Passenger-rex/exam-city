@@ -607,7 +607,7 @@ export default function Dashboard() {
         {shareModalExam && (() => {
           const modalSubjName = formatSubject(getExamSubject(shareModalExam));
           const modalPct = Math.round((shareModalExam.score / shareModalExam.total) * 100);
-          const modalShareText = `I scored ${shareModalExam.score}/${shareModalExam.total} (${modalPct}%) on my ${modalSubjName} Mock Exam on AceMock! 🎯 Check out your scores or practice here:`;
+          const modalShareText = `I scored ${shareModalExam.score}/${shareModalExam.total} (${modalPct}%) on my ${modalSubjName} Mock Exam on Exam City! 🎯 Check out your scores or practice here:`;
           const shareUrl = window.location.origin;
           const fullMessageForCopy = `${modalShareText} ${shareUrl}`;
 
@@ -683,7 +683,7 @@ export default function Dashboard() {
                     onClick={async () => {
                       try {
                         await navigator.share({
-                          title: "My AceMock Result",
+                          title: "My Exam City Result",
                           text: modalShareText,
                           url: shareUrl,
                         });

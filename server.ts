@@ -177,7 +177,7 @@ app.post("/api/auth/login", async (req, res) => {
       const resendClient = getResend();
       if (resendClient) {
         await resendClient.emails.send({
-          from: "AceMock Security <security@examcity.qzz.io>",
+          from: "Exam City Security <security@examcity.qzz.io>",
           to: email,
           subject: "New login attempt — verify it's you",
           html: `
@@ -215,7 +215,7 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
     const verificationLink = `${req.headers.origin || "http://localhost:3000"}/verify-login?token=${token}`;
 
     const { error } = await resend.emails.send({
-      from: "AceMock Security <security@examcity.qzz.io>",
+      from: "Exam City Security <security@examcity.qzz.io>",
       to: email,
       subject: "Security Alert: Verify New Device Login",
       html: `
@@ -413,7 +413,7 @@ app.post("/api/auth/resend-otp", async (req, res) => {
     const resendClient = getResend();
     if (resendClient) {
       await resendClient.emails.send({
-        from: "AceMock Security <security@examcity.qzz.io>",
+        from: "Exam City Security <security@examcity.qzz.io>",
         to: verification.email,
         subject: "New login attempt — verify it's you",
         html: `
@@ -503,7 +503,7 @@ app.get("/api/auth/check-attempts", async (req, res) => {
              .limit(10);
              
           await resendClient.emails.send({
-            from: "AceMock Security <security@examcity.qzz.io>",
+            from: "Exam City Security <security@examcity.qzz.io>",
             to: String(email),
             subject: "Suspicious login activity on your account",
             html: `
@@ -637,6 +637,8 @@ app.use((req, res, next) => {
     const cleanPath = forwardedUri.split("?")[0];
     if (cleanPath === "/sitemap.xml") {
       req.url = "/sitemap.xml";
+    } else if (cleanPath === "/robots.txt") {
+      req.url = "/robots.txt";
     }
   }
   console.log(
@@ -648,75 +650,46 @@ app.use((req, res, next) => {
 // Dynamic Sitemap URL Generator
 app.get(
   ["/sitemap.xml", "/api/sitemap.xml", "/.netlify/functions/api/sitemap.xml"],
-  (req, res) => {
-    const host = req.get("host") || "examcity.qzz.io";
-    const protocol =
-      req.secure || req.headers["x-forwarded-proto"] === "https"
-        ? "https"
-        : "http";
-    const baseUrl = `${protocol}://${host}`;
-    const currentDate = new Date().toISOString().split("T")[0];
+  async (req, res) => {
+    res.header('Content-Type', 'application/xml');
+
+    // Add all your site URLs here
+    const urls = [
+      'https://examcity.qzz.io/',
+      'https://examcity.qzz.io/exams',
+      'https://examcity.qzz.io/login',
+      'https://examcity.qzz.io/signup',
+      'https://examcity.qzz.io/dashboard',
+      'https://examcity.qzz.io/profile',
+      'https://examcity.qzz.io/tutor',
+      'https://examcity.qzz.io/privacy',
+      'https://examcity.qzz.io/terms'
+    ];
+
+    const urlEntries = urls.map(url => `
+  <url>
+    <loc>${url}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('');
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${baseUrl}/</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/login</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/signup</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/dashboard</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/profile</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/tutor</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/exam</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/privacy</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>${baseUrl}/terms</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-</urlset>`.trim();
+${urlEntries}
+</urlset>`;
 
-    res.header("Content-Type", "application/xml");
     res.send(xml);
+  },
+);
+
+app.get(
+  ["/robots.txt", "/api/robots.txt", "/.netlify/functions/api/robots.txt"],
+  (req, res) => {
+    res.type('text/plain');
+    res.send(`User-agent: *
+Allow: /
+
+Sitemap: https://examcity.qzz.io/sitemap.xml`);
   },
 );
 
