@@ -16,6 +16,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import TutorPage from "./pages/TutorPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
+import VerifyLoginPage from "./pages/VerifyLoginPage";
 import { PageTransition } from "./components/PageTransition";
 import { UserProvider } from "./UserContext";
 
@@ -121,6 +122,14 @@ function AnimatedRoutes() {
           element={
             <PageTransition>
               <TermsPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/verify-login"
+          element={
+            <PageTransition>
+              <VerifyLoginPage />
             </PageTransition>
           }
         />

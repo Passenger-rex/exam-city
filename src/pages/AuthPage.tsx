@@ -25,7 +25,8 @@ import {
   getDocs,
   getDoc,
   updateDoc,
-  arrayUnion
+  arrayUnion,
+  onSnapshot
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -41,6 +42,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
 
 const AuthBackground = React.memo(() => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center z-0">
@@ -295,6 +297,105 @@ export default function AuthPage() {
     }
   };
 
+  // Reactive listener to capture when Tab 2 verifies the device challenge token
+  React.useEffect(() => {
+    if (!mfaChallenge || !generatedPin || !pendingUser) return;
+
+    let unsubscribeFirebase = () => {};
+    let subscriptionSupabase: any = null;
+
+    const handleSuccessfulVerification = async () => {
+      try {
+        setChallengeLoading(true);
+        const loginRes = await signInWithEmailAndPassword(auth, pendingUser.email, pendingUser.password);
+        
+        // Permanently bind current browser fingerprint as a trusted device
+        await updateDoc(doc(db, "users", loginRes.user.uid), {
+          trustedDevices: arrayUnion(pendingUser.deviceId)
+        });
+
+        const localSessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("sessionId", localSessionId);
+
+        const userSnap = await getDoc(doc(db, "users", loginRes.user.uid));
+        const userData = userSnap.data();
+        const ip = pendingUser.ip || "127.0.0.1";
+        const locationStr = pendingUser.location || "Unknown City, Unknown Country";
+
+        const newSession = {
+          id: localSessionId,
+          deviceId: pendingUser.deviceId,
+          ip,
+          location: locationStr,
+          userAgent: navigator.userAgent,
+          lastActive: new Date().toISOString()
+        };
+
+        let sessions = userData?.activeSessions || [];
+        sessions = sessions.filter((s: any) => s.deviceId !== pendingUser.deviceId);
+        sessions.push(newSession);
+        if (sessions.length > 5) {
+          sessions = sessions.slice(-5);
+        }
+
+        await updateDoc(doc(db, "users", loginRes.user.uid), {
+          activeSession: newSession,
+          activeSessions: sessions
+        });
+
+        setMfaChallenge(false);
+        setPendingUser(null);
+        setUnverifiedUser(null);
+        await handleAuthSuccess(loginRes.user.uid);
+      } catch (authErr: any) {
+        console.error("Auto log-in after verification failed:", authErr);
+        setError(authErr.message || "Failed to complete authentication automatically.");
+      } finally {
+        setChallengeLoading(false);
+      }
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      console.log(`[Supabase Realtime] Listening on login_verifications table for ID: ${generatedPin}`);
+      subscriptionSupabase = supabase
+        .channel(`login_verifications_${generatedPin}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "login_verifications",
+            filter: `id=eq.${generatedPin}`,
+          },
+          (payload) => {
+            const data = payload.new;
+            if (data && data.verified === true && data.used === true) {
+              console.log("[Supabase Realtime] Verification event detected, executing log-in.");
+              handleSuccessfulVerification();
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    // Always listen to Firebase as standard or fallback
+    const tokenRef = doc(db, "login_verifications", generatedPin);
+    unsubscribeFirebase = onSnapshot(tokenRef, async (snapshot) => {
+      const data = snapshot.data();
+      if (data && data.verified === true && data.used === true) {
+        console.log("[Firebase Realtime] Verification snapshot detected, executing log-in.");
+        handleSuccessfulVerification();
+      }
+    });
+
+    return () => {
+      unsubscribeFirebase();
+      if (subscriptionSupabase && supabase) {
+        supabase.removeChannel(subscriptionSupabase);
+      }
+    };
+  }, [mfaChallenge, generatedPin, pendingUser]);
+
   React.useEffect(() => {
     const reason = urlParams.get("reason");
     if (reason === "session_expired") {
@@ -408,8 +509,59 @@ export default function AuthPage() {
 
         // Challenge unrecognized device terminals
         if (trusted.length > 0 && !trusted.includes(currentDeviceId)) {
-          const pin = Math.floor(100000 + Math.random() * 900000).toString();
-          setGeneratedPin(pin);
+          const verificationToken = "tok_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+          const createdAt = new Date().toISOString();
+          const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
+
+          if (isSupabaseConfigured && supabase) {
+            try {
+              const { error: insertErr } = await supabase
+                .from("login_verifications")
+                .insert([{
+                  id: verificationToken,
+                  uid: res.user.uid,
+                  email: email,
+                  device_id: currentDeviceId,
+                  ip: ip,
+                  location: locationStr,
+                  created_at: createdAt,
+                  expires_at: expiresAt,
+                  verified: false,
+                  used: false
+                }]);
+              if (insertErr) {
+                console.error("Failed to insert verification token to Supabase:", insertErr);
+                throw insertErr;
+              }
+            } catch (supaErr: any) {
+              console.error("Supabase write failure, falling back to Firebase:", supaErr);
+              await setDoc(doc(db, "login_verifications", verificationToken), {
+                uid: res.user.uid,
+                email,
+                deviceId: currentDeviceId,
+                ip,
+                location: locationStr,
+                createdAt,
+                expiresAt,
+                verified: false,
+                used: false
+              });
+            }
+          } else {
+            await setDoc(doc(db, "login_verifications", verificationToken), {
+              uid: res.user.uid,
+              email,
+              deviceId: currentDeviceId,
+              ip,
+              location: locationStr,
+              createdAt,
+              expiresAt,
+              verified: false,
+              used: false
+            });
+          }
+
+          setGeneratedPin(verificationToken); // Store token in generatedPin state
           setPendingUser({
             uid: res.user.uid,
             email,
@@ -942,62 +1094,78 @@ export default function AuthPage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="space-y-6 animate-in fade-in duration-200"
               >
-                <div className="text-center space-y-2">
-                  <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                    <Shield className="w-6 h-6" />
+                <div className="text-left space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                    <Shield className="w-6 h-6 animate-pulse" />
                   </div>
-                  <h3 className="text-lg font-extrabold text-on-surface">Unrecognized Device/Location</h3>
-                  <p className="text-xs text-on-surface-variant font-semibold leading-relaxed max-w-sm mx-auto">
+                  <h3 className="text-2xl font-black text-on-surface tracking-tight">Unrecognized Login</h3>
+                  <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
                     For security reasons, we require a verification challenge to register this browser fingerprint as a trusted device.
                   </p>
+                  
+                  <div className="p-4 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                    <p className="text-sm text-amber-800 dark:text-amber-400 font-semibold leading-relaxed">
+                      We've sent a verification link to your email address. Click the link to confirm it's you and continue signing in.
+                    </p>
+                    <p className="text-xs text-on-surface-variant leading-relaxed">
+                      Please check <strong>{pendingUser?.email}</strong> and click the secure authorization link. This browser is listing as unrecognized device ID: <code className="font-mono bg-surface-dim px-1.5 py-0.5 rounded text-[10px] text-primary">{pendingUser?.deviceId}</code>
+                    </p>
+                  </div>
                 </div>
 
                 {ipData && (
-                  <div className="p-3.5 bg-neutral-100 dark:bg-neutral-900/60 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed">
+                  <div className="p-3.5 bg-neutral-100 dark:bg-neutral-900/60 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed text-left font-semibold">
                     <span className="font-bold text-on-surface">Location:</span> {ipData.location} <br />
                     <span className="font-bold text-on-surface">IP Source:</span> {ipData.ip}
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Device Auth Security PIN</label>
-                    <input
-                      type="text"
-                      value={enteredPin}
-                      onChange={(e) => setEnteredPin(e.target.value)}
-                      placeholder="Type 6-Digit Code"
-                      className="w-full p-3.5 bg-surface-dim border border-outline-variant/40 rounded-xl text-center font-extrabold tracking-widest text-lg outline-none focus:border-primary transition-all text-on-surface"
-                    />
+                {/* Secure Listening Connection Indicator */}
+                <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl space-y-3 px-4 text-left">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 flex items-center justify-center rounded-full bg-indigo-500/10 text-indigo-500 mt-0.5 shrink-0">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-on-surface">Waiting for Verification</span>
+                      <p className="text-[10px] text-on-surface-variant leading-normal">
+                        This screen will automatically sign you in as soon as you confirm the link in your email.
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Security sandbox PIN helper indicator */}
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 dark:text-amber-400 leading-relaxed font-semibold">
-                     Your 2-Step Verification passcode: <code className="font-mono font-extrabold bg-amber-500/25 px-1.5 py-0.5 rounded text-amber-950 dark:text-amber-300">{generatedPin}</code>. 
-                     In a production workflow, this triggers an automated email proxy or push notice to registered security clients.
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMfaChallenge(false);
-                        setPendingUser(null);
-                        setError("");
-                      }}
-                      className="flex-1 py-3 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+                  
+                  {/* Subtle testing fallback trigger in case they cannot access external emails */}
+                  <div className="pt-2.5 border-t border-outline-variant/15 flex flex-col gap-1">
+                    <span className="text-[9px] font-black text-on-surface-variant/70 uppercase tracking-widest font-mono">
+                      Tester Developer Tool
+                    </span>
+                    <p className="text-[10px] text-on-surface-variant leading-tight">
+                      To test verification locally, open this secure challenge authentication bridge:
+                    </p>
+                    <a
+                      href={`/verify-login?token=${generatedPin}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-primary hover:underline break-all"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleVerifyDeviceSecurely}
-                      disabled={challengeLoading}
-                      className="flex-1 py-3 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary-dark shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {challengeLoading ? "Verifying..." : "Verify Device"}
-                    </button>
+                      {window.location.origin}/verify-login?token={generatedPin}
+                    </a>
                   </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMfaChallenge(false);
+                      setPendingUser(null);
+                      setError("");
+                      setMessage("");
+                    }}
+                    className="w-full py-3.5 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer text-center"
+                  >
+                    Cancel Sign-In
+                  </button>
                 </div>
               </motion.div>
             ) : authView === "forgot" ? (

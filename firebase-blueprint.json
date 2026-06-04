@@ -12,6 +12,10 @@
       "schema": "User",
       "description": "Users collection"
     },
+    "/login_verifications/{tokenId}": {
+      "schema": "LoginVerification",
+      "description": "Security challenge tokens for unrecognized device logins"
+    },
     "/tutor_sessions/{sessionId}": {
       "schema": "TutorSession",
       "description": "AI Tutor Chat history sessions"
@@ -49,6 +53,22 @@
         "updatedAt": { "type": "string" },
         "tier": { "type": "string" },
         "examCount": { "type": "number" }
+      }
+    },
+    "LoginVerification": {
+      "title": "LoginVerification",
+      "description": "Challenge record for unrecognized authentication",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "ip": { "type": "string" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "used": { "type": "boolean" }
       }
     },
     "ExamResult": {

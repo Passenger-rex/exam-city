@@ -20,7 +20,7 @@ export function DarkModeToggle() {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       onClick={() => setIsDark(!isDark)}
-      className="fixed bottom-6 left-6 z-50 p-3 bg-surface border border-outline-variant rounded-full shadow-lg text-on-surface hover:text-primary transition-colors flex items-center justify-center group"
+      className="print:hidden fixed bottom-6 left-6 z-50 p-3 bg-surface border border-outline-variant rounded-full shadow-lg text-on-surface hover:text-primary transition-colors flex items-center justify-center group"
       aria-label="Toggle dark mode"
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >

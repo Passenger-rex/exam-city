@@ -61,6 +61,7 @@ export default function ExamPage() {
   const [warnings, setWarnings] = useState(0);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [includeAnswers, setIncludeAnswers] = useState(answersParam);
 
   // We should not use localStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
   const stateKey = printParam 
@@ -508,16 +509,28 @@ export default function ExamPage() {
     return (
         <div id="print-content-area" className="min-h-screen bg-white text-black p-10 font-serif print:p-0 print:m-0 max-w-4xl mx-auto relative z-10 pdf-safe">
           {/* Floating Action Bar for screen display only (hidden in print) */}
-          <div data-html2canvas-ignore="true" className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-3 bg-white/95 backdrop-blur-md border border-gray-200 shadow-md px-4 py-3 rounded-full font-sans shadow-lg">
+          <div data-html2canvas-ignore="true" className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-4 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl px-5 py-3 rounded-full font-sans">
              <button
                 onClick={() => navigate(-1)}
-                className="text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                className="text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 px-3.5 py-1.5 rounded-full transition-colors cursor-pointer"
              >
                 ← Return to Review
              </button>
+             
+             {/* Include Answer Key Toggle (The printing toggle which should never show on printed page) */}
+             <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer select-none px-2.5 py-1.5 hover:bg-gray-100 rounded-full transition-all">
+                <input
+                  type="checkbox"
+                  checked={includeAnswers}
+                  onChange={(e) => setIncludeAnswers(e.target.checked)}
+                  className="w-3.5 h-3.5 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer accent-primary"
+                />
+                <span>Include Answer Key</span>
+             </label>
+
              <button
                 onClick={() => window.print()}
-                className="text-xs font-bold bg-primary text-on-primary hover:bg-primary/90 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 cursor-pointer shadow-md"
+                className="text-xs font-bold bg-primary text-white hover:bg-primary/90 px-5 py-2.5 rounded-full transition-colors flex items-center gap-2 cursor-pointer shadow-md"
              >
                 <Printer className="w-4 h-4" /> Print Assessment Paper
              </button>
@@ -606,12 +619,12 @@ export default function ExamPage() {
              ))}
           </div>
           
-          {answersParam && (
-             <div className="mt-16 pt-8 break-before-page">
+          {includeAnswers && (
+             <div className="mt-16 pt-8 break-before-page relative z-10 bg-transparent">
                 <h2 className="text-2xl font-bold uppercase tracking-wider mb-6 text-center border-b-2 border-black pb-4">Answer Key</h2>
                 <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 gap-4 text-center">
                    {questions.map((q, idx) => (
-                      <div key={q.id} className="border border-gray-300 p-2 bg-gray-50 flex flex-col">
+                      <div key={q.id} className="border border-gray-300 p-2 bg-gray-50/40 print:bg-transparent flex flex-col rounded">
                          <span className="font-bold text-xs text-gray-500 mb-1">Q{idx + 1}</span>
                          <span className="font-bold uppercase text-lg">{q.correct_answer}</span>
                       </div>
