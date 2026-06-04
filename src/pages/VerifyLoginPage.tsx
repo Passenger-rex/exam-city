@@ -1,195 +1,230 @@
-import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { db } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { motion } from "motion/react";
-import { ShieldCheck, ShieldAlert, Loader2, ArrowRight } from "lucide-react";
-import { Logo } from "../components/Logo";
-import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { ShieldCheck, AlertTriangle, Lock } from 'lucide-react';
 
-export default function VerifyLoginPage() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const token = searchParams.get("token");
+function OTPVerifyContent() {
+  const [params]   = useSearchParams();
+  const navigate   = useNavigate();
+  const userId   = params.get('userId');
+  const email    = params.get('email');
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [deviceDetails, setDeviceDetails] = useState<any>(null);
+  const [otp, setOtp]               = useState('');
+  const [trustDevice, setTrust]     = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState('');
+  const [success, setSuccess]       = useState('');
+  const [attemptsLeft, setAttempts] = useState(5);
+  const [locked, setLocked]         = useState(false);
+  const [cooldown, setCooldown]     = useState(0);
+  const [resendsLeft, setResends]   = useState(3);
 
+  // Countdown timer
   useEffect(() => {
-    const performVerification = async () => {
-      if (!token) {
-        setError("Missing login verification token parameter.");
-        setLoading(false);
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown(c => c <= 1 ? (clearInterval(t), 0) : c - 1), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  async function handleVerify() {
+    if (otp.length !== 6 || locked) return;
+    setLoading(true); setError('');
+    try {
+      const res  = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, otpCode: otp, trustDevice }) // using otpCode as expected by our server
+      });
+      const data = await res.json();
+      setLoading(false);
+      
+      if (!res.ok) {
+        setError(data.error);
+        if (data.attemptsLeft !== undefined) setAttempts(data.attemptsLeft);
+        if (data.locked) setLocked(true);
         return;
       }
+      setSuccess("Verified successfully");
+      setTimeout(() => navigate('/dashboard'), 1500);
+    } catch(err: any) {
+       setError(err.message);
+       setLoading(false);
+    }
+  }
 
-      try {
-        if (isSupabaseConfigured && supabase) {
-          console.log("[Supabase Verification] Querying token:", token);
-          const { data, error: queryError } = await supabase
-            .from("login_verifications")
-            .select("*")
-            .eq("id", token)
-            .single();
-
-          if (queryError || !data) {
-            console.warn("Supabase query failed or token not found.", queryError);
-            setError("The verification token does not exist or has expired.");
-            setLoading(false);
-            return;
-          }
-
-          setDeviceDetails({
-            email: data.email,
-            deviceId: data.device_id || data.deviceId,
-            ip: data.ip,
-            location: data.location,
-          });
-
-          if (data.used || data.verified) {
-            setError("This single-use challenge token has already been spent. If your original tab did not complete registration, please try logging in again to dispatch a new link.");
-            setLoading(false);
-            return;
-          }
-
-          const expiryDate = new Date(data.expires_at || data.expiresAt);
-          if (new Date() > expiryDate) {
-            setError("Your secure verification challenge link has expired (15-minute challenge window). Please return to the login tab and trigger a new verification.");
-            setLoading(false);
-            return;
-          }
-
-          const { error: updateError } = await supabase
-            .from("login_verifications")
-            .update({ verified: true, used: true })
-            .eq("id", token);
-
-          if (updateError) {
-            throw updateError;
-          }
-
-          setSuccess(true);
-        } else {
-          setError("Security challenge system is currently unavailable (Database not configured).");
-        }
-      } catch (err: any) {
-        console.error("Verification error:", err);
-        setError(err.message || "An error occurred while verifying your device security challenge.");
-      } finally {
-        setLoading(false);
+  async function handleResend() {
+    if (cooldown > 0 || resendsLeft <= 0 || locked) return;
+    setLoading(true); setError('');
+    try {
+      const res  = await fetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      setLoading(false);
+      
+      if (!res.ok) {
+        setError(data.error);
+        if (data.cooldownSeconds) setCooldown(data.cooldownSeconds);
+        if (data.maxReached || data.resendsLeft === 0) setResends(0);
+        return;
       }
-    };
+      setResends(data.resendsLeft);
+      setAttempts(5);
+      setOtp('');
+      setCooldown(60);
+      setSuccess('New code sent — check your email.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch(err: any) {
+        setError(err.message);
+        setLoading(false);
+    }
+  }
 
-    performVerification();
-  }, [token]);
+  // Auto-submit when 6 digits entered
+  useEffect(() => { if (otp.length === 6 && !locked) handleVerify(); }, [otp]);
 
   return (
-    <div className="min-h-screen bg-surface md:bg-surface-dim font-sans text-on-surface flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Visual background accents */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
-      </div>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: 'var(--color-surface, #F9FAFB)', color: 'var(--color-on-surface, #1A1A1A)' }}>
+      <div style={{ width: '100%', maxWidth: 400, backgroundColor: 'white', padding: 32, borderRadius: 24, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
 
-      <div className="w-full max-w-md bg-surface border border-outline-variant/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 space-y-6">
-        <div className="flex justify-center mb-2">
-          <Logo />
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%',
+            background: 'rgba(234, 179, 8, 0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px', fontSize: 24
+          }}>
+            <ShieldCheck style={{ color: '#EAB308', width: 28, height: 28 }} />
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 8px' }}>Verify your login</h1>
+          <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+            We sent a 6-digit code to <strong>{email}</strong>
+          </p>
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-10 space-y-4">
-            <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <h3 className="text-base font-bold font-mono tracking-tight text-on-surface-variant uppercase">
-              Verifying Security Token...
-            </h3>
-            <p className="text-xs text-on-surface-variant text-center max-w-xs">
-              Confirming browser cryptographic fingerprint characteristics with secure cloud registers.
-            </p>
+        {/* OTP Input */}
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          value={otp}
+          disabled={locked}
+          onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder="000000"
+          style={{
+            width: '100%', fontSize: 36, letterSpacing: 16,
+            textAlign: 'center', padding: '18px 0',
+            border: `1px solid ${locked ? '#FCA5A5' : '#E5E7EB'}`,
+            borderRadius: 12,
+            background: locked ? '#FEF2F2' : '#FFFFFF',
+            marginBottom: 16, boxSizing: 'border-box',
+            outline: 'none',
+            fontFamily: 'monospace'
+          }}
+          autoFocus
+        />
+
+        {/* Trust device */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, cursor: locked ? 'not-allowed' : 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={trustDevice}
+            disabled={locked}
+            onChange={e => setTrust(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-primary"
+          />
+          <span style={{ fontSize: 14, color: '#666' }}>
+            Trust this device for 30 days
+          </span>
+        </label>
+
+        {/* Attempt counter */}
+        {attemptsLeft < 5 && !locked && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(234, 179, 8, 0.1)',
+            color: '#CA8A04',
+            fontSize: 13, marginBottom: 12,
+            display: 'flex', alignItems: 'center'
+          }}>
+            <AlertTriangle style={{ marginRight: 8, width: 16, height: 16 }} />
+            {attemptsLeft} attempt{attemptsLeft === 1 ? '' : 's'} remaining
           </div>
-        ) : error ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="space-y-6 text-center"
-          >
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-error/10 text-error flex items-center justify-center">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
+        )}
 
-            <div className="space-y-2">
-              <h3 className="text-xl font-black text-on-surface tracking-tight">
-                Verification Failed
-              </h3>
-              <p className="text-xs text-on-surface-variant leading-relaxed text-justify bg-error/5 border border-error/10 p-3 rounded-2xl">
-                {error}
-              </p>
-            </div>
+        {/* Locked state */}
+        {locked && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: '#FEF2F2',
+            color: '#DC2626',
+            fontSize: 13, marginBottom: 12,
+            display: 'flex', alignItems: 'center'
+          }}>
+            <Lock style={{ marginRight: 8, width: 16, height: 16 }} />
+            Too many attempts. Request a new code below.
+          </div>
+        )}
 
-            <hr className="border-outline-variant/30" />
+        {/* Error */}
+        {error && (
+          <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 12, textAlign: 'center' }}>{error}</p>
+        )}
 
-            <button
-              onClick={() => navigate("/login")}
-              className="w-full py-3 bg-surface border border-outline border-outline-variant/60 hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all cursor-pointer"
-            >
-              Back to Login Hub
-            </button>
-          </motion.div>
-        ) : success ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="space-y-6 text-center"
-          >
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-green-500/10 text-green-600 flex items-center justify-center">
-              <ShieldCheck className="w-8 h-8 animate-bounce" />
-            </div>
+        {/* Success */}
+        {success && (
+          <p style={{ fontSize: 13, color: '#16A34A', marginBottom: 12, textAlign: 'center' }}>{success}</p>
+        )}
 
-            <div className="space-y-2">
-              <h3 className="text-2xl font-black text-on-surface tracking-tight">
-                Authentication Verified!
-              </h3>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Your unrecognized browser fingerprint has been registered as a trusted device for account <strong className="text-on-surface font-semibold">{deviceDetails?.email}</strong>.
-              </p>
-            </div>
+        {/* Verify button */}
+        <button
+          onClick={handleVerify}
+          disabled={loading || locked || otp.length !== 6}
+          style={{
+            width: '100%', padding: '13px 0', marginBottom: 10,
+            background: '#1A1A1A',
+            color: '#FFFFFF',
+            border: 'none', borderRadius: 12,
+            fontSize: 15, cursor: locked ? 'not-allowed' : 'pointer',
+            opacity: (loading || locked || otp.length !== 6) ? 0.5 : 1,
+            fontWeight: 500
+          }}
+        >
+          {loading ? 'Verifying...' : 'Verify login'}
+        </button>
 
-            {deviceDetails && (
-              <div className="p-4 bg-surface-dim border border-outline-variant/30 rounded-2xl text-[11px] text-on-surface-variant text-left leading-relaxed space-y-1.5 font-mono shadow-inner">
-                <div className="flex justify-between border-b border-outline-variant/15 pb-1">
-                  <span className="font-bold uppercase text-[9px] tracking-wider">Device ID:</span>
-                  <span className="text-primary font-bold">{deviceDetails.deviceId?.substring(0, 12)}...</span>
-                </div>
-                <div className="flex justify-between border-b border-outline-variant/15 pb-1">
-                  <span className="font-bold uppercase text-[9px] tracking-wider">IP Source:</span>
-                  <span>{deviceDetails.ip || "127.0.0.1"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold uppercase text-[9px] tracking-wider">Location:</span>
-                  <span>{deviceDetails.location || "Unknown Geolocation"}</span>
-                </div>
-              </div>
-            )}
+        {/* Resend button */}
+        <button
+          onClick={handleResend}
+          disabled={loading || cooldown > 0 || resendsLeft <= 0}
+          style={{
+            width: '100%', padding: '12px 0',
+            background: 'transparent',
+            color: cooldown > 0 || resendsLeft <= 0 ? '#9CA3AF' : '#4B5563',
+            border: '1px solid #E5E7EB',
+            borderRadius: 12,
+            fontSize: 14, cursor: cooldown > 0 || resendsLeft <= 0 ? 'not-allowed' : 'pointer',
+            fontWeight: 500
+          }}
+        >
+          {cooldown > 0
+            ? `Resend in ${cooldown}s`
+            : resendsLeft <= 0
+            ? 'No resends remaining'
+            : `Resend code (${resendsLeft} left)`}
+        </button>
 
-            <div className="p-3 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl text-xs text-indigo-600 font-semibold text-center leading-relaxed">
-              🎉 Success! Your original login window has already auto-completed the login and opened your hub dashboard!
-            </div>
-
-            <div className="flex flex-col gap-2.5 pt-2">
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="w-full py-3 px-4 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary/95 transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-              >
-                <span>Navigate to Hub Dashboard</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <p className="text-[10px] text-on-surface-variant/70 italic text-center">
-                You may also securely close this tab and return to your original browser session.
-              </p>
-            </div>
-          </motion.div>
-        ) : null}
       </div>
     </div>
+  );
+}
+
+export default function VerifyLoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OTPVerifyContent />
+    </Suspense>
   );
 }

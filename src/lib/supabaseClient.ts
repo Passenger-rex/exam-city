@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || "";
+
+let supabaseUrl = rawUrl.trim();
+if (supabaseUrl.endsWith('/')) supabaseUrl = supabaseUrl.slice(0, -1);
+if (supabaseUrl.endsWith('/rest/v1')) supabaseUrl = supabaseUrl.replace('/rest/v1', '');
+if (supabaseUrl && !supabaseUrl.startsWith("http")) supabaseUrl = "https://" + supabaseUrl;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 

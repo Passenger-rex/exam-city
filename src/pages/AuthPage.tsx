@@ -446,6 +446,38 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
+        // Query geography characteristics early for check
+        let city = "Unknown City";
+        let country = "Unknown Country";
+        let ip = "127.0.0.1";
+        try {
+          const resGeo = await fetch("https://ipapi.co/json/");
+          if (resGeo.ok) {
+            const geoData = await resGeo.json();
+            city = geoData.city || "Unknown City";
+            country = geoData.country_name || "Unknown Country";
+            ip = geoData.ip || "127.0.0.1";
+          }
+        } catch(e) {
+          console.warn("Location check bypassed", e);
+        }
+
+        const locationStr = `${city}, ${country}`;
+        setIpData({ ip, location: locationStr });
+
+        // IMPORTANT BRUTE FORCE CHECK
+        try {
+           const checkRes = await fetch(`/api/auth/check-attempts?email=${encodeURIComponent(email)}&ip=${encodeURIComponent(ip)}`);
+           const checkData = await checkRes.json();
+           if (checkData.blocked || checkRes.status === 429) {
+             setError("Too many failed attempts. Try again later.");
+             setLoading(false);
+             return;
+           }
+        } catch(e) {
+           console.warn("Could not reach auth checks endpoints.");
+        }
+
         const res = await signInWithEmailAndPassword(auth, email, password);
         
         // Enforce Firebase Email Verification
@@ -477,25 +509,6 @@ export default function AuthPage() {
         const userData = userSnap.data();
         const trusted = userData?.trustedDevices || [];
         const currentDeviceId = getDeviceId();
-
-        // Query geography characteristics
-        let city = "Unknown City";
-        let country = "Unknown Country";
-        let ip = "127.0.0.1";
-        try {
-          const resGeo = await fetch("https://ipapi.co/json/");
-          if (resGeo.ok) {
-            const geoData = await resGeo.json();
-            city = geoData.city || "Unknown City";
-            country = geoData.country_name || "Unknown Country";
-            ip = geoData.ip || "127.0.0.1";
-          }
-        } catch(e) {
-          console.warn("Location check bypassed", e);
-        }
-
-        const locationStr = `${city}, ${country}`;
-        setIpData({ ip, location: locationStr });
 
         // Challenge unrecognized device terminals
         if (trusted.length > 0 && !trusted.includes(currentDeviceId)) {
@@ -659,12 +672,24 @@ export default function AuthPage() {
         return;
       }
     } catch (err: any) {
-      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setError("Invalid email or password. Please try again.");
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+         setError("Invalid email or password. Please try again.");
+         // Log the explicit failure with the backend explicitly to keep the check-attempts functioning properly
+         if (isLogin && email) {
+            try {
+              let ip = "127.0.0.1";
+              if (ipData && ipData.ip) ip = ipData.ip;
+              await fetch('/api/auth/login', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ email: email, password: "FAILED_ATTEMPT_LOG", trustDevice: false })
+              });
+            } catch (postErr) {
+              console.warn("Could not record failed attempt synchronously", postErr);
+            }
+         }
       } else if (err.code === "auth/email-already-in-use") {
         setError("An account with this email already exists.");
-      } else if (err.code === "auth/invalid-credential") {
-         setError("Incorrect credentials. Check your email or password.");
       } else {
         setError(err.message);
       }
