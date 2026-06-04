@@ -25,42 +25,6 @@ export default function VerifyLoginPage() {
         return;
       }
 
-      const performFirebaseFallback = async () => {
-        const tokenRef = doc(db, "login_verifications", token);
-        const tokenSnap = await getDoc(tokenRef);
-
-        if (!tokenSnap.exists()) {
-          setError("The verification token does not exist or has expired.");
-          setLoading(false);
-          return;
-        }
-
-        const data = tokenSnap.data();
-        setDeviceDetails(data);
-
-        if (data.used || data.verified) {
-          setError("This single-use challenge token has already been spent. If your original tab did not complete registration, please try logging in again to dispatch a new link.");
-          setLoading(false);
-          return;
-        }
-
-        // Validate temporal integrity (expiry check)
-        const expiryDate = new Date(data.expiresAt);
-        if (new Date() > expiryDate) {
-          setError("Your secure verification challenge link has expired (15-minute challenge window). Please return to the login tab and trigger a new verification.");
-          setLoading(false);
-          return;
-        }
-
-        // Mark secure token as fully verified & single-used in Firestore
-        await updateDoc(tokenRef, {
-          verified: true,
-          used: true
-        });
-
-        setSuccess(true);
-      };
-
       try {
         if (isSupabaseConfigured && supabase) {
           console.log("[Supabase Verification] Querying token:", token);
@@ -71,8 +35,9 @@ export default function VerifyLoginPage() {
             .single();
 
           if (queryError || !data) {
-            console.warn("Supabase query failed or token not found. Falling back to Firebase...", queryError);
-            await performFirebaseFallback();
+            console.warn("Supabase query failed or token not found.", queryError);
+            setError("The verification token does not exist or has expired.");
+            setLoading(false);
             return;
           }
 
@@ -105,20 +70,9 @@ export default function VerifyLoginPage() {
             throw updateError;
           }
 
-          // Sync Firebase just in case
-          try {
-            const tokenRef = doc(db, "login_verifications", token);
-            const tokenSnap = await getDoc(tokenRef);
-            if (tokenSnap.exists()) {
-              await updateDoc(tokenRef, { verified: true, used: true });
-            }
-          } catch (e) {
-            console.log("Replication sync skipped or database rules restrictions applied:", e);
-          }
-
           setSuccess(true);
         } else {
-          await performFirebaseFallback();
+          setError("Security challenge system is currently unavailable (Database not configured).");
         }
       } catch (err: any) {
         console.error("Verification error:", err);

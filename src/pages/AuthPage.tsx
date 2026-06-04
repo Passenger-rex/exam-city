@@ -301,7 +301,6 @@ export default function AuthPage() {
   React.useEffect(() => {
     if (!mfaChallenge || !generatedPin || !pendingUser) return;
 
-    let unsubscribeFirebase = () => {};
     let subscriptionSupabase: any = null;
 
     const handleSuccessfulVerification = async () => {
@@ -376,20 +375,11 @@ export default function AuthPage() {
           }
         )
         .subscribe();
+    } else {
+      console.warn("Supabase is not configured. Verification listeners cannot attach.");
     }
 
-    // Always listen to Firebase as standard or fallback
-    const tokenRef = doc(db, "login_verifications", generatedPin);
-    unsubscribeFirebase = onSnapshot(tokenRef, async (snapshot) => {
-      const data = snapshot.data();
-      if (data && data.verified === true && data.used === true) {
-        console.log("[Firebase Realtime] Verification snapshot detected, executing log-in.");
-        handleSuccessfulVerification();
-      }
-    });
-
     return () => {
-      unsubscribeFirebase();
       if (subscriptionSupabase && supabase) {
         supabase.removeChannel(subscriptionSupabase);
       }
@@ -534,31 +524,15 @@ export default function AuthPage() {
                 throw insertErr;
               }
             } catch (supaErr: any) {
-              console.error("Supabase write failure, falling back to Firebase:", supaErr);
-              await setDoc(doc(db, "login_verifications", verificationToken), {
-                uid: res.user.uid,
-                email,
-                deviceId: currentDeviceId,
-                ip,
-                location: locationStr,
-                createdAt,
-                expiresAt,
-                verified: false,
-                used: false
-              });
+              console.error("Supabase write failure:", supaErr);
+              throw supaErr;
             }
           } else {
-            await setDoc(doc(db, "login_verifications", verificationToken), {
-              uid: res.user.uid,
-              email,
-              deviceId: currentDeviceId,
-              ip,
-              location: locationStr,
-              createdAt,
-              expiresAt,
-              verified: false,
-              used: false
-            });
+            console.warn("Supabase is not configured, cannot send verification email or challenge token.");
+            setError("Security challenge system is currently unavailable (Database not configured).");
+            await auth.signOut();
+            setLoading(false);
+            return;
           }
 
           setGeneratedPin(verificationToken); // Store token in generatedPin state
