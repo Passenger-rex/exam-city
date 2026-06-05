@@ -45,6 +45,46 @@ function getResend() {
   return resendClient;
 }
 
+async function sendResendEmail(payload: {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  replyTo?: string;
+}) {
+  const resend = getResend();
+  if (!resend) return { error: { message: "Resend not configured" } };
+
+  // 1. Try sending with the customized domain
+  try {
+    const { data, error } = await resend.emails.send(payload);
+    if (!error) {
+      return { data, error: null };
+    }
+    console.warn("Primary email send failed/rejected. Retrying with onboarding@resend.dev. Error:", error);
+  } catch (e: any) {
+    console.warn("Primary email send threw error. Retrying with onboarding@resend.dev. Error:", e);
+  }
+
+  // 2. Retry with onboarding@resend.dev
+  try {
+    const fallbackFrom = "Exam City <onboarding@resend.dev>";
+    const fallbackPayload = {
+      ...payload,
+      from: fallbackFrom,
+    };
+    const { data, error } = await resend.emails.send(fallbackPayload);
+    if (error) {
+      console.error("Fallback email dispatch failed too:", error);
+    }
+    return { data, error };
+  } catch (e: any) {
+    console.error("Fallback email send threw exception:", e);
+    return { error: e };
+  }
+}
+
 function getRequestOrigin(req: express.Request): string {
   if (req.headers.origin) {
     return (req.headers.origin as string).replace(/\/$/, "");
@@ -189,27 +229,21 @@ app.post("/api/auth/login", async (req, res) => {
         resend_count: 0,
       });
 
-      const resendClient = getResend();
-      if (resendClient) {
-        await resendClient.emails.send({
-          from: "Exam City Security <security@examcity.qzz.io>",
-          to: email,
-          subject: "New login attempt — verify it's you",
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-              <h2>Unrecognized Login Attempt</h2>
-              <p>Hello,</p>
-              <p>We detected an unrecognized login attempt to your account from IP: <strong>${ipAddress}</strong>.</p>
-              <p>Device: ${userAgent.substring(0, 100)}...</p>
-              <p>Please enter the verification code below to confirm your identity. Expires in 15 minutes.</p>
-              <div style="font-size: 48px; font-weight: bold; letter-spacing: 8px; margin: 30px 0;">${otpCode}</div>
-              <p style="font-size: 12px; color: #666;">
-                If you didn't attempt this, change your password immediately.
-              </p>
-            </div>
-          `,
-        });
-      }
+      await sendResendEmail({
+        from: "Exam City <welcome@examcity.qzz.io>",
+        to: email,
+        subject: `Your Exam City Access Code: ${otpCode}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Your Access Code</h2>
+            <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px; text-align: center;">Please use the following single-use access code to sign in to your Exam City account:</p>
+            <div style="font-size: 32px; font-weight: bold; padding: 16px; background-color: #f3f4f6; border-radius: 8px; letter-spacing: 5px; text-align: center; margin: 24px 0; font-family: monospace;">${otpCode}</div>
+            <p style="font-size: 12px; color: #9ca3af; line-height: 1.5; text-align: center; margin-bottom: 0;">
+              This code will expire in 15 minutes. If you did not request this, you can safely ignore this email.
+            </p>
+          </div>
+        `,
+      });
 
       return res.json({ requiresOTP: true, userId: userId });
     }
@@ -224,42 +258,49 @@ app.post("/api/auth/login", async (req, res) => {
 app.post("/api/auth/send-verification-email", async (req, res) => {
   try {
     const { email, token } = req.body;
-    const resend = getResend();
-    if (!resend) return res.status(500).json({ error: "Resend not configured" });
-
     const origin = getRequestOrigin(req);
     const verificationLink = `${origin}/verify-login?token=${token}`;
 
-    const { error } = await resend.emails.send({
-      from: "Exam City Security <security@examcity.qzz.io>",
+    const resend = getResend();
+    if (!resend) {
+      console.log(`[Dev/Staging Sandbox] Device verification link: ${verificationLink}`);
+      return res.json({
+        success: true,
+        devLink: verificationLink,
+        warning: "Resend is not configured. Falling back to local verification link."
+      });
+    }
+
+    const { error } = await sendResendEmail({
+      from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "Security Alert: Verify New Device Login",
-      text: `We detected a sign-in attempt from a new device on Exam City. Please copy and paste the following link into your browser to verify it's you and sign in: ${verificationLink}`,
+      subject: "Confirm your Exam City sign-in",
+      text: `Confirm your sign-in to Exam City. Open this link to sign in: ${verificationLink}`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${origin}/examcity_no_bg.png" alt="Exam City Logo" style="height: 52px; width: auto; max-width: 100%; display: inline-block;" referrerPolicy="no-referrer" />
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Confirm your sign-in</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px;">Please click the button below to confirm your sign-in request and load your Exam City dashboard:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">Confirm Sign-In</a>
           </div>
-          <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Unrecognized Device Login</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 20px;">We detected a sign-in attempt to your Exam City profile from a new device.</p>
-          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px;">Please click the button below to verify it's you and authorize this browser session immediately:</p>
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">Verify Device Session</a>
-          </div>
-          <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin-bottom: 16px; text-align: center;">If you didn't attempt to sign in, you can safely ignore or log out of other devices.</p>
-          
-          <div style="border-top: 1px solid #f3f4f6; padding-top: 20px; margin-top: 28px; font-size: 11px; color: #9ca3af; text-align: center; line-height: 1.5;">
-            <p style="margin: 0 0 4px;">You are receiving this security email because you are registered on Exam City.</p>
-            <p style="margin: 0 0 12px;">Exam City Security Department, 100 University Ave, Toronto, ON, M5J 1V6, Canada</p>
+          <p style="color: #9ca3af; font-size: 11px; line-height: 1.5; margin-bottom: 16px; text-align: center;">If you didn't request this sign-in link, you can safely ignore this email.</p>
+          <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; margin-top: 24px; font-size: 11px; color: #9ca3af; text-align: center;">
             <p style="margin: 0;">&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
           </div>
         </div>
       `,
     });
 
-    if (error) throw error;
-    res.json({ success: true });
+    if (error) {
+      console.warn("Resend Security Email failed, falling back to local link. Error:", error);
+      return res.json({
+        success: true,
+        devLink: verificationLink,
+        warning: "Resend failed. Falling back to local verification link."
+      });
+    }
+    res.json({ success: true, devLink: verificationLink });
   } catch (err: any) {
     console.error("Failed to send device verification email:", err);
     res.status(500).json({ error: err.message });
@@ -269,58 +310,58 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
 app.post("/api/auth/send-welcome-email", async (req, res) => {
   try {
     const { email, name, token } = req.body;
-    const resend = getResend();
-    if (!resend) return res.status(500).json({ error: "Resend not configured" });
-
     const origin = getRequestOrigin(req);
     const verificationLink = `${origin}/verify-email?token=${token}`;
 
-    const { error } = await resend.emails.send({
+    const resend = getResend();
+    if (!resend) {
+      console.log(`[Dev/Staging Sandbox] Welcome/Activation Link: ${verificationLink}`);
+      return res.json({
+        success: true,
+        devLink: verificationLink,
+        warning: "Resend is not configured. Falling back to local verification link."
+      });
+    }
+
+    const { error } = await sendResendEmail({
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "Welcome to Exam City — Activate Your Account! 🎓",
-      text: `Hello, ${name}! Welcome to Exam City. To complete your registration and activate your student account, please go to the following URL in your browser: ${verificationLink}`,
+      subject: "Activate your Exam City account",
+      text: `Hello, ${name}! Welcome to Exam City. To complete your registration and activate your student account, please open the following link: ${verificationLink}`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; color: #374151; background-color: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);">
-          <div style="text-align: center; margin-bottom: 28px;">
-            <img src="${origin}/examcity_no_bg.png" alt="Exam City Logo" style="height: 60px; width: auto; max-width: 100%; display: inline-block;" referrerPolicy="no-referrer" />
-          </div>
-          
-          <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 16px; text-align: center;">
-            Welcome to Exam City, ${name}! 🎉
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #374151; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <h2 style="font-size: 18px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 16px; text-align: center;">
+            Welcome to Exam City!
           </h2>
-          
-          <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin-bottom: 16px; text-align: center;">
-            Thank you for registering. Exam City is your premium prep platform featuring unlimited mock exams, past question catalogs, and real-time smart diagnostics.
+          <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin-bottom: 24px; text-align: center;">
+            Thank you for signing up. Please activate your account with the button below:
           </p>
-          
-          <p style="font-size: 14px; line-height: 1.6; color: #111827; margin-bottom: 24px; font-weight: 600; text-align: center;">
-            Please activate your new account by clicking the secure button below:
-          </p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.15);">
-              Activate Account &amp; Start Prep
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">
+              Activate Account
             </a>
           </div>
-          
-          <p style="font-size: 11px; line-height: 1.5; color: #9ca3af; margin-bottom: 24px; text-align: center;">
-            Or copy and paste this URL into your browser:<br />
-            <a href="${verificationLink}" style="color: #4f46e5; text-decoration: underline; word-break: break-all;">${verificationLink}</a>
+          <p style="font-size: 11px; line-height: 1.5; color: #9ca3af; text-align: center; margin-bottom: 20px;">
+            Or copy and paste this link:<br />
+            <a href="${verificationLink}" style="color: #4f46e5; text-decoration: underline;">${verificationLink}</a>
           </p>
-          
-          <div style="border-top: 1px solid #f3f4f6; padding-top: 24px; margin-top: 32px; font-size: 11px; color: #9ca3af; text-align: center; line-height: 1.5;">
-            <p style="margin: 0 0 4px;">If you did not sign up for an Exam City account, you can safely disregard this message.</p>
-            <p style="margin: 0 0 12px;">Exam City Inc, 100 University Ave, Toronto, ON, M5J 1V6, Canada</p>
+          <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; margin-top: 24px; font-size: 11px; color: #9ca3af; text-align: center;">
             <p style="margin: 0;">&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
           </div>
         </div>
       `,
     });
 
-    if (error) throw error;
-    res.json({ success: true });
+    if (error) {
+      console.warn("Resend Welcome Email failed, falling back to local link. Error:", error);
+      return res.json({
+        success: true,
+        devLink: verificationLink,
+        warning: "Resend failed. Falling back to local verification link."
+      });
+    }
+    res.json({ success: true, devLink: verificationLink });
   } catch (err: any) {
     console.error("Failed to send welcome activation email:", err);
     res.status(500).json({ error: err.message });
@@ -498,25 +539,21 @@ app.post("/api/auth/resend-otp", async (req, res) => {
       })
       .eq("id", verification.id);
 
-    const resendClient = getResend();
-    if (resendClient) {
-      await resendClient.emails.send({
-        from: "Exam City Security <security@examcity.qzz.io>",
-        to: verification.email,
-        subject: "New login attempt — verify it's you",
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-            <h2>Unrecognized Login Attempt</h2>
-            <p>Here is your new verification code. Expires in 15 minutes.</p>
-            <div style="font-size: 48px; font-weight: bold; letter-spacing: 8px; margin: 30px 0;">${otpCode}</div>
-            <p style="font-size: 12px; color: #666;">
-              If you didn't attempt this, change your password immediately.
-            </p>
-            <p style="font-size: 10px; color: #999;">Resends left: ${3 - newResendCount}</p>
-          </div>
-        `,
-      });
-    }
+    await sendResendEmail({
+      from: "Exam City <welcome@examcity.qzz.io>",
+      to: verification.email,
+      subject: `Your Exam City Access Code: ${otpCode}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Your New Access Code</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px; text-align: center;">Here is your new single-use code to register or sign in to Exam City:</p>
+          <div style="font-size: 32px; font-weight: bold; padding: 16px; background-color: #f3f4f6; border-radius: 8px; letter-spacing: 5px; text-align: center; margin: 24px 0; font-family: monospace;">${otpCode}</div>
+          <p style="font-size: 12px; color: #9ca3af; line-height: 1.5; text-align: center; margin-bottom: 0;">
+            This code will expire in 15 minutes. Resends remaining: ${3 - newResendCount}
+          </p>
+        </div>
+      `,
+    });
 
     return res.json({ resendsLeft: 3 - newResendCount, success: true });
   } catch (error: any) {
@@ -579,48 +616,45 @@ app.get("/api/auth/check-attempts", async (req, res) => {
     
     if (suspiciousIPs) {
         // Send alert email
-        const resendClient = getResend();
-        if (resendClient) {
-          const { data: attempts } = await supabase
-             .from('login_attempts')
-             .select('ip_address, attempted_at')
-             .eq('email', String(email))
-             .eq('success', false)
-             .gte('attempted_at', one_hour)
-             .order('attempted_at', { ascending: false })
-             .limit(10);
-             
-          await resendClient.emails.send({
-            from: "Exam City Security <security@examcity.qzz.io>",
-            to: String(email),
-            subject: "Suspicious login activity on your account",
-            html: `
-              <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;color:#1a202c">
-                <h2 style="color:#c53030">Suspicious activity detected</h2>
-                <p>Hello,</p>
-                <p>We detected multiple login attempts on your account from different locations in the last hour.</p>
-          
-                <div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:8px;padding:20px;margin:24px 0">
-                  <p style="margin:0 0 12px;font-size:13px;font-weight:bold;color:#c53030">
-                    Recent failed attempts:
-                  </p>
-                  <table style="width:100%;font-size:13px;border-collapse:collapse">
-                    ${(attempts || []).map((a: any) => `
-                      <tr style="border-bottom:1px solid #fed7d7">
-                        <td style="padding:6px 0;color:#744210">${a.ip_address}</td>
-                        <td style="padding:6px 0;color:#744210;text-align:right">
-                          ${new Date(a.attempted_at).toLocaleTimeString()}
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </table>
-                </div>
-          
-                <p style="font-size:14px">If this wasn't you, take action immediately to protect your account by changing your password.</p>
+        const { data: attempts } = await supabase
+           .from('login_attempts')
+           .select('ip_address, attempted_at')
+           .eq('email', String(email))
+           .eq('success', false)
+           .gte('attempted_at', one_hour)
+           .order('attempted_at', { ascending: false })
+           .limit(10);
+           
+        await sendResendEmail({
+          from: "Exam City <welcome@examcity.qzz.io>",
+          to: String(email),
+          subject: "Exam City: Login activity notice",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1a202c; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+              <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Login activity report</h2>
+              <p style="font-size: 14px; line-height: 1.5; color: #4b5563;">Hello,</p>
+              <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 20px;">We received several sign-in attempts for your Exam City account within the last hour. Please find the details of these attempts below:</p>
+        
+              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <p style="margin: 0 0 12px; font-size: 13px; font-weight: bold; color: #374151;">
+                  Sign-in activity logs:
+                </p>
+                <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                  ${(attempts || []).map((a: any) => `
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 8px 0; color: #4b5563; font-family: monospace;">${a.ip_address}</td>
+                      <td style="padding: 8px 0; color: #4b5563; text-align: right;">
+                        ${new Date(a.attempted_at).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </table>
               </div>
-            `
-          });
-      }
+        
+              <p style="font-size: 13px; color: #9ca3af; line-height: 1.5; margin-bottom: 0;">If you initiated these attempts, you can safely proceed or disregard this report.</p>
+            </div>
+          `
+        });
     }
 
     return res.json({

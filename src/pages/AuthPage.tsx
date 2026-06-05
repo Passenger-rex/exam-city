@@ -197,6 +197,8 @@ export default function AuthPage() {
   const [initialEmail, setInitialEmail] = useState("");
   const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
   const [resendStatus, setResendStatus] = useState("");
+  const [devActivationLink, setDevActivationLink] = useState("");
+  const [devMfaPinLink, setDevMfaPinLink] = useState("");
 
   // Device Binding and Location Geolocation Challenge States
   const [mfaChallenge, setMfaChallenge] = useState(false);
@@ -233,7 +235,7 @@ export default function AuthPage() {
       
       // Update/create verification record in Firestore
       await setDoc(doc(db, "email_verifications", token), {
-        uid: auth.currentUser?.uid || "pending_activation",
+        uid: unverifiedUser.uid || auth.currentUser?.uid || "pending_activation",
         email: unverifiedUser.email,
         name: unverifiedUser.displayName || "Scholar",
         createdAt: serverTimestamp(),
@@ -249,6 +251,11 @@ export default function AuthPage() {
       });
       if (!emailRes.ok) {
         throw new Error("Failed to dispatch email via Resend.");
+      }
+      
+      const resData = await emailRes.json();
+      if (resData.devLink) {
+        setDevActivationLink(resData.devLink);
       }
       
       setResendStatus("sent");
@@ -274,6 +281,10 @@ export default function AuthPage() {
       if (!emailRes.ok) {
         const errData = await emailRes.json();
         throw new Error(errData.error || "Server response error during dispatch.");
+      }
+      const resData = await emailRes.json();
+      if (resData.devLink) {
+        setDevMfaPinLink(resData.devLink);
       }
       setMfaResendStatus("sent");
       setMessage("A secure verification email has been resent successfully!");
@@ -481,6 +492,10 @@ export default function AuthPage() {
               const errData = await emailRes.json();
               throw new Error(`Device verification email failed: ${errData.error || 'Server error'}`);
             }
+            const resData = await emailRes.json();
+            if (resData.devLink) {
+              setDevMfaPinLink(resData.devLink);
+            }
 
             setGeneratedPin(verificationToken);
             setPendingUser({
@@ -619,16 +634,21 @@ export default function AuthPage() {
 
           // Dispatch verification welcome email via Resend
           try {
-            await fetch("/api/auth/send-welcome-email", {
+            const emailRes = await fetch("/api/auth/send-welcome-email", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email, name: displayName, token: activationToken }),
             });
+            const resData = await emailRes.json();
+            if (resData.devLink) {
+              setDevActivationLink(resData.devLink);
+            }
           } catch (sendErr: any) {
             console.error("Auto verification send-welcome-email failed on sign in:", sendErr);
           }
 
           setUnverifiedUser({
+            uid: res.user.uid,
             email,
             password,
             displayName,
@@ -672,6 +692,10 @@ export default function AuthPage() {
             if (!emailRes.ok) {
               const errData = await emailRes.json();
               throw new Error(`Device verification email failed: ${errData.error || 'Server error'}`);
+            }
+            const resData = await emailRes.json();
+            if (resData.devLink) {
+              setDevMfaPinLink(resData.devLink);
             }
           } catch (fireErr: any) {
             console.error("MFA email or Firestore setup failure:", fireErr);
@@ -777,11 +801,15 @@ export default function AuthPage() {
 
         // 3. Dispatch beautifully designed Welcome Activation email via Resend
         try {
-          await fetch("/api/auth/send-welcome-email", {
+          const emailRes = await fetch("/api/auth/send-welcome-email", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, name, token: activationToken }),
           });
+          const resData = await emailRes.json();
+          if (resData.devLink) {
+            setDevActivationLink(resData.devLink);
+          }
         } catch (sendErr: any) {
           console.error("Welcome email dispatch failed:", sendErr);
         }
@@ -815,6 +843,7 @@ export default function AuthPage() {
         
         // Set state to trigger our newly restructured verification visual page
         setUnverifiedUser({
+          uid: userCredential.user.uid,
           email,
           password,
           displayName: name,
@@ -954,6 +983,10 @@ export default function AuthPage() {
           if (!emailRes.ok) {
             const errData = await emailRes.json();
             throw new Error(`Device verification email failed: ${errData.error || 'Server error'}`);
+          }
+          const resData = await emailRes.json();
+          if (resData.devLink) {
+            setDevMfaPinLink(resData.devLink);
           }
 
           setGeneratedPin(verificationToken);

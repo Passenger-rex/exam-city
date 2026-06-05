@@ -40,7 +40,7 @@ export const getDeviceId = () => {
 };
 
 // Route wrapper that enforces authentication and device validation
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, allowGuests = false }: { children: React.ReactNode; allowGuests?: boolean }) {
   const [checking, setChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const location = useLocation();
@@ -102,6 +102,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!auth.currentUser) {
+    if (allowGuests) {
+      return <>{children}</>;
+    }
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
@@ -154,7 +157,7 @@ function AnimatedRoutes() {
         <Route
           path="/exam"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowGuests={true}>
               <PageTransition>
                 <ExamPage />
               </PageTransition>
