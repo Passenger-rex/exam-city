@@ -232,15 +232,15 @@ app.post("/api/auth/login", async (req, res) => {
       await sendResendEmail({
         from: "Exam City <welcome@examcity.qzz.io>",
         to: email,
-        subject: `Your Exam City Access Code: ${otpCode}`,
+        subject: `Exam City Code: ${otpCode}`,
+        text: `Hello! Here is your code to access Exam City: ${otpCode}. If you did not request this code, you can safely ignore this mail.`,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Your Access Code</h2>
-            <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px; text-align: center;">Please use the following single-use access code to sign in to your Exam City account:</p>
-            <div style="font-size: 32px; font-weight: bold; padding: 16px; background-color: #f3f4f6; border-radius: 8px; letter-spacing: 5px; text-align: center; margin: 24px 0; font-family: monospace;">${otpCode}</div>
-            <p style="font-size: 12px; color: #9ca3af; line-height: 1.5; text-align: center; margin-bottom: 0;">
-              This code will expire in 15 minutes. If you did not request this, you can safely ignore this email.
-            </p>
+          <div style="font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 24px; color: #333333; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 8px;">
+            <h2 style="color: #4f46e5; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Exam City</h2>
+            <p style="font-size: 14px; line-height: 1.5; color: #555555;">Hello!</p>
+            <p style="font-size: 14px; line-height: 1.5; color: #555555;">Here is your code to access Exam City:</p>
+            <div style="font-size: 28px; font-weight: bold; padding: 12px; background-color: #f9fafb; border-radius: 6px; letter-spacing: 4px; text-align: center; margin: 20px 0; color: #111111;">${otpCode}</div>
+            <p style="font-size: 12px; color: #888888; line-height: 1.5; margin-bottom: 0;">If you did not request this, you can safely disregard this email.</p>
           </div>
         `,
       });
@@ -275,19 +275,17 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "Confirm your Exam City sign-in",
-      text: `Confirm your sign-in to Exam City. Open this link to sign in: ${verificationLink}`,
+      subject: "Your Exam City Link",
+      text: `Hello! Here is your requested link to access your Exam City student dashboard: ${verificationLink}`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-          <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Confirm your sign-in</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px;">Please click the button below to confirm your sign-in request and load your Exam City dashboard:</p>
+        <div style="font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 24px; color: #333333; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 8px;">
+          <h2 style="color: #4f46e5; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Exam City</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #555555;">Hello!</p>
+          <p style="font-size: 14px; line-height: 1.5; color: #555555;">Please click the button below to sign in and view your customized learning dashboard:</p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">Confirm Sign-In</a>
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Go to Dashboard</a>
           </div>
-          <p style="color: #9ca3af; font-size: 11px; line-height: 1.5; margin-bottom: 16px; text-align: center;">If you didn't request this sign-in link, you can safely ignore this email.</p>
-          <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; margin-top: 24px; font-size: 11px; color: #9ca3af; text-align: center;">
-            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
-          </div>
+          <p style="font-size: 12px; color: #888888; line-height: 1.5; margin-bottom: 0;">Have a great learning session!</p>
         </div>
       `,
     });
@@ -327,28 +325,17 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "Activate your Exam City account",
-      text: `Hello, ${name}! Welcome to Exam City. To complete your registration and activate your student account, please open the following link: ${verificationLink}`,
+      subject: `Welcome to Exam City, ${name}!`,
+      text: `Hello, ${name}! Welcome to Exam City. Please open the following link to get set up and start learning: ${verificationLink}`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #374151; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-          <h2 style="font-size: 18px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 16px; text-align: center;">
-            Welcome to Exam City!
-          </h2>
-          <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin-bottom: 24px; text-align: center;">
-            Thank you for signing up. Please activate your account with the button below:
-          </p>
+        <div style="font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 24px; color: #333333; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 8px;">
+          <h2 style="color: #4f46e5; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Exam City</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #555555;">Hello, ${name}!</p>
+          <p style="font-size: 14px; line-height: 1.5; color: #555555;">Welcome to Exam City. We are excited to support your test preparation and learning goals. Let's get you set up. Click the button below to get started:</p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">
-              Activate Account
-            </a>
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Get Started</a>
           </div>
-          <p style="font-size: 11px; line-height: 1.5; color: #9ca3af; text-align: center; margin-bottom: 20px;">
-            Or copy and paste this link:<br />
-            <a href="${verificationLink}" style="color: #4f46e5; text-decoration: underline;">${verificationLink}</a>
-          </p>
-          <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; margin-top: 24px; font-size: 11px; color: #9ca3af; text-align: center;">
-            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
-          </div>
+          <p style="font-size: 12px; color: #888888; line-height: 1.5; margin-bottom: 0;">Welcome aboard!</p>
         </div>
       `,
     });
@@ -542,15 +529,15 @@ app.post("/api/auth/resend-otp", async (req, res) => {
     await sendResendEmail({
       from: "Exam City <welcome@examcity.qzz.io>",
       to: verification.email,
-      subject: `Your Exam City Access Code: ${otpCode}`,
+      subject: `Exam City Code: ${otpCode} (Resend)`,
+      text: `Hello! Here is your requested code to access Exam City: ${otpCode}. If you did not request this, you can safely disregard this email.`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-          <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Your New Access Code</h2>
-          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px; text-align: center;">Here is your new single-use code to register or sign in to Exam City:</p>
-          <div style="font-size: 32px; font-weight: bold; padding: 16px; background-color: #f3f4f6; border-radius: 8px; letter-spacing: 5px; text-align: center; margin: 24px 0; font-family: monospace;">${otpCode}</div>
-          <p style="font-size: 12px; color: #9ca3af; line-height: 1.5; text-align: center; margin-bottom: 0;">
-            This code will expire in 15 minutes. Resends remaining: ${3 - newResendCount}
-          </p>
+        <div style="font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 24px; color: #333333; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 8px;">
+          <h2 style="color: #4f46e5; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Exam City</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #555555;">Hello!</p>
+          <p style="font-size: 14px; line-height: 1.5; color: #555555;">Here is your updated code to enter Exam City:</p>
+          <div style="font-size: 28px; font-weight: bold; padding: 12px; background-color: #f9fafb; border-radius: 6px; letter-spacing: 4px; text-align: center; margin: 20px 0; color: #111111;">${otpCode}</div>
+          <p style="font-size: 12px; color: #888888; line-height: 1.5; margin-bottom: 0;">Code will expire in 15 minutes. Remaining attempts: ${3 - newResendCount}</p>
         </div>
       `,
     });
@@ -628,30 +615,27 @@ app.get("/api/auth/check-attempts", async (req, res) => {
         await sendResendEmail({
           from: "Exam City <welcome@examcity.qzz.io>",
           to: String(email),
-          subject: "Exam City: Login activity notice",
+          subject: "Exam City Sign-in Activity",
+          text: `Hello! We've noticed some sign-in activity on your Exam City account. Logs: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toLocaleTimeString()}`).join(', ')}. If you recognize this, no action is needed.`,
           html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 32px 24px; color: #1a202c; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-              <h2 style="color: #111827; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Login activity report</h2>
-              <p style="font-size: 14px; line-height: 1.5; color: #4b5563;">Hello,</p>
-              <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 20px;">We received several sign-in attempts for your Exam City account within the last hour. Please find the details of these attempts below:</p>
-        
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 24px 0;">
-                <p style="margin: 0 0 12px; font-size: 13px; font-weight: bold; color: #374151;">
-                  Sign-in activity logs:
-                </p>
-                <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <div style="font-family: sans-serif; max-width: 480px; margin: 20px auto; padding: 24px; color: #333333; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 8px;">
+              <h2 style="color: #4f46e5; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Exam City</h2>
+              <p style="font-size: 14px; line-height: 1.5; color: #555555;">Hello!</p>
+              <p style="font-size: 14px; line-height: 1.5; color: #555555;">We would like to share a quick check on recent activity logs for your account:</p>
+              <div style="background-color: #f9fafb; border: 1px solid #eeeeee; border-radius: 6px; padding: 12px; margin: 20px 0;">
+                <p style="margin: 0 0 8px; font-size: 13px; font-weight: bold; color: #333333;">Activity details:</p>
+                <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
                   ${(attempts || []).map((a: any) => `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                      <td style="padding: 8px 0; color: #4b5563; font-family: monospace;">${a.ip_address}</td>
-                      <td style="padding: 8px 0; color: #4b5563; text-align: right;">
+                    <tr style="border-bottom: 1px solid #eeeeee;">
+                      <td style="padding: 6px 0; color: #555555; font-family: monospace;">${a.ip_address}</td>
+                      <td style="padding: 6px 0; color: #555555; text-align: right;">
                         ${new Date(a.attempted_at).toLocaleTimeString()}
                       </td>
                     </tr>
                   `).join('')}
                 </table>
               </div>
-        
-              <p style="font-size: 13px; color: #9ca3af; line-height: 1.5; margin-bottom: 0;">If you initiated these attempts, you can safely proceed or disregard this report.</p>
+              <p style="font-size: 12px; color: #888888; line-height: 1.5; margin-bottom: 0;">If you recognize this activity, no action is needed.</p>
             </div>
           `
         });

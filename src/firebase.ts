@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 import localConfig from "../firebase-applet-config.json";
@@ -23,14 +23,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || (localConfig as any).firestoreDatabaseId || "ai-studio-f3bff7d7-cefd-4a42-aa3d-c8cfedf96ffe";
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
+  experimentalAutoDetectLongPolling: true,
   ignoreUndefinedProperties: true,
 }, dbId);
-
-// Enable offline persistence to prevent Firestore offline lock ups in the sandbox
-enableMultiTabIndexedDbPersistence(db).catch((err) => {
-  console.warn("Firestore persistence engagement skipped/failed:", err.code);
-});
 
 export const auth = getAuth();
 export const functions = getFunctions(app, "europe-west2");
