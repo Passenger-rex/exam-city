@@ -40,7 +40,7 @@ import { Navbar } from "../components/Navbar";
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile: userProfile, loading: userLoading } = useUser();
+  const { user, profile: userProfile, loading: userLoading, logout } = useUser();
   const fullName = userProfile?.name || user?.displayName || (user?.email ? user.email.split("@")[0].split(/[^a-zA-Z]/).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).filter(Boolean).join(" ") : "Student");
   const firstName = fullName.split(' ')[0];
   const [stats, setStats] = useState({ total: 0, average: 0, highest: 0 });
@@ -197,14 +197,12 @@ export default function Dashboard() {
           <button
             onClick={async () => {
               setIsSigningOut(true);
-              setTimeout(async () => {
-                try {
-                  await auth.signOut();
-                } catch (error) {
-                  console.error("Sign out error", error);
-                  setIsSigningOut(false);
-                }
-              }, 1000);
+              try {
+                await logout();
+              } catch (error) {
+                console.error("Sign out error", error);
+                setIsSigningOut(false);
+              }
             }}
             disabled={isSigningOut}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-dim text-on-surface-variant hover:text-error transition-colors border border-outline-variant/30"

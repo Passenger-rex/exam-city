@@ -67,26 +67,26 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center px-4 py-12 transition-colors duration-300">
-      <div className="w-full max-w-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-8 sm:p-10 text-center space-y-8 animate-in fade-in zoom-in-95 duration-200">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center px-4 py-8 transition-colors duration-300">
+      <div className="w-full max-w-sm bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/80 rounded-2xl shadow-lg p-6 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
         
         {/* Header Branding */}
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest font-mono">
-            Identity Certification
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100/40 dark:border-indigo-950/20 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest font-mono">
+            Activation Guard
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-            Exam City Activation
+          <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
+            Exam City
           </h1>
         </div>
 
         {/* Action Visualizer */}
-        <div className="flex flex-col items-center justify-center py-4">
+        <div className="flex flex-col items-center justify-center py-2">
           {status === "loading" && (
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-xl animate-pulse" />
-              <div className="relative w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/20 text-indigo-600 dark:text-indigo-400">
-                <Loader2 className="w-8 h-8 animate-spin" />
+              <div className="relative w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 flex items-center justify-center border border-indigo-100/30 dark:border-indigo-900/10 text-indigo-600 dark:text-indigo-400">
+                <Loader2 className="w-6 h-6 animate-spin" />
               </div>
             </div>
           )}
@@ -94,8 +94,8 @@ export default function VerifyEmailPage() {
           {status === "success" && (
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-indigo-500/15 blur-xl animate-pulse" />
-              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-in zoom-in-50 duration-300">
-                <MailCheck className="w-8 h-8" />
+              <div className="relative w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/10 animate-in zoom-in-50 duration-300">
+                <MailCheck className="w-6 h-6" />
               </div>
             </div>
           )}
@@ -103,52 +103,52 @@ export default function VerifyEmailPage() {
           {status === "error" && (
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-rose-500/10 blur-xl animate-pulse" />
-              <div className="relative w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center border border-rose-100 dark:border-rose-900/20 text-rose-600 dark:text-rose-400 animate-in zoom-in-50 duration-300">
-                <XCircle className="w-8 h-8" />
+              <div className="relative w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center border border-rose-100/20 dark:border-rose-900/10 text-rose-600 dark:text-rose-400 animate-in zoom-in-50 duration-300">
+                <XCircle className="w-6 h-6" />
               </div>
             </div>
           )}
         </div>
 
         {/* Context Information */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-black text-neutral-800 dark:text-neutral-200">
-            {status === "loading" ? "Activating Account..." : status === "success" ? "Account Activated!" : "Validation Failed"}
+        <div className="space-y-1">
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider font-mono">
+            {status === "loading" ? "Activating..." : status === "success" ? "All Systems Active!" : "Failed"}
           </h2>
-          <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-sm mx-auto">
+          <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-xs mx-auto">
             {message}
           </p>
         </div>
 
         {status === "success" && (
-          <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 font-medium">
-              You may now return to your original login tab and select "Check Verification Status" to immediately launch your dashboard.
+          <div className="pt-1 animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-3">
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
+              Account activated! You can now check verification status on your original sign-in screen or continue to landing.
             </p>
             <div>
               <a
                 href="/login"
-                className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all active:scale-[0.98] shadow-md shadow-indigo-500/15 cursor-pointer"
+                className="inline-flex items-center justify-center w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-lg transition-all active:scale-[0.98] shadow-sm shadow-indigo-500/10 cursor-pointer"
               >
-                Go to login
+                Go to Profile Dashboard
               </a>
             </div>
           </div>
         )}
 
         {status === "error" && (
-          <div className="pt-2">
+          <div className="pt-1">
             <a
               href="/login"
-              className="inline-flex items-center justify-center px-5 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 text-xs font-bold rounded-lg transition-all active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center justify-center w-full px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 text-[11px] font-bold rounded-lg transition-all active:scale-[0.98] cursor-pointer"
             >
-              Back to Sign-in
+              Return to Sign-in Portal
             </a>
           </div>
         )}
 
-        <div className="text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-mono font-bold border-t border-neutral-100 dark:border-neutral-800/60 pt-6">
-          Exam City Authentication Protocol
+        <div className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-widest font-mono border-t border-neutral-250/20 dark:border-neutral-800/60 pt-4">
+          Exam City Guard • Active Verification
         </div>
 
       </div>

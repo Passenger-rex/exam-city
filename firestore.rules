@@ -5,7 +5,6 @@ service cloud.firestore {
 
     function isValidLoginVerification(data) {
       return data.keys().hasAll(['uid', 'email', 'device_id', 'ip', 'location', 'created_at', 'expires_at', 'verified', 'used'])
-        && data.keys().size() == 9
         && data.uid is string && data.uid.size() <= 128
         && data.email is string && data.email.size() <= 256
         && data.device_id is string && data.device_id.size() <= 128
@@ -15,9 +14,30 @@ service cloud.firestore {
         && data.used is bool;
     }
 
+    function isValidEmailVerification(data) {
+      return data.keys().hasAll(['uid', 'email', 'name', 'createdAt', 'verified', 'used', 'expiresAt'])
+        && data.uid is string && data.uid.size() <= 128
+        && data.email is string && data.email.size() <= 256
+        && data.name is string && data.name.size() <= 256
+        && data.verified is bool
+        && data.used is bool
+        && data.expiresAt is string;
+    }
+
     match /users/{userId} {
       allow read, list: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if (request.auth != null && request.auth.uid == userId)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emailVerified']) && request.resource.data.emailVerified == true);
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /email_verifications/{tokenId} {
+      allow create: if isValidEmailVerification(request.resource.data);
+      allow read: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified', 'used'])
+        && request.resource.data.verified == true
+        && request.resource.data.used == true;
     }
 
     match /login_verifications/{tokenId} {

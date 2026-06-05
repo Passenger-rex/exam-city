@@ -47,7 +47,7 @@ interface ReferredUser {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { profile } = useUser();
+  const { profile, logout } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -119,7 +119,7 @@ export default function ProfilePage() {
         setActiveSessions(sessions);
         
         if (sessionId === currentSessionId) {
-          await auth.signOut();
+          await logout();
           navigate("/login");
         } else {
           setMessage("Selected trusted device session has been revoked successfully.");

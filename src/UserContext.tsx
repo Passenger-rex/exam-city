@@ -17,12 +17,16 @@ interface UserContextType {
   user: any; // Firebase user
   profile: UserProfile;
   loading: boolean;
+  logout: () => Promise<void>;
+  isLoggingOut: boolean;
 }
 
 const UserContext = createContext<UserContextType>({
   user: null,
   profile: { tier: "free", testsTakenThisMonth: 0 },
   loading: true,
+  logout: async () => {},
+  isLoggingOut: false,
 });
 
 export const useUser = () => useContext(UserContext);
@@ -83,6 +87,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     testsTakenThisMonth: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const logout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    // Artificially hold for 2500ms to fulfill the 2.5sec premium secure log-off transition safely
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    try {
+      await auth.signOut();
+    } catch (e) {
+      console.error("Sign out session termination failed:", e);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((firebaseUser) => {
@@ -231,7 +250,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [user]);
 
   return (
-    <UserContext.Provider value={{ user, profile, loading }}>
+    <UserContext.Provider value={{ user, profile, loading, logout, isLoggingOut }}>
       {children}
     </UserContext.Provider>
   );

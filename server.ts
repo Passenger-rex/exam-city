@@ -45,6 +45,21 @@ function getResend() {
   return resendClient;
 }
 
+function getRequestOrigin(req: express.Request): string {
+  if (req.headers.origin) {
+    return (req.headers.origin as string).replace(/\/$/, "");
+  }
+  if (req.headers.referer) {
+    try {
+      const url = new URL(req.headers.referer as string);
+      return url.origin.replace(/\/$/, "");
+    } catch {
+      // ignore
+    }
+  }
+  return "https://examcity.qzz.io";
+}
+
 // --- AUTH ENDPOINTS --- //
 app.post("/api/auth/login", async (req, res) => {
   try {
@@ -212,21 +227,33 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
     const resend = getResend();
     if (!resend) return res.status(500).json({ error: "Resend not configured" });
 
-    const verificationLink = `${req.headers.origin || "http://localhost:3000"}/verify-login?token=${token}`;
+    const origin = getRequestOrigin(req);
+    const verificationLink = `${origin}/verify-login?token=${token}`;
 
     const { error } = await resend.emails.send({
       from: "Exam City Security <security@examcity.qzz.io>",
       to: email,
+      replyTo: "support@examcity.qzz.io",
       subject: "Security Alert: Verify New Device Login",
+      text: `We detected a sign-in attempt from a new device on Exam City. Please copy and paste the following link into your browser to verify it's you and sign in: ${verificationLink}`,
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
-          <h2 style="color: #000;">Unrecognized Device Login</h2>
-          <p>We detected a sign-in attempt from a new device.</p>
-          <p>Please click the button below to verify it's you and automatically sign in.</p>
-          <div style="margin: 32px 0;">
-            <a href="${verificationLink}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; border-width: 0;">Verify Device</a>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #1f2937; background-color: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${origin}/examcity_no_bg.png" alt="Exam City Logo" style="height: 52px; width: auto; max-width: 100%; display: inline-block;" referrerPolicy="no-referrer" />
           </div>
-          <p style="color: #666; font-size: 14px;">If you didn't attempt to sign in, you can safely ignore this email.</p>
+          <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 12px; text-align: center;">Unrecognized Device Login</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 20px;">We detected a sign-in attempt to your Exam City profile from a new device.</p>
+          <p style="font-size: 14px; line-height: 1.5; color: #4b5563; margin-bottom: 24px;">Please click the button below to verify it's you and authorize this browser session immediately:</p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">Verify Device Session</a>
+          </div>
+          <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin-bottom: 16px; text-align: center;">If you didn't attempt to sign in, you can safely ignore or log out of other devices.</p>
+          
+          <div style="border-top: 1px solid #f3f4f6; padding-top: 20px; margin-top: 28px; font-size: 11px; color: #9ca3af; text-align: center; line-height: 1.5;">
+            <p style="margin: 0 0 4px;">You are receiving this security email because you are registered on Exam City.</p>
+            <p style="margin: 0 0 12px;">Exam City Security Department, 100 University Ave, Toronto, ON, M5J 1V6, Canada</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
+          </div>
         </div>
       `,
     });
@@ -245,46 +272,48 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
     const resend = getResend();
     if (!resend) return res.status(500).json({ error: "Resend not configured" });
 
-    const verificationLink = `${req.headers.origin || "https://examcity.qzz.io"}/verify-email?token=${token}`;
+    const origin = getRequestOrigin(req);
+    const verificationLink = `${origin}/verify-email?token=${token}`;
 
     const { error } = await resend.emails.send({
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
+      replyTo: "support@examcity.qzz.io",
       subject: "Welcome to Exam City — Activate Your Account! 🎓",
+      text: `Hello, ${name}! Welcome to Exam City. To complete your registration and activate your student account, please go to the following URL in your browser: ${verificationLink}`,
       html: `
-        <div style="font-family: 'Inter', -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <div style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 12px 20px; border-radius: 12px; font-weight: 800; font-size: 20px; letter-spacing: -0.5px;">
-              EXAM CITY
-            </div>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; color: #374151; background-color: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <img src="${origin}/examcity_no_bg.png" alt="Exam City Logo" style="height: 60px; width: auto; max-width: 100%; display: inline-block;" referrerPolicy="no-referrer" />
           </div>
           
-          <h2 style="font-size: 22px; font-weight: 800; color: #111827; margin-bottom: 16px; text-align: center; letter-spacing: -0.5px;">
+          <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 16px; text-align: center;">
             Welcome to Exam City, ${name}! 🎉
           </h2>
           
-          <p style="font-size: 14px; line-height: 1.6; color: #374151; margin-bottom: 24px;">
-            Thank you for registering at Exam City, the ultimate platform for unlimited mock exams, past questions, and deep analytics with real-time timers and direct AI tutor assistance. We are thrilled to help you master your exam preparation!
+          <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin-bottom: 16px; text-align: center;">
+            Thank you for registering. Exam City is your premium prep platform featuring unlimited mock exams, past question catalogs, and real-time smart diagnostics.
           </p>
           
-          <p style="font-size: 14px; line-height: 1.6; color: #374151; margin-bottom: 24px; font-weight: 600;">
-            To complete your registration, secure your profile, and start taking web mock tests, please activate your account by clicking the button below:
+          <p style="font-size: 14px; line-height: 1.6; color: #111827; margin-bottom: 24px; font-weight: 600; text-align: center;">
+            Please activate your new account by clicking the secure button below:
           </p>
           
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
-              Activate Account &amp; Start Exams
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.15);">
+              Activate Account &amp; Start Prep
             </a>
           </div>
           
-          <p style="font-size: 12px; line-height: 1.5; color: #6b7280; margin-bottom: 24px; text-align: center;">
+          <p style="font-size: 11px; line-height: 1.5; color: #9ca3af; margin-bottom: 24px; text-align: center;">
             Or copy and paste this URL into your browser:<br />
             <a href="${verificationLink}" style="color: #4f46e5; text-decoration: underline; word-break: break-all;">${verificationLink}</a>
           </p>
           
-          <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px; font-size: 12px; color: #9ca3af; text-align: center;">
-            <p style="margin-bottom: 8px;">If you didn't create an account with Exam City, you can safely ignore this email.</p>
-            <p>&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
+          <div style="border-top: 1px solid #f3f4f6; padding-top: 24px; margin-top: 32px; font-size: 11px; color: #9ca3af; text-align: center; line-height: 1.5;">
+            <p style="margin: 0 0 4px;">If you did not sign up for an Exam City account, you can safely disregard this message.</p>
+            <p style="margin: 0 0 12px;">Exam City Inc, 100 University Ave, Toronto, ON, M5J 1V6, Canada</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Exam City. All rights reserved.</p>
           </div>
         </div>
       `,

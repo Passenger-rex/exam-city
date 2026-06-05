@@ -19,7 +19,7 @@ import { AnimatePresence, motion } from "motion/react";
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile } = useUser();
+  const { user, profile, logout } = useUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -29,7 +29,7 @@ export function Navbar() {
     if (isSigningOut) return;
     setIsSigningOut(true);
     try {
-      await auth.signOut();
+      await logout();
       navigate("/login");
     } catch (error) {
       console.error("Sign out error", error);
