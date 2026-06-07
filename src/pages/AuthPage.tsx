@@ -28,12 +28,6 @@ export default function AuthPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // OTP Verification States
-  const [showOtp, setShowOtp] = useState(false);
-  const [verificationId, setVerificationId] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [pendingUser, setPendingUser] = useState<any>(null);
-
   const handleAuthProcess = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -56,11 +50,17 @@ export default function AuthPage() {
           const otpData = await otpRes.json();
           if (!otpRes.ok) throw new Error(otpData.error || "Failed to send OTP.");
 
-          setPendingUser(res.user);
-          setVerificationId(otpData.verificationId);
-          setShowOtp(true);
           await auth.signOut(); // Block access until OTP is verified
-          setError("Your email is unverified. Please enter the OTP sent to your email.");
+          navigate("/verify-email", {
+            state: {
+              verificationId: otpData.verificationId,
+              email,
+              password,
+              uid: res.user.uid,
+              name: userData.name,
+              isSignup: false,
+            }
+          });
           return;
         }
 
@@ -86,58 +86,23 @@ export default function AuthPage() {
         const otpData = await otpRes.json();
         
         if (otpRes.ok) {
-           setPendingUser(userCredential.user);
-           setVerificationId(otpData.verificationId);
-           setShowOtp(true);
            await auth.signOut();
-           setMessage("Account created! Please enter the OTP sent to your email.");
+           navigate("/verify-email", {
+             state: {
+               verificationId: otpData.verificationId,
+               email,
+               password,
+               uid: userCredential.user.uid,
+               name,
+               isSignup: true
+             }
+           });
         } else {
            throw new Error(otpData.error || "Failed to send OTP.");
         }
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOtp = async () => {
-    if (!otpCode || otpCode.length !== 6) {
-      setError("Please enter a valid 6-digit OTP.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verificationId, otpCode }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Invalid OTP code.");
-
-      if (pendingUser) {
-        await updateDoc(doc(db, "users", pendingUser.uid), {
-          emailVerified: true,
-        });
-
-        // Send welcome email after successful registration/verification!
-        await fetch("/api/auth/send-welcome", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: pendingUser.email, name: pendingUser.displayName }),
-        });
-
-        // Auto login
-        await signInWithEmailAndPassword(auth, email, password);
-        navigate("/dashboard");
-      }
-    } catch (err: any) {
-      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -203,35 +168,7 @@ export default function AuthPage() {
            </div>
         )}
 
-        {showOtp ? (
-          <div>
-            <h2 className="text-2xl font-bold text-on-surface mb-2">Verify Email</h2>
-            <p className="text-on-surface-variant text-sm mb-6">
-              Please enter the 6-digit OTP sent to {email}
-            </p>
-            <input
-              type="text"
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value)}
-              placeholder="Enter OTP"
-              className="w-full text-center text-2xl tracking-widest bg-surface-dim/40 border border-outline-variant/50 focus:border-primary focus:bg-surface rounded-2xl py-4 pr-4 outline-none font-medium mb-6"
-              maxLength={6}
-            />
-            <button
-              onClick={verifyOtp}
-              disabled={loading}
-              className="w-full py-4 bg-primary text-on-primary font-bold rounded-2xl"
-            >
-              Verify OTP
-            </button>
-            <button
-               onClick={() => setShowOtp(false)}
-               className="w-full mt-4 text-sm font-medium text-on-surface-variant hover:text-on-surface"
-            >
-               Back to Login
-            </button>
-          </div>
-        ) : authView === "forgot" ? (
+        {authView === "forgot" ? (
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <h2 className="text-2xl font-bold mb-4">Reset Password</h2>
             <input

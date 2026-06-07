@@ -195,11 +195,17 @@ function getRequestOrigin(req: express.Request): string {
 
 // --- AUTH ENDPOINTS --- //
 
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, query, collection, where, getDocs, updateDoc } from "firebase/firestore";
 import localConfig from "./firebase-applet-config.json" with { type: "json" };
-const fbApp = initializeApp(localConfig);
-const serverDb = getFirestore(fbApp, localConfig.firestoreDatabaseId);
+
+const FS_PROJECT_ID = localConfig.projectId;
+const FS_DATABASE_ID = localConfig.firestoreDatabaseId;
+const FS_API_KEY = localConfig.apiKey;
+
+function getFirestoreRestUrl(collection: string, docId?: string) {
+  let url = `https://firestore.googleapis.com/v1/projects/${FS_PROJECT_ID}/databases/${FS_DATABASE_ID}/documents/${collection}`;
+  if (docId) url += `/${docId}`;
+  return `${url}?key=${FS_API_KEY}`;
+}
 
 app.post("/api/auth/send-otp", async (req, res) => {
   try {
@@ -209,15 +215,28 @@ app.post("/api/auth/send-otp", async (req, res) => {
     const verificationId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    await setDoc(doc(serverDb, "login_verifications", verificationId), {
-      id: verificationId,
-      email: email,
-      otp_code: otpCode,
-      is_used: false,
-      expires_at: expiresAt,
-      attempt_count: 0,
-      resend_count: 0,
+    const writeUrl = getFirestoreRestUrl("login_verifications", verificationId);
+    const writeRes = await fetch(writeUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          id: { stringValue: verificationId },
+          email: { stringValue: email },
+          otp_code: { stringValue: otpCode },
+          is_used: { booleanValue: false },
+          expires_at: { stringValue: expiresAt },
+          attempt_count: { integerValue: 0 },
+          resend_count: { integerValue: 0 }
+        }
+      })
     });
+
+    if (!writeRes.ok) {
+      const errTxt = await writeRes.text();
+      console.error("Firestore write failed:", errTxt);
+      throw new Error("Failed to save verification session");
+    }
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
@@ -254,21 +273,31 @@ app.post("/api/auth/verify-otp", async (req, res) => {
   try {
     const { verificationId, otpCode } = req.body;
     
-    // Using Firestore instead of Supabase
-    const q = query(
-      collection(serverDb, "login_verifications"),
-      where("id", "==", verificationId),
-      where("is_used", "==", false),
-      where("expires_at", ">", new Date().toISOString())
-    );
-    const snap = await getDocs(q);
+    const readUrl = getFirestoreRestUrl("login_verifications", verificationId);
+    const readRes = await fetch(readUrl);
     
-    if (snap.empty) {
+    if (readRes.status === 404) {
+       return res.status(400).json({ error: "Session expired or verification not found" });
+    }
+    
+    const docData: any = await readRes.json();
+    if (!docData || !docData.fields) {
+       return res.status(400).json({ error: "Invalid verification format" });
+    }
+    
+    const verification = {
+      id: docData.fields.id?.stringValue,
+      email: docData.fields.email?.stringValue,
+      otp_code: docData.fields.otp_code?.stringValue,
+      is_used: docData.fields.is_used?.booleanValue,
+      expires_at: docData.fields.expires_at?.stringValue,
+      attempt_count: Number(docData.fields.attempt_count?.integerValue || 0),
+      resend_count: Number(docData.fields.resend_count?.integerValue || 0)
+    };
+    
+    if (verification.is_used || new Date(verification.expires_at) < new Date()) {
       return res.status(400).json({ error: "Session expired or verification not found" });
     }
-
-    const verificationDoc = snap.docs[0];
-    const verification = verificationDoc.data();
 
     if (verification.attempt_count >= 5) {
       return res.status(429).json({ error: "Too many attempts" });
@@ -276,11 +305,25 @@ app.post("/api/auth/verify-otp", async (req, res) => {
 
     if (verification.otp_code !== String(otpCode).trim()) {
       const newCount = verification.attempt_count + 1;
-      await updateDoc(verificationDoc.ref, { attempt_count: newCount });
+      
+      await fetch(readUrl + "&updateMask.fieldPaths=attempt_count", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: { attempt_count: { integerValue: newCount } }
+        })
+      });
+      
       return res.status(400).json({ error: "Invalid OTP code", attemptsLeft: Math.max(0, 5 - newCount) });
     }
 
-    await updateDoc(verificationDoc.ref, { is_used: true });
+    await fetch(readUrl + "&updateMask.fieldPaths=is_used", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: { is_used: { booleanValue: true } }
+      })
+    });
 
     return res.json({ success: true, email: verification.email });
   } catch (error: any) {
