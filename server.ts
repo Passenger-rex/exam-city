@@ -314,18 +314,31 @@ app.post("/api/auth/login", async (req, res) => {
       });
 
       await sendResendEmail({
-        from: "Exam City <welcome@examcity.qzz.io>",
+        from: "Exam City <security@examcity.qzz.io>",
         to: email,
-        subject: `Verification Code: ${otpCode}`,
-        text: `Hello, your requested verification code is: ${otpCode}. It is valid for 15 minutes.`,
+        subject: `Your Exam City Verification Code`,
+        text: `Hello, you requested a verification code for your Exam City account. Your code is: ${otpCode}. It is valid for 15 minutes.`,
         html: `
-          <div style="font-family: sans-serif; padding: 24px; color: #333333; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h2 style="color: #4f46e5; margin-top: 0; font-size: 20px;">Verification Code</h2>
-            <p style="font-size: 15px; color: #475569;">Please enter the following activation code to verify your Exam City sign-up request:</p>
-            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 24px; text-align: center; margin: 20px 0; font-size: 28px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Activation Code</h2>
+            <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
+            <p style="font-size: 16px; margin-bottom: 12px;">You requested a verification code to access your Exam City account.</p>
+            <p style="font-size: 16px; margin-bottom: 30px;">Please use the code below to complete your secure action:</p>
+
+            <div style="text-align: center; margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #18181b; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #f4f4f5;">
               ${otpCode}
             </div>
-            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">This temporary code is valid for 15 minutes. If you did not request this email, please ignore it.</p>
+
+            <p style="font-size: 16px; margin-bottom: 12px;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
+
+            <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
+            <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
+
+            <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+              <p style="font-size: 12px; color: #666666;">
+                This is a mandatory security notice related to your account access.
+              </p>
+            </div>
           </div>
         `,
       });
@@ -357,19 +370,36 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
     }
 
     const { error } = await sendResendEmail({
-      from: "Exam City <welcome@examcity.qzz.io>",
+      from: "Exam City <security@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "Verification Link",
+      subject: "Exam City Security Verification",
       text: `Hello, please click the link below to verify your sign-in: ${verificationLink}`,
       html: `
-        <div style="font-family: sans-serif; padding: 24px; color: #333333; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #4f46e5; margin-top: 0; font-size: 20px;">Email Verification</h2>
-          <p style="font-size: 15px; color: #475569;">Please click the button below to complete your secure sign-in:</p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">Verify Account</a>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+          <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Verify Your Sign-In</h2>
+          <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
+          <p style="font-size: 16px; margin-bottom: 12px;">We noticed a new sign-in attempt to your Exam City account.</p>
+          <p style="font-size: 16px; margin-bottom: 30px;">If this was you, simply click the following link to authorize this device:</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" style="font-size: 16px; color: #000000; text-decoration: underline; font-weight: bold;">Verify Sign-In</a>
           </div>
-          <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin-bottom: 0;">Alternatively, copy and paste this link directly into your browser:<br/><a href="${verificationLink}" style="color: #4f46e5; word-break: break-all;">${verificationLink}</a></p>
+
+          <p style="font-size: 16px; margin-bottom: 12px;">If you did not attempt to sign in, please secure your account immediately.</p>
+          <p style="font-size: 16px; margin-bottom: 12px;">If that doesn't work, copy and paste the following link in your browser:</p>
+          <p style="font-size: 14px; margin-bottom: 30px; word-break: break-all;">
+            <a href="${verificationLink}" style="color: #6a0dad; text-decoration: none;">${verificationLink}</a>
+          </p>
+
+          <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
+          <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
+
+          <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+            <p style="font-size: 12px; color: #666666;">
+              This is a mandatory security notice related to your account access.
+            </p>
+          </div>
         </div>
       `,
     });
@@ -409,17 +439,33 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "Verify Your Email Address",
+      subject: "Exam City Account Activation",
       text: `Hello ${name}, please click the link below to verify your email address: ${verificationLink}`,
       html: `
-        <div style="font-family: sans-serif; padding: 24px; color: #333333; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #4f46e5; margin-top: 0; font-size: 20px;">Email Verification</h2>
-          <p style="font-size: 15px; color: #475569;">Hello ${name},</p>
-          <p style="font-size: 15px; color: #475569;">Please click the button below to confirm your email address and verify your account:</p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${verificationLink}" style="background-color: #4f46e5; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">Verify Email</a>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+          <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Confirm Your Email Address</h2>
+          <p style="font-size: 16px; margin-bottom: 12px;">Hello ${name},</p>
+          <p style="font-size: 16px; margin-bottom: 12px;">Someone has signed up to Exam City with this email address.</p>
+          <p style="font-size: 16px; margin-bottom: 30px;">If this was you, simply click the following link and your account will be activated:</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" style="font-size: 16px; color: #000000; text-decoration: underline; font-weight: bold;">Activate your Account</a>
           </div>
-          <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin-bottom: 0;">Alternatively, copy and paste this link directly into your browser:<br/><a href="${verificationLink}" style="color: #4f46e5; word-break: break-all;">${verificationLink}</a></p>
+
+          <p style="font-size: 16px; margin-bottom: 12px;">If you did not sign up, please ignore this email.</p>
+          <p style="font-size: 16px; margin-bottom: 12px;">If that doesn't work, copy and paste the following link in your browser:</p>
+          <p style="font-size: 14px; margin-bottom: 30px; word-break: break-all;">
+            <a href="${verificationLink}" style="color: #6a0dad; text-decoration: none;">${verificationLink}</a>
+          </p>
+
+          <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
+          <p style="font-size: 16px; margin-bottom: 40px;">Exam City</p>
+
+          <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+            <p style="font-size: 12px; color: #666666;">
+              You received this email because this email was used to signup for an account. If you didn't, you can safely ignore this email.
+            </p>
+          </div>
         </div>
       `,
     });
@@ -611,18 +657,31 @@ app.post("/api/auth/resend-otp", async (req, res) => {
       .eq("id", verification.id);
 
     await sendResendEmail({
-      from: "Exam City <welcome@examcity.qzz.io>",
+      from: "Exam City <security@examcity.qzz.io>",
       to: verification.email,
-      subject: `Verification Code: ${otpCode}`,
-      text: `Hello, your requested verification code is: ${otpCode}. It is valid for 15 minutes.`,
+      subject: `Your Exam City Verification Code`,
+      text: `Hello, you requested a verification code for your Exam City account. Your code is: ${otpCode}. It is valid for 15 minutes.`,
       html: `
-        <div style="font-family: sans-serif; padding: 24px; color: #333333; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #4f46e5; margin-top: 0; font-size: 20px;">Verification Code</h2>
-          <p style="font-size: 15px; color: #475569;">Please enter the following activation code to complete your security verification:</p>
-          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 24px; text-align: center; margin: 20px 0; font-size: 28px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+          <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Activation Code</h2>
+          <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
+          <p style="font-size: 16px; margin-bottom: 12px;">You requested a verification code to access your Exam City account.</p>
+          <p style="font-size: 16px; margin-bottom: 30px;">Please use the code below to complete your secure action:</p>
+
+          <div style="text-align: center; margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #18181b; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #f4f4f5;">
             ${otpCode}
           </div>
-          <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">This temporary code is valid for 15 minutes. If you did not request this email, please ignore it.</p>
+
+          <p style="font-size: 16px; margin-bottom: 12px;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
+
+          <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
+          <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
+
+          <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+            <p style="font-size: 12px; color: #666666;">
+              This is a mandatory security notice related to your account access.
+            </p>
+          </div>
         </div>
       `,
     });
@@ -698,20 +757,31 @@ app.get("/api/auth/check-attempts", async (req, res) => {
            .limit(10);
            
         await sendResendEmail({
-          from: "Exam City <welcome@examcity.qzz.io>",
+          from: "Exam City <security@examcity.qzz.io>",
           to: String(email),
-          subject: "Security Notification",
+          subject: "Security Alert: Failed Sign-in Attempts",
           text: `Hello, we noticed multiple failed sign-in attempts on your account. Attempts details: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toUTCString()}`).join(', ')}. If you didn't trigger this, please ensure your account is protected.`,
           html: `
-            <div style="font-family: sans-serif; padding: 24px; color: #333333; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-              <h2 style="color: #ef4444; margin-top: 0; font-size: 18px;">Security Notification</h2>
-              <p style="font-size: 15px; color: #475569;">We have registered multiple failed sign-in attempts on your account:</p>
-              <ul style="font-size: 13px; color: #475569; padding-left: 20px;">
-                ${(attempts || []).map((a: any) => `
-                  <li><strong>IP:</strong> <span style="font-family: monospace;">${a.ip_address}</span> at ${new Date(a.attempted_at).toUTCString()}</li>
-                `).join('')}
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+              <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #ef4444;">Security Notification</h2>
+              <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
+              <p style="font-size: 16px; margin-bottom: 12px;">We have registered multiple failed sign-in attempts on your Exam City account.</p>
+              <p style="font-size: 16px; margin-bottom: 20px;">Attempts details:</p>
+              <ul style="font-size: 14px; margin-bottom: 30px; line-height: 1.6; background-color: #f4f4f5; padding: 16px 16px 16px 32px; border-radius: 6px;">
+                ${(attempts || []).map((a: any) => `<li><strong>IP:</strong> ${a.ip_address} at ${new Date(a.attempted_at).toUTCString()}</li>`).join('')}
               </ul>
-              <p style="font-size: 13px; color: #64748b; margin-top: 20px;">If this was you, please make sure your details are correct. If you do not recognize these attempts, please review your dashboard security settings.</p>
+
+              <p style="font-size: 16px; margin-bottom: 12px;">If this was you, please make sure your credentials are correct.</p>
+              <p style="font-size: 16px; margin-bottom: 30px;">If you do not recognize these attempts, please review your account security immediately.</p>
+
+              <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
+              <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
+
+              <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                <p style="font-size: 12px; color: #666666;">
+                  This is a mandatory security notice regarding your account safety.
+                </p>
+              </div>
             </div>
           `
         });
