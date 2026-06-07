@@ -251,7 +251,7 @@ app.post("/api/auth/login", async (req, res) => {
       });
 
       await sendResendEmail({
-        from: "Exam City <welcome@examcity.qzz.io>",
+        from: "Exam City <welcome@mail.examcity.qzz.io>",
         to: email,
         subject: `Verification Code: ${otpCode}`,
         text: `Hello, your requested verification code is: ${otpCode}. It is valid for 15 minutes.`,
@@ -294,9 +294,9 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
     }
 
     const { error } = await sendResendEmail({
-      from: "Exam City <welcome@examcity.qzz.io>",
+      from: "Exam City <welcome@mail.examcity.qzz.io>",
       to: email,
-      replyTo: "support@examcity.qzz.io",
+      replyTo: "support@mail.examcity.qzz.io",
       subject: "Verification Link",
       text: `Hello, please click the link below to verify your sign-in: ${verificationLink}`,
       html: `
@@ -343,9 +343,9 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
     }
 
     const { error } = await sendResendEmail({
-      from: "Exam City <welcome@examcity.qzz.io>",
+      from: "Exam City <welcome@mail.examcity.qzz.io>",
       to: email,
-      replyTo: "support@examcity.qzz.io",
+      replyTo: "support@mail.examcity.qzz.io",
       subject: "Verify Your Email Address",
       text: `Hello ${name}, please click the link below to verify your email address: ${verificationLink}`,
       html: `
@@ -548,7 +548,7 @@ app.post("/api/auth/resend-otp", async (req, res) => {
       .eq("id", verification.id);
 
     await sendResendEmail({
-      from: "Exam City <welcome@examcity.qzz.io>",
+      from: "Exam City <welcome@mail.examcity.qzz.io>",
       to: verification.email,
       subject: `Verification Code: ${otpCode}`,
       text: `Hello, your requested verification code is: ${otpCode}. It is valid for 15 minutes.`,
@@ -635,7 +635,7 @@ app.get("/api/auth/check-attempts", async (req, res) => {
            .limit(10);
            
         await sendResendEmail({
-          from: "Exam City <welcome@examcity.qzz.io>",
+          from: "Exam City <welcome@mail.examcity.qzz.io>",
           to: String(email),
           subject: "Security Notification",
           text: `Hello, we noticed multiple failed sign-in attempts on your account. Attempts details: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toUTCString()}`).join(', ')}. If you didn't trigger this, please ensure your account is protected.`,

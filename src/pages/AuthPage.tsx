@@ -1423,31 +1423,7 @@ export default function AuthPage() {
                   </ul>
                 </div>
 
-                {devActivationLink && (
-                  <div className="p-4 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2 text-left">
-                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-xs">
-                      <AlertCircle className="w-4 h-4 shrink-0 animate-pulse" />
-                      <span>Developer Sandbox Bypass</span>
-                    </div>
-                    {devActivationWarning ? (
-                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed">
-                        <strong>SMTP Notice:</strong> {devActivationWarning}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed">
-                        If the verification mail fails to deliver or gets rejected due to Resend sandbox domain limits, you can activate your account instantly with this secure link:
-                      </p>
-                    )}
-                    <a
-                      href={devActivationLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white font-bold text-center text-xs rounded-xl transition-all shadow-sm cursor-pointer"
-                    >
-                      Bypass & Verify Email
-                    </a>
-                  </div>
-                )}
+
 
                 {message && (
                   <div className="p-3.5 bg-green-500/10 border border-green-500/20 text-green-600 rounded-xl text-xs font-semibold text-left animate-fade-in">
@@ -1647,31 +1623,7 @@ export default function AuthPage() {
                   </div>
                 )}
 
-                {devMfaPinLink && (
-                  <div className="p-4 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2 mt-2 text-left">
-                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-xs">
-                      <AlertCircle className="w-4 h-4 shrink-0 animate-pulse" />
-                      <span>Developer Sandbox Bypass</span>
-                    </div>
-                    {devMfaWarning ? (
-                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed font-sans">
-                        <strong>SMTP Notice:</strong> {devMfaWarning}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed font-sans">
-                        If the device security verification mail fails or gets blocked by domain/sandbox limits, you can authorize this browser immediately by using this direct link:
-                      </p>
-                    )}
-                    <a
-                      href={devMfaPinLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white font-bold text-center text-xs rounded-xl transition-all shadow-sm cursor-pointer"
-                    >
-                      Authorize & Login Instantly
-                    </a>
-                  </div>
-                )}
+
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button

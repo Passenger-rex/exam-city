@@ -1,19 +1,72 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ShieldCheck, Loader2, XCircle } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { 
+  ShieldCheck, 
+  Loader2, 
+  XCircle, 
+  Fingerprint, 
+  Globe, 
+  Laptop, 
+  CheckCircle2, 
+  Lock, 
+  Server, 
+  ChevronRight,
+  ShieldAlert,
+  ArrowRight
+} from "lucide-react";
 import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../firebase";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function VerifyLoginPage() {
   const [params] = useSearchParams();
   const token = params.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState("Authenticating browser profile. Please hold...");
+  const [message, setMessage] = useState("Establishing secure authentication bridge...");
+  const [verificationData, setVerificationData] = useState<any>(null);
+  
+  // Custom step-by-step security progress checklist for elite tactile feedback
+  const [stepIndex, setStepIndex] = useState(0);
+  const [dbCompleted, setDbCompleted] = useState(false);
+
+  const steps = [
+    "Establishing cryptographic connection to security vault",
+    "Validating secure browser profile and IP footprint",
+    "Writing trusted unique hardware footprint",
+    "Handshake complete! Access granted"
+  ];
+
+  useEffect(() => {
+    // Progress through visual steps unless an error occurs
+    if (status === "error") return;
+
+    const interval = setInterval(() => {
+      setStepIndex((prev) => {
+        // Stop at step 2 (0, 1, 2) until the database operations are verified
+        if (prev < 2) {
+          return prev + 1;
+        }
+        if (dbCompleted && prev < 3) {
+          return 3;
+        }
+        return prev;
+      });
+    }, 600);
+
+    return () => clearInterval(interval);
+  }, [status, dbCompleted]);
+
+  // When database operations succeed, fast-track progress to the final step
+  useEffect(() => {
+    if (dbCompleted && status === "success") {
+      setStepIndex(3);
+    }
+  }, [dbCompleted, status]);
 
   useEffect(() => {
     if (!token) {
       setStatus("error");
-      setMessage("Invalid identity token. The verification link is incorrect or broken.");
+      setMessage("Verification token is missing. The link is incorrect or broken.");
       return;
     }
 
@@ -24,23 +77,28 @@ export default function VerifyLoginPage() {
 
         if (!snap.exists()) {
           setStatus("error");
-          setMessage("Verification secure bridge token is empty or has expired.");
+          setMessage("The secure bridge token does not exist or has expired.");
           return;
         }
 
         const data = snap.data();
+        setVerificationData(data);
+
         if (data.used || data.verified) {
           setStatus("error");
-          setMessage("This verification link has already been used.");
+          setMessage("This device verification link has already been used.");
           return;
         }
 
         const expiresAt = new Date(data.expires_at || data.expiresAt).getTime();
         if (Date.now() > expiresAt) {
           setStatus("error");
-          setMessage("This login verification session has expired. Please log in again.");
+          setMessage("The login authorization session has expired. Please log in again.");
           return;
         }
+
+        // Wait slightly to make sure step animations render nicely
+        await new Promise((resolve) => setTimeout(resolve, 1200));
 
         // --- SECURE TRUST BINDING ---
         const userDocRef = doc(db, "users", data.uid);
@@ -57,12 +115,13 @@ export default function VerifyLoginPage() {
           used: true
         });
 
+        setDbCompleted(true);
         setStatus("success");
-        setMessage("Device verified successfully. Check your first browser window to access your dashboard.");
+        setMessage("Your browser has been authorized as a trusted device profile.");
       } catch (err: any) {
         console.error("Verification error:", err);
         setStatus("error");
-        setMessage("Security validation handshake failed. Please try logging in again.");
+        setMessage("Security handshake failed. Please request a new link.");
       }
     }
 
@@ -70,84 +129,267 @@ export default function VerifyLoginPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center px-4 py-8 transition-colors duration-300">
-      <div className="w-full max-w-sm bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border border-neutral-200/50 dark:border-neutral-800/80 rounded-2xl shadow-lg p-6 text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none antialiased">
+      
+      {/* Decorative ambient background blur lights */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[130px] -z-10 animate-pulse pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-violet-600/5 blur-[100px] -z-10 pointer-events-none" />
+
+      <div className="w-full max-w-[460px] relative z-10">
         
-        {/* Header Branding */}
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100/40 dark:border-indigo-950/20 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest font-mono">
-            Security Bridge
+        {/* Brand Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-800/80 mb-3 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
+            <Lock className="w-3 h-3 text-indigo-500 shrink-0" />
+            Security Guard Bridge
           </div>
-          <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
-            Exam City
+          <h1 className="text-2xl font-black text-white tracking-tight sm:text-3xl font-sans">
+            Exam<span className="text-indigo-500">City</span>
           </h1>
-        </div>
-
-        {/* Action Visualizer */}
-        <div className="flex flex-col items-center justify-center py-2">
-          {status === "loading" && (
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-indigo-500/10 blur-xl animate-pulse" />
-              <div className="relative w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 flex items-center justify-center border border-indigo-100/30 dark:border-indigo-900/10 text-indigo-600 dark:text-indigo-400">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
-            </div>
-          )}
-
-          {status === "success" && (
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-xl animate-pulse" />
-              <div className="relative w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-center border border-emerald-100/20 dark:border-emerald-900/10 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50 duration-300">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-            </div>
-          )}
-
-          {status === "error" && (
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-rose-500/10 blur-xl animate-pulse" />
-              <div className="relative w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center border border-rose-100/20 dark:border-rose-900/10 text-rose-600 dark:text-rose-400 animate-in zoom-in-50 duration-300">
-                <XCircle className="w-6 h-6" />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Context Information */}
-        <div className="space-y-1">
-          <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider font-mono">
-            {status === "loading" ? "Authorizing..." : status === "success" ? "Access Granted" : "Validation Failed"}
-          </h2>
-          <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-xs mx-auto">
-            {message}
+          <p className="text-xs text-neutral-400 mt-1.5 font-medium max-w-xs mx-auto">
+            Zero-Trust identity check & browser session vaulting
           </p>
         </div>
 
-        {/* Clear Instructions */}
-        {status === "success" && (
-          <div className="p-3 bg-neutral-50/50 dark:bg-neutral-900/40 border border-neutral-150/40 dark:border-neutral-800/60 rounded-xl space-y-0.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300">
-              Safe to Close Tab
-            </p>
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-relaxed">
-              Your device profile is registered. Your other active browser sign-in tab will launch automatically.
-            </p>
-          </div>
-        )}
+        {/* Content Box with glass effect */}
+        <div className="bg-neutral-900/40 backdrop-blur-3xl border border-neutral-800/80 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          
+          {/* Subtle top scanner light beam */}
+          {status === "loading" && (
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent animate-shimmer" />
+          )}
 
-        {status === "error" && (
-          <div className="pt-1">
-            <a
-              href="/login"
-              className="inline-flex items-center justify-center w-full px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 text-[11px] font-bold rounded-lg transition-all active:scale-[0.98] cursor-pointer"
-            >
-              Back to Secure Portal
-            </a>
-          </div>
-        )}
+          <AnimatePresence mode="wait">
+            
+            {status === "loading" && (
+              <motion.div
+                key="loading-view"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-6"
+              >
+                {/* Visualizer Circle */}
+                <div className="flex flex-col items-center justify-center pt-2">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
+                    <div className="relative w-20 h-20 rounded-2xl bg-neutral-900/90 flex items-center justify-center border border-neutral-800 text-indigo-400 group">
+                      <Fingerprint className="w-10 h-10 animate-pulse text-indigo-500" />
+                      <div className="absolute inset-1 rounded-xl border border-dashed border-indigo-500/30 animate-spin [animation-duration:15s]" />
+                    </div>
+                  </div>
+                </div>
 
-        <div className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-widest font-mono border-t border-neutral-250/20 dark:border-neutral-800/60 pt-4">
-          Exam City Guard • Live Bridge
+                {/* Status Message */}
+                <div className="text-center space-y-1">
+                  <h3 className="text-sm font-semibold tracking-wide text-neutral-300 font-mono flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                    {message}
+                  </h3>
+                  <p className="text-[11px] text-neutral-500">
+                    Safe connection established. Verifying hardware hashes...
+                  </p>
+                </div>
+
+                {/* Security Progress Checklist */}
+                <div className="bg-neutral-950/60 rounded-2xl p-4 border border-neutral-800/40 space-y-3.5">
+                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider font-mono">
+                    Handshake Status log
+                  </div>
+                  <div className="space-y-3">
+                    {steps.map((step, idx) => {
+                      const isDone = stepIndex > idx;
+                      const isActive = stepIndex === idx;
+                      return (
+                        <div key={idx} className="flex items-start gap-3">
+                          <div className="mt-0.5 shrink-0">
+                            {isDone ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-950/40" />
+                            ) : isActive ? (
+                              <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border border-neutral-800 bg-neutral-900" />
+                            )}
+                          </div>
+                          <p className={`text-xs ${isDone ? "text-neutral-400 font-medium line-through decoration-neutral-800" : isActive ? "text-indigo-400 font-semibold" : "text-neutral-600"}`}>
+                            {step}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {status === "success" && (
+              <motion.div
+                key="success-view"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-6"
+              >
+                {/* Visualizer Check Circle */}
+                <div className="flex flex-col items-center justify-center pt-2">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-emerald-500/25 blur-2xl animate-pulse" />
+                    <div className="relative w-24 h-24 rounded-3xl bg-neutral-900/90 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-950/20">
+                      <ShieldCheck className="w-12 h-12 text-emerald-400" />
+                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <CheckCircle2 className="w-3 h-3 text-neutral-950 stroke-[3]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Message */}
+                <div className="text-center space-y-1.5">
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Device Verified Successfully
+                  </h3>
+                  <p className="text-xs text-neutral-400 leading-relaxed max-w-sm mx-auto">
+                    {message}
+                  </p>
+                </div>
+
+                {/* Secure footprint info details block */}
+                {verificationData && (
+                  <div className="bg-neutral-950/80 rounded-2xl border border-neutral-800/80 divide-y divide-neutral-800/40 p-1">
+                    <div className="p-3">
+                      <div className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest font-mono mb-1">
+                        Device Metadata Footprint
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center text-neutral-400">
+                          <span className="flex items-center gap-1.5 font-mono text-[10px]">
+                            <Laptop className="w-3.5 h-3.5 text-neutral-500" />
+                            Client ID
+                          </span>
+                          <span className="font-semibold text-white/90 truncate max-w-[180px] font-mono text-[10px]">
+                            {verificationData.device_id ? verificationData.device_id.substring(0, 16) + "..." : "Local System"}
+                          </span>
+                        </div>
+                        {verificationData.email && (
+                          <div className="flex justify-between items-center text-neutral-400">
+                            <span className="font-mono text-[10px]">Account target</span>
+                            <span className="font-semibold text-white/90 truncate max-w-[180px]">
+                              {verificationData.email}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center text-neutral-400">
+                          <span className="flex items-center gap-1.5 font-mono text-[10px]">
+                            <Globe className="w-3.5 h-3.5 text-neutral-500" />
+                            Location Ip
+                          </span>
+                          <span className="font-semibold text-white/90 truncate max-w-[180px]">
+                            {verificationData.location || "Unknown location"} • {verificationData.ip || "127.0.0.1"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-neutral-900/20 text-center">
+                      <p className="text-[11px] text-green-400 font-medium flex items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        Signature enrolled in trusted keys vault
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Guidelines information */}
+                <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl space-y-1">
+                  <p className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                    💡 Perfect. It is safe to close this tab now.
+                  </p>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-normal">
+                    This verification link has enabled access. Your other browser window where you initiated the login attempt will immediately automatically transition into your student learning dashboard.
+                  </p>
+                </div>
+
+                {/* Primary Action Button */}
+                <div className="space-y-3 pt-2">
+                  <Link
+                    to="/dashboard"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                  >
+                    Go to Account Dashboard
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+
+                  <p className="text-center">
+                    <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">
+                      Already log in there? You can safely close this window.
+                    </span>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {status === "error" && (
+              <motion.div
+                key="error-view"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-6"
+              >
+                {/* Visualizer Warning Circle */}
+                <div className="flex flex-col items-center justify-center pt-2">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-rose-500/15 blur-2xl animate-pulse" />
+                    <div className="relative w-20 h-20 rounded-2xl bg-neutral-900/90 flex items-center justify-center border border-rose-500/30 text-rose-500">
+                      <ShieldAlert className="w-10 h-10" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Header Error Title */}
+                <div className="text-center space-y-1.5">
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Link Validation Failed
+                  </h3>
+                  <p className="text-xs text-neutral-400 leading-relaxed max-w-sm mx-auto">
+                    {message}
+                  </p>
+                </div>
+
+                {/* Detailed Troubleshooting Advice */}
+                <div className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl text-left space-y-1.5">
+                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">
+                    Security Policy Advice
+                  </span>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-normal">
+                    This verification bridge handles dynamic requests with unique single-use signatures. Tokens automatically self-expire in 15 minutes or turn null as soon as they are used. If you clicked the link multiple times, your browser is already authorized.
+                  </p>
+                </div>
+
+                {/* Primary Action Button */}
+                <div className="pt-2">
+                  <Link
+                    to="/login"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs rounded-xl border border-neutral-800 transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    Return to Login Hub
+                    <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+
+        </div>
+
+        {/* Footer branding copyright */}
+        <div className="text-center mt-6">
+          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest font-mono">
+            Exam City Secure Port • System Guard Active
+          </p>
         </div>
 
       </div>
