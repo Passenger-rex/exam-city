@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import {
@@ -199,6 +199,8 @@ export default function AuthPage() {
   const [resendStatus, setResendStatus] = useState("");
   const [devActivationLink, setDevActivationLink] = useState("");
   const [devMfaPinLink, setDevMfaPinLink] = useState("");
+  const [devActivationWarning, setDevActivationWarning] = useState("");
+  const [devMfaWarning, setDevMfaWarning] = useState("");
 
   // Device Binding and Location Geolocation Challenge States
   const [mfaChallenge, setMfaChallenge] = useState(false);
@@ -208,6 +210,175 @@ export default function AuthPage() {
   const [ipData, setIpData] = useState<any>(null);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [mfaResendStatus, setMfaResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  // Helper to clear cached authorization states
+  const clearAuthSessionStorage = () => {
+    try {
+      const keys = [
+        "auth_unverifiedUser",
+        "auth_mfaChallenge",
+        "auth_generatedPin",
+        "auth_pendingUser",
+        "auth_ipData",
+        "auth_devActivationLink",
+        "auth_devMfaPinLink",
+        "auth_devActivationWarning",
+        "auth_devMfaWarning",
+        "auth_message",
+        "auth_error"
+      ];
+      keys.forEach(k => sessionStorage.removeItem(k));
+    } catch (e) {
+      console.warn("Failed to clear auth sessionStorage", e);
+    }
+  };
+
+  // Hydrate states from sessionStorage on mount to preserve state across page navigation
+  useEffect(() => {
+    try {
+      const storedUnverified = sessionStorage.getItem("auth_unverifiedUser");
+      if (storedUnverified) setUnverifiedUser(JSON.parse(storedUnverified));
+
+      const storedMfaChallenge = sessionStorage.getItem("auth_mfaChallenge");
+      if (storedMfaChallenge) setMfaChallenge(JSON.parse(storedMfaChallenge));
+
+      const storedGeneratedPin = sessionStorage.getItem("auth_generatedPin");
+      if (storedGeneratedPin) setGeneratedPin(storedGeneratedPin);
+
+      const storedPendingUser = sessionStorage.getItem("auth_pendingUser");
+      if (storedPendingUser) setPendingUser(JSON.parse(storedPendingUser));
+
+      const storedIpData = sessionStorage.getItem("auth_ipData");
+      if (storedIpData) setIpData(JSON.parse(storedIpData));
+
+      const storedDevActivationLink = sessionStorage.getItem("auth_devActivationLink");
+      if (storedDevActivationLink) setDevActivationLink(storedDevActivationLink);
+
+      const storedDevMfaPinLink = sessionStorage.getItem("auth_devMfaPinLink");
+      if (storedDevMfaPinLink) setDevMfaPinLink(storedDevMfaPinLink);
+
+      const storedDevActivationWarning = sessionStorage.getItem("auth_devActivationWarning");
+      if (storedDevActivationWarning) setDevActivationWarning(storedDevActivationWarning);
+
+      const storedDevMfaWarning = sessionStorage.getItem("auth_devMfaWarning");
+      if (storedDevMfaWarning) setDevMfaWarning(storedDevMfaWarning);
+
+      const storedMessage = sessionStorage.getItem("auth_message");
+      if (storedMessage) setMessage(storedMessage);
+
+      const storedError = sessionStorage.getItem("auth_error");
+      if (storedError) setError(storedError);
+    } catch (e) {
+      console.warn("Session storage hydration failed", e);
+    }
+  }, []);
+
+  // Sync state variables to sessionStorage whenever they change
+  useEffect(() => {
+    try {
+      if (unverifiedUser) {
+        sessionStorage.setItem("auth_unverifiedUser", JSON.stringify(unverifiedUser));
+      } else {
+        sessionStorage.removeItem("auth_unverifiedUser");
+      }
+    } catch (e) {}
+  }, [unverifiedUser]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("auth_mfaChallenge", JSON.stringify(mfaChallenge));
+    } catch (e) {}
+  }, [mfaChallenge]);
+
+  useEffect(() => {
+    try {
+      if (generatedPin) {
+        sessionStorage.setItem("auth_generatedPin", generatedPin);
+      } else {
+        sessionStorage.removeItem("auth_generatedPin");
+      }
+    } catch (e) {}
+  }, [generatedPin]);
+
+  useEffect(() => {
+    try {
+      if (pendingUser) {
+        sessionStorage.setItem("auth_pendingUser", JSON.stringify(pendingUser));
+      } else {
+        sessionStorage.removeItem("auth_pendingUser");
+      }
+    } catch (e) {}
+  }, [pendingUser]);
+
+  useEffect(() => {
+    try {
+      if (ipData) {
+        sessionStorage.setItem("auth_ipData", JSON.stringify(ipData));
+      } else {
+        sessionStorage.removeItem("auth_ipData");
+      }
+    } catch (e) {}
+  }, [ipData]);
+
+  useEffect(() => {
+    try {
+      if (devActivationLink) {
+        sessionStorage.setItem("auth_devActivationLink", devActivationLink);
+      } else {
+        sessionStorage.removeItem("auth_devActivationLink");
+      }
+    } catch (e) {}
+  }, [devActivationLink]);
+
+  useEffect(() => {
+    try {
+      if (devMfaPinLink) {
+        sessionStorage.setItem("auth_devMfaPinLink", devMfaPinLink);
+      } else {
+        sessionStorage.removeItem("auth_devMfaPinLink");
+      }
+    } catch (e) {}
+  }, [devMfaPinLink]);
+
+  useEffect(() => {
+    try {
+      if (devActivationWarning) {
+        sessionStorage.setItem("auth_devActivationWarning", devActivationWarning);
+      } else {
+        sessionStorage.removeItem("auth_devActivationWarning");
+      }
+    } catch (e) {}
+  }, [devActivationWarning]);
+
+  useEffect(() => {
+    try {
+      if (devMfaWarning) {
+        sessionStorage.setItem("auth_devMfaWarning", devMfaWarning);
+      } else {
+        sessionStorage.removeItem("auth_devMfaWarning");
+      }
+    } catch (e) {}
+  }, [devMfaWarning]);
+
+  useEffect(() => {
+    try {
+      if (message) {
+        sessionStorage.setItem("auth_message", message);
+      } else {
+        sessionStorage.removeItem("auth_message");
+      }
+    } catch (e) {}
+  }, [message]);
+
+  useEffect(() => {
+    try {
+      if (error) {
+        sessionStorage.setItem("auth_error", error);
+      } else {
+        sessionStorage.removeItem("auth_error");
+      }
+    } catch (e) {}
+  }, [error]);
 
   // Fetch or construct a permanent identifier for browser client
   const getDeviceId = () => {
@@ -257,6 +428,9 @@ export default function AuthPage() {
       if (resData.devLink) {
         setDevActivationLink(resData.devLink);
       }
+      if (resData.warning) {
+        setDevActivationWarning(resData.warning);
+      }
       
       setResendStatus("sent");
       setMessage("A fresh activation link has been sent! Please check your inbox and SPAM folder.");
@@ -285,6 +459,9 @@ export default function AuthPage() {
       const resData = await emailRes.json();
       if (resData.devLink) {
         setDevMfaPinLink(resData.devLink);
+      }
+      if (resData.warning) {
+        setDevMfaWarning(resData.warning);
       }
       setMfaResendStatus("sent");
       setMessage("A secure verification email has been resent successfully!");
@@ -496,6 +673,9 @@ export default function AuthPage() {
             if (resData.devLink) {
               setDevMfaPinLink(resData.devLink);
             }
+            if (resData.warning) {
+              setDevMfaWarning(resData.warning);
+            }
 
             setGeneratedPin(verificationToken);
             setPendingUser({
@@ -527,6 +707,7 @@ export default function AuthPage() {
   }, [reason, mfaChallenge, pendingUser]);
 
   const handleAuthSuccess = async (userId: string) => {
+    clearAuthSessionStorage();
     const demoDataStr = sessionStorage.getItem("demoResult");
     if (demoDataStr) {
       try {
@@ -643,6 +824,9 @@ export default function AuthPage() {
             if (resData.devLink) {
               setDevActivationLink(resData.devLink);
             }
+            if (resData.warning) {
+              setDevActivationWarning(resData.warning);
+            }
           } catch (sendErr: any) {
             console.error("Auto verification send-welcome-email failed on sign in:", sendErr);
           }
@@ -696,6 +880,9 @@ export default function AuthPage() {
             const resData = await emailRes.json();
             if (resData.devLink) {
               setDevMfaPinLink(resData.devLink);
+            }
+            if (resData.warning) {
+              setDevMfaWarning(resData.warning);
             }
           } catch (fireErr: any) {
             console.error("MFA email or Firestore setup failure:", fireErr);
@@ -809,6 +996,9 @@ export default function AuthPage() {
           const resData = await emailRes.json();
           if (resData.devLink) {
             setDevActivationLink(resData.devLink);
+          }
+          if (resData.warning) {
+            setDevActivationWarning(resData.warning);
           }
         } catch (sendErr: any) {
           console.error("Welcome email dispatch failed:", sendErr);
@@ -987,6 +1177,9 @@ export default function AuthPage() {
           const resData = await emailRes.json();
           if (resData.devLink) {
             setDevMfaPinLink(resData.devLink);
+          }
+          if (resData.warning) {
+            setDevMfaWarning(resData.warning);
           }
 
           setGeneratedPin(verificationToken);
@@ -1230,6 +1423,32 @@ export default function AuthPage() {
                   </ul>
                 </div>
 
+                {devActivationLink && (
+                  <div className="p-4 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2 text-left">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-xs">
+                      <AlertCircle className="w-4 h-4 shrink-0 animate-pulse" />
+                      <span>Developer Sandbox Bypass</span>
+                    </div>
+                    {devActivationWarning ? (
+                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed">
+                        <strong>SMTP Notice:</strong> {devActivationWarning}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed">
+                        If the verification mail fails to deliver or gets rejected due to Resend sandbox domain limits, you can activate your account instantly with this secure link:
+                      </p>
+                    )}
+                    <a
+                      href={devActivationLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white font-bold text-center text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+                    >
+                      Bypass & Verify Email
+                    </a>
+                  </div>
+                )}
+
                 {message && (
                   <div className="p-3.5 bg-green-500/10 border border-green-500/20 text-green-600 rounded-xl text-xs font-semibold text-left animate-fade-in">
                      {message}
@@ -1337,6 +1556,7 @@ export default function AuthPage() {
                         setUnverifiedUser(null);
                         setError("");
                         setMessage("");
+                        clearAuthSessionStorage();
                       }}
                       className="flex-1 py-3 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-xs rounded-xl transition-all active:scale-[0.98] cursor-pointer"
                     >
@@ -1427,6 +1647,32 @@ export default function AuthPage() {
                   </div>
                 )}
 
+                {devMfaPinLink && (
+                  <div className="p-4 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2 mt-2 text-left">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-xs">
+                      <AlertCircle className="w-4 h-4 shrink-0 animate-pulse" />
+                      <span>Developer Sandbox Bypass</span>
+                    </div>
+                    {devMfaWarning ? (
+                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed font-sans">
+                        <strong>SMTP Notice:</strong> {devMfaWarning}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/85 leading-relaxed font-sans">
+                        If the device security verification mail fails or gets blocked by domain/sandbox limits, you can authorize this browser immediately by using this direct link:
+                      </p>
+                    )}
+                    <a
+                      href={devMfaPinLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white font-bold text-center text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+                    >
+                      Authorize & Login Instantly
+                    </a>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     type="button"
@@ -1435,6 +1681,7 @@ export default function AuthPage() {
                       setPendingUser(null);
                       setError("");
                       setMessage("");
+                      clearAuthSessionStorage();
                     }}
                     className="flex-1 py-3.5 bg-surface border border-outline-variant hover:bg-surface-dim text-on-surface font-bold text-sm rounded-xl transition-all active:scale-[0.98] cursor-pointer text-center"
                   >
@@ -1512,11 +1759,11 @@ export default function AuthPage() {
 
         <p className="text-center mt-8 text-on-surface-variant font-medium text-sm">
           By continuing, you agree to our{" "}
-          <Link to="/terms" className="text-primary hover:underline">
+          <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link to="/privacy" className="text-primary hover:underline">
+          <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
             Privacy Policy
           </Link>
           .

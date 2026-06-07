@@ -56,10 +56,29 @@ async function sendResendEmail(payload: {
   const resend = getResend();
   if (!resend) return { error: { message: "Resend not configured" } };
 
-  // 1. Try sending with the customized domain
+  // Support overrides for custom verified sending domains
+  let finalFrom = payload.from;
+  if (process.env.RESEND_FROM_EMAIL) {
+    const customEmail = process.env.RESEND_FROM_EMAIL.trim();
+    if (customEmail.includes("<")) {
+      finalFrom = customEmail;
+    } else {
+      const displayNameMatch = payload.from.match(/^([^<]+)/);
+      const displayName = displayNameMatch ? displayNameMatch[1].trim() : "Exam City";
+      finalFrom = `${displayName} <${customEmail}>`;
+    }
+  }
+
+  const finalPayload = {
+    ...payload,
+    from: finalFrom,
+  };
+
+  // 1. Try sending with the customized domain / RESEND_FROM_EMAIL
   try {
-    const { data, error } = await resend.emails.send(payload);
+    const { data, error } = await resend.emails.send(finalPayload);
     if (!error) {
+      console.log(`[Resend OK] Successfully sent email to ${payload.to} from ${finalFrom}`);
       return { data, error: null };
     }
     console.warn("Primary email send failed/rejected. Retrying with onboarding@resend.dev. Error:", error);
@@ -77,6 +96,8 @@ async function sendResendEmail(payload: {
     const { data, error } = await resend.emails.send(fallbackPayload);
     if (error) {
       console.error("Fallback email dispatch failed too:", error);
+    } else {
+      console.log(`[Resend Onboarding Sandbox OK] Sent email to ${payload.to} using onboarding@resend.dev`);
     }
     return { data, error };
   } catch (e: any) {
@@ -311,7 +332,7 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
       return res.json({
         success: true,
         devLink: verificationLink,
-        warning: "Resend failed. Falling back to local verification link."
+        warning: `Resend dispatch failed or was rejected: ${error.message || JSON.stringify(error)}. Falling back to local verification link.`
       });
     }
     res.json({ success: true, devLink: verificationLink });
@@ -368,7 +389,7 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
       return res.json({
         success: true,
         devLink: verificationLink,
-        warning: "Resend failed. Falling back to local verification link."
+        warning: `Resend dispatch failed or was rejected: ${error.message || JSON.stringify(error)}. Falling back to local verification link.`
       });
     }
     res.json({ success: true, devLink: verificationLink });
