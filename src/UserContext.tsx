@@ -5,7 +5,9 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 interface UserProfile {
   tier: "free" | "pro";
   testsTakenThisMonth: number;
-  proType?: "individual" | "group" | "companion" | "referrals";
+  proType?: "individual" | "group" | "companion" | "referrals" | "admin_granted";
+  billingInterval?: "monthly" | "lifetime" | "admin_granted" | "referrals" | null;
+  proExpiresAt?: number | null;
   groupAdminUid?: string | null;
   groupMembers?: string[] | null;
   tutorQueriesUsed?: number;
@@ -168,7 +170,31 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           let userProType = data.proType || "individual";
           let groupAdminUid = data.groupAdminUid || null;
           let groupMembers = data.groupMembers || null;
-          
+          let billingInterval = data.billingInterval || null;
+          const rawExpiresAt = data.proExpiresAt;
+          const expiresAt = rawExpiresAt ? (rawExpiresAt.toDate ? rawExpiresAt.toDate().getTime() : Number(rawExpiresAt || 0)) : null;
+
+          // Check expiration for monthly plans
+          if (currentTier === "pro" && billingInterval === "monthly" && expiresAt && Date.now() > expiresAt) {
+             const isSpecialUser = (user.email && PRO_EMAILS.includes(user.email.toLowerCase())) || PRO_UIDS.includes(user.uid);
+             if (!isSpecialUser) {
+               console.warn("Monthly subscription has expired! Demoting to free tier.");
+               currentTier = "free";
+               userProType = "individual";
+               billingInterval = null;
+               // Update Firestore in real-time to sync to all other devices seamlessly
+               import("firebase/firestore").then(({ updateDoc }) => {
+                   updateDoc(userRef, { 
+                     tier: "free",
+                     proType: null,
+                     billingInterval: null,
+                     proExpiresAt: null,
+                     groupMembers: null
+                   }).catch(e => console.error("Error auto-demoting expired subscriber:", e));
+               });
+             }
+          }
+
           // Clear guest limit immediately if user is pro
           if (currentTier === "pro") {
             localStorage.removeItem('guestExamCount');
@@ -179,6 +205,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
             tier: currentTier,
             testsTakenThisMonth: Number(data.examCount || 0),
             proType: userProType,
+            billingInterval,
+            proExpiresAt: expiresAt,
             groupAdminUid,
             groupMembers,
             tutorQueriesUsed: Number(data.tutorQueriesUsed || 0),

@@ -17,6 +17,8 @@ exports.onUserCreated = regionalFunctions.auth.user().onCreate(async (user) => {
       email: user.email || "",
       displayName: user.displayName || "Student",
       subscription_status: "free",
+      role: "free",
+      tier: "free",
       total_exams_taken: 0,
       average_score: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -193,8 +195,15 @@ exports.verifyFlutterwaveWebhook = regionalFunctions.https.onRequest(async (req,
       const uid = uidMatch ? uidMatch[1] : null;
 
       if (uid) {
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 1); // 1-month duration
         await db.collection("users").doc(uid).set({
           subscription_status: "premium",
+          role: "premium",
+          tier: "pro",
+          proType: "individual",
+          billingInterval: "monthly",
+          proExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
           premiumUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
         console.log(`User ${uid} upgraded to premium via webhook.`);
@@ -208,3 +217,148 @@ exports.verifyFlutterwaveWebhook = regionalFunctions.https.onRequest(async (req,
 
   return res.status(200).send("Event ignored");
 });
+
+// Automatically sync & demote expired users whose one-month premium plan has expired
+exports.scheduledSubscriptionSync = regionalFunctions.pubsub.schedule("every 12 hours").onRun(async (context) => {
+  const now = admin.firestore.Timestamp.now();
+  try {
+    const expiredUsersSnapshot = await db.collection("users")
+      .where("tier", "==", "pro")
+      .where("billingInterval", "==", "monthly")
+      .get();
+
+    console.log(`Scheduled Subscription sync checking ${expiredUsersSnapshot.size} potential expired monthly subscribers.`);
+    
+    let expiredCount = 0;
+    const batch = db.batch();
+
+    expiredUsersSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      let expiresAtVal = null;
+      if (data.proExpiresAt) {
+        expiresAtVal = data.proExpiresAt.toDate ? data.proExpiresAt.toDate() : new Date(data.proExpiresAt);
+      }
+
+      if (expiresAtVal && expiresAtVal < now.toDate()) {
+        const userRef = doc.ref;
+        batch.set(userRef, {
+          subscription_status: "free",
+          role: "free",
+          tier: "free",
+          proType: null,
+          billingInterval: null,
+          proExpiresAt: null,
+          groupMembers: null,
+          demotedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        expiredCount++;
+        console.log(`User ${doc.id} subscription expired on ${expiresAtVal.toISOString()}. Scheduled for demotion.`);
+      }
+    });
+
+    if (expiredCount > 0) {
+      await batch.commit();
+      console.log(`Successfully updated ${expiredCount} expired subscriptions to 'free'.`);
+    } else {
+      console.log("No expired subscriptions detected.");
+    }
+  } catch (error) {
+    console.error("Error in scheduled subscription sync:", error);
+  }
+  return null;
+});
+
+// Listener on 'payments' collection updates
+exports.onPaymentUpdated = regionalFunctions.firestore
+  .document("payments/{paymentId}")
+  .onWrite(async (change, context) => {
+    const data = change.after.exists ? change.after.data() : null;
+    if (!data) return null;
+
+    // Trigger only if payment status is verified/successful
+    if (data.status === "verified" || data.status === "successful" || data.status === "completed") {
+      const uid = data.userId || data.uid;
+      if (!uid) {
+        console.error("No valid user ID found in payment details for:", context.params.paymentId);
+        return null;
+      }
+
+      // Handle raw timestamp or firestore Timestamp
+      const paymentTime = data.updatedAt || data.createdAt || admin.firestore.FieldValue.serverTimestamp();
+      let baseDate = new Date();
+      if (paymentTime && paymentTime.toDate) {
+        baseDate = paymentTime.toDate();
+      } else if (paymentTime) {
+        baseDate = new Date(paymentTime);
+        if (isNaN(baseDate.getTime())) {
+          baseDate = new Date();
+        }
+      }
+
+      // Expiration 30 days from transaction timestamp
+      const expiresAt = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      await db.collection("users").doc(uid).set({
+        subscription_status: "premium",
+        role: "premium",
+        tier: "pro",
+        proType: "individual",
+        billingInterval: "monthly",
+        proExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        premiumUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      console.log(`User ${uid} successfully upgraded to 'premium' for 30 days based on payment ${context.params.paymentId}`);
+    }
+    return null;
+  });
+
+// Daily scheduled trigger to identify expired subscriptions and revert their role to 'free'
+exports.scheduledDailySubscriptionSync = regionalFunctions.pubsub.schedule("every 24 hours").onRun(async (context) => {
+  const now = admin.firestore.Timestamp.now();
+  try {
+    // Look up users that are currently premium or pro and check expiration
+    const activePremiumUsers = await db.collection("users")
+      .where("role", "==", "premium")
+      .get();
+
+    console.log(`Daily Subscription checker scanning ${activePremiumUsers.size} premium users.`);
+
+    let expiredCount = 0;
+    const batch = db.batch();
+
+    activePremiumUsers.docs.forEach(doc => {
+      const data = doc.data();
+      let expiresAtVal = null;
+      if (data.proExpiresAt) {
+        expiresAtVal = data.proExpiresAt.toDate ? data.proExpiresAt.toDate() : new Date(data.proExpiresAt);
+      }
+
+      if (expiresAtVal && expiresAtVal < now.toDate()) {
+        batch.set(doc.ref, {
+          subscription_status: "free",
+          role: "free",
+          tier: "free",
+          proType: null,
+          billingInterval: null,
+          proExpiresAt: null,
+          groupMembers: null,
+          demotedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        expiredCount++;
+        console.log(`Daily check: User ${doc.id} expired at ${expiresAtVal.toISOString()}. Reverting to free.`);
+      }
+    });
+
+    if (expiredCount > 0) {
+      await batch.commit();
+      console.log(`Daily clean completed: Reverted ${expiredCount} expired users to free.`);
+    } else {
+      console.log("Daily clean: No expired subscriptions found today.");
+    }
+  } catch (error) {
+    console.error("Daily clean error:", error);
+  }
+  return null;
+});
+

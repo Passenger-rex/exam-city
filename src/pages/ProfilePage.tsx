@@ -659,6 +659,234 @@ export default function ProfilePage() {
                 )}
               </div>
 
+              {/* Subscription Plan Simulator Panel & Details */}
+              <div className="mt-10 pt-8 border-t border-outline-variant/30 text-left">
+                <div className="bg-gradient-to-r from-primary/5 via-violet-500/5 to-primary/5 border border-outline-variant/60 rounded-[24px] p-6 sm:p-8 relative overflow-hidden shadow-sm">
+                  <div className="relative z-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl sm:text-2xl font-bold font-headline-md flex items-center gap-2 text-on-surface">
+                          <CheckCircle2 className="w-6 h-6 text-primary" />
+                          Subscription &amp; Payment Status
+                        </h2>
+                        <p className="text-on-surface-variant text-sm font-medium mt-1">
+                          Manage and simulate real-time subscription lifecycle transitions.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-surface-dim px-3 py-1.5 rounded-full border border-outline-variant/40 shadow-xs">
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Sandbox Pro</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!auth.currentUser) return;
+                              const newTier = profile?.tier === "pro" ? "free" : "pro";
+                              try {
+                                const userRef = doc(db, "users", auth.currentUser.uid);
+                                if (newTier === "pro") {
+                                  await setDoc(userRef, { 
+                                    tier: "pro",
+                                    proType: "individual",
+                                    billingInterval: "monthly",
+                                    proExpiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000)
+                                  }, { merge: true });
+                                  setMessage("Sandbox: Upgraded to Monthly Pro Tier!");
+                                } else {
+                                  await setDoc(userRef, { 
+                                    tier: "free",
+                                  }, { merge: true });
+                                  setMessage("Sandbox: Demoted to Free Tier!");
+                                }
+                              } catch (err: any) {
+                                setError("Failed to toggle tier: " + err.message);
+                              }
+                            }}
+                            aria-label="Toggle profile subscription tier"
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              profile?.tier === "pro" ? "bg-primary" : "bg-neutral-300 dark:bg-neutral-700"
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                profile?.tier === "pro" ? "translate-x-4" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {profile?.tier === "pro" ? (
+                          <span className="px-3.5 py-1.5 bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                            <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            PRO TIER
+                          </span>
+                        ) : (
+                          <span className="px-3.5 py-1.5 bg-surface-dim text-on-surface-variant border border-outline-variant/60 rounded-full text-xs font-black uppercase tracking-widest">
+                            FREE TIER
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-outline-variant/40">
+                      {/* Subscription details block */}
+                      <div className="space-y-4">
+                        <div className="bg-surface/50 p-4 rounded-2xl border border-outline-variant/40">
+                          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Member Account info</p>
+                          <div className="space-y-2.5 text-xs font-medium">
+                            <div className="flex justify-between">
+                              <span className="text-on-surface-variant">Active Level:</span>
+                              <span className="font-bold text-on-surface uppercase">{profile?.tier}</span>
+                            </div>
+                            {profile?.tier === "pro" && (
+                              <>
+                                <div className="flex justify-between">
+                                  <span className="text-on-surface-variant">Billing Type:</span>
+                                  <span className="font-bold text-primary uppercase">{profile?.billingInterval || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-on-surface-variant">Pro Category:</span>
+                                  <span className="font-bold text-on-surface uppercase">{profile?.proType}</span>
+                                </div>
+                                {profile?.proExpiresAt ? (
+                                  <>
+                                    <div className="flex justify-between">
+                                      <span className="text-on-surface-variant">Expiry Date:</span>
+                                      <span className="font-bold text-red-500">{new Date(profile.proExpiresAt).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-1 border-t border-outline-variant/20">
+                                      <span className="text-on-surface-variant">Days Remaining:</span>
+                                      <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-extrabold rounded-md text-[10px]">
+                                        {Math.max(0, Math.ceil((profile.proExpiresAt - Date.now()) / (1000 * 60 * 60 * 24)))} days left
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex justify-between">
+                                    <span className="text-on-surface-variant">Access Status:</span>
+                                    <span className="font-bold text-emerald-500 uppercase">Lifetime / Permanent</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {profile?.tier === "free" && (
+                              <div className="text-on-surface-variant text-[11px] font-semibold flex items-center gap-1.5 mt-2 bg-primary/5 p-2 rounded-xl border border-primary/10">
+                                <AlertCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                                Upgrade today to unlock prediction models and unlimited Mock simulator checks!
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Sandbox Simulator tools block */}
+                      <div className="space-y-4">
+                        <div className="bg-surface/50 p-4 rounded-2xl border border-outline-variant/40 flex flex-col justify-between h-full">
+                          <div>
+                            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Billing Simulator sandbox</p>
+                            <p className="text-xs font-semibold text-on-surface-variant leading-relaxed">
+                              Simulate time-lapse expiry transitions instantly. Click actions below to sync states with the cloud.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2.5 mt-4">
+                            {profile?.tier === "pro" && profile?.billingInterval === "monthly" && profile?.proExpiresAt && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!auth.currentUser) return;
+                                    try {
+                                      const userRef = doc(db, "users", auth.currentUser.uid);
+                                      await setDoc(userRef, { 
+                                        proExpiresAt: Date.now() - 5000 // force elapsed/expired
+                                      }, { merge: true });
+                                      setMessage("Simulation Success: Monthly plan expired! Demotion sync will run immediately.");
+                                    } catch (err: any) {
+                                      setError("Simulation failed: " + err.message);
+                                    }
+                                  }}
+                                  className="flex-1 py-2.5 px-4 bg-outline-variant text-on-surface hover:bg-neutral-200 dark:hover:bg-neutral-800 border border-outline-variant rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center"
+                                >
+                                  Simulate Monthly Expiry Now
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!auth.currentUser) return;
+                                    try {
+                                      const userRef = doc(db, "users", auth.currentUser.uid);
+                                      const currentExpiry = profile?.proExpiresAt || Date.now();
+                                      await setDoc(userRef, { 
+                                        proExpiresAt: currentExpiry + (30 * 24 * 60 * 60 * 1000) // add 30 days
+                                      }, { merge: true });
+                                      setMessage("Simulation Success: Subscribed monthly pass renewed for another 30 days!");
+                                    } catch (err: any) {
+                                      setError("Simulation failed: " + err.message);
+                                    }
+                                  }}
+                                  className="flex-1 py-2.5 px-4 bg-primary text-white hover:bg-primary/95 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center"
+                                >
+                                  Renew Monthly/Add 30 Days
+                                </button>
+                              </>
+                            )}
+
+                            {profile?.tier === "free" && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!auth.currentUser) return;
+                                  try {
+                                    const userRef = doc(db, "users", auth.currentUser.uid);
+                                    await setDoc(userRef, { 
+                                      tier: "pro",
+                                      proType: "individual",
+                                      billingInterval: "monthly",
+                                      proExpiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+                                    }, { merge: true });
+                                    setMessage("Simulation Success: Upgraded to Monthly Pro Premium! Sync complete.");
+                                  } catch (err: any) {
+                                    setError("Simulation failed: " + err.message);
+                                  }
+                                }}
+                                className="w-full py-2.5 px-4 bg-primary text-white hover:bg-primary/95 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center"
+                              >
+                                Simulate Paying 1-Month Premium Pass
+                              </button>
+                            )}
+
+                            {profile?.tier === "pro" && profile?.billingInterval === "lifetime" && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!auth.currentUser) return;
+                                  try {
+                                    const userRef = doc(db, "users", auth.currentUser.uid);
+                                    await setDoc(userRef, { 
+                                      tier: "pro",
+                                      proType: "individual",
+                                      billingInterval: "monthly",
+                                      proExpiresAt: Date.now() + (10 * 1000) // expires in 10 seconds!
+                                    }, { merge: true });
+                                    setMessage("Simulation Success: Shifted lifetime status to Monthly pass expiring in 10 seconds! Wait for auto-demotion fallback.");
+                                  } catch (err: any) {
+                                    setError("Simulation failed: " + err.message);
+                                  }
+                                }}
+                                className="w-full py-2.5 px-4 bg-amber-500 text-white hover:bg-amber-600 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center"
+                              >
+                                Downgrade Lifetime to Monthly Pass (Expires in 10s)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
               {/* Study Group Premium Panel */}
               {profile?.tier === "pro" && profile?.proType === "group" && (
                 <div className="mt-10 pt-8 border-t border-outline-variant/30">

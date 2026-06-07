@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { Check, Shield, Lock, ChevronLeft, Zap, ArrowRight, Star, Users, User } from "lucide-react";
+import { Check, Shield, Lock, ChevronLeft, Zap, ArrowRight, Users, User, CircleCheck } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
@@ -15,13 +15,52 @@ export default function CheckoutPage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [transactionId, setTransactionId] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"individual" | "group">("individual");
+  const [isLifetime, setIsLifetime] = useState(true);
 
   const flutterwaveKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || "";
+
+  const plans = [
+    {
+      id: "individual" as const,
+      name: "Individual Pro",
+      description: "Lifetime private coaching and ultimate diagnostic exams just for you.",
+      monthlyPrice: "₦490",
+      lifetimePrice: "₦1,500",
+      features: [
+        { text: "Unlimited premium mock exams" },
+        { text: "Advanced AI-powered diagnostics" },
+        { text: "Ad-free premium simulator" },
+        { text: "Personal study metric indicators" },
+      ],
+    },
+    {
+      id: "group" as const,
+      name: "Study Group Premium",
+      description: "Link and share premium access with up to 5 student accounts under a single plan.",
+      monthlyPrice: "₦1,190",
+      lifetimePrice: "₦3,500",
+      features: [
+        { text: "Unlimited premium mock exams" },
+        { text: "Advanced AI-powered diagnostics" },
+        { text: "Ad-free premium simulator" },
+        { text: "Link up to 4 companion emails" },
+        { text: "Dedicated administrator controls" },
+      ],
+    }
+  ];
+
+  const getAmount = () => {
+    if (selectedPlan === "group") {
+      return isLifetime ? 3500 : 1190;
+    } else {
+      return isLifetime ? 1500 : 490;
+    }
+  };
 
   const config = {
     public_key: flutterwaveKey || "FLWPUBK_TEST-SANDBOXDEMOKEY-X",
     tx_ref: Date.now().toString(),
-    amount: selectedPlan === "group" ? 3500 : 1500,
+    amount: getAmount(),
     currency: "NGN",
     payment_options: "card,mobilemoney,ussd",
     customer: {
@@ -30,10 +69,10 @@ export default function CheckoutPage() {
       name: user?.displayName || "User",
     },
     customizations: {
-      title: selectedPlan === "group" ? "Study Group Premium" : "Pro Lifetime Subscription",
+      title: selectedPlan === "group" ? "Study Group Premium" : "Pro Premium",
       description: selectedPlan === "group" 
-        ? "Lifetime Group Access for 5 students tied to one account" 
-        : "Lifetime Individual access to high-tier AI capabilities",
+        ? `${isLifetime ? "Lifetime" : "Monthly"} Group Access for 5 students` 
+        : `${isLifetime ? "Lifetime" : "Monthly"} Individual access to premium capabilities`,
       logo: "https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg",
     },
   };
@@ -52,15 +91,18 @@ export default function CheckoutPage() {
       return;
     }
 
+    setLoading(true);
+
     handleFlutterPayment({
       callback: async (response) => {
         if (response.status === "successful" || response.status === "completed") {
-          setLoading(true);
           try {
             const userRef = doc(db, "users", user.uid);
             await setDoc(userRef, { 
               tier: "pro",
               proType: selectedPlan,
+              billingInterval: isLifetime ? "lifetime" : "monthly",
+              proExpiresAt: isLifetime ? null : Date.now() + 30 * 24 * 60 * 60 * 1000,
               groupAdminUid: user.uid,
               // Group plan holds up to 5 members (admin + 4 companions)
               groupMaxUsers: 5,
@@ -70,6 +112,7 @@ export default function CheckoutPage() {
             closePaymentModal();
             setTransactionId(response.transaction_id + "");
             setPaymentSuccess(true);
+            setLoading(false);
             
             // Navigate faster for "immediate" feel
             setTimeout(() => {
@@ -81,9 +124,12 @@ export default function CheckoutPage() {
           }
         } else {
           alert("Payment was not successful. Status: " + response.status);
+          setLoading(false);
         }
       },
-      onClose: () => {},
+      onClose: () => {
+        setLoading(false);
+      },
     });
   };
 
@@ -101,25 +147,27 @@ export default function CheckoutPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
-            className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100/50"
+            className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-emerald-100/50 dark:bg-emerald-950/30 dark:text-emerald-400"
           >
-            <Check className="w-12 h-12" />
+            <Check className="w-10 h-10" />
           </motion.div>
-          <h2 className="text-4xl font-extrabold font-headline-xl text-on-surface mb-3 tracking-tight">Payment Successful</h2>
-          <p className="text-on-surface-variant text-lg font-medium mb-8">
+          <h2 className="text-3xl font-extrabold font-headline-xl text-on-surface mb-3 tracking-tight">Payment Successful</h2>
+          <p className="text-on-surface-variant text-base font-medium mb-8">
             Welcome to the Pro tier! Your premium features are now active.
           </p>
           <div className="bg-surface-dim/50 rounded-2xl p-6 mb-8 text-left border border-outline-variant/50 relative overflow-hidden backdrop-blur-sm">
-             <div className="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none text-emerald-900">
-                <Check className="w-32 h-32" />
-             </div>
+            <div className="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none text-emerald-900">
+              <Check className="w-32 h-32" />
+            </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-on-surface-variant font-medium">Amount Paid</span>
-              <span className="font-bold text-lg">₦{(selectedPlan === "group" ? 3500 : 1500).toLocaleString()}</span>
+              <span className="font-bold text-lg text-on-surface">₦{getAmount().toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-on-surface-variant font-medium">Subscription</span>
-              <span className="font-bold text-primary">{selectedPlan === "group" ? "Study Group Premium" : "Individual Lifetime Access"}</span>
+              <span className="font-bold text-primary">
+                {selectedPlan === "group" ? "Study Group Premium" : "Individual Pro"} ({isLifetime ? "Lifetime" : "Monthly"})
+              </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-on-surface-variant font-medium">Transaction ID</span>
@@ -136,222 +184,201 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-body-md text-on-background selection:bg-primary/20 selection:text-primary pb-20">
+    <div className="min-h-screen bg-background flex flex-col font-body-md text-on-background selection:bg-primary/20 selection:text-primary pb-16">
       {/* Navigation */}
-      <nav className="px-6 py-5 md:px-10 md:py-6 flex items-center justify-between border-b border-outline-variant/30 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+      <nav className="px-4 py-3 sm:px-6 sm:py-4 md:px-10 flex items-center justify-between border-b border-outline-variant/30 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <Logo />
         <button 
           onClick={() => navigate(-1)} 
-          className="text-sm font-semibold text-on-surface-variant hover:text-on-surface flex items-center gap-2 group transition-colors bg-surface hover:bg-surface-dim px-4 py-2 rounded-full border border-outline-variant/50"
+          className="text-[11px] sm:text-xs font-bold text-on-surface-variant hover:text-on-surface flex items-center gap-1.5 group transition-colors bg-surface hover:bg-surface-dim px-3.5 py-1.5 rounded-full border border-outline-variant/50 cursor-pointer"
         >
-          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
           Back
         </button>
       </nav>
 
-      <main className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 pt-8 md:pt-16 pb-24 px-6 md:px-10">
-        
-        {/* Left Column: Actions & Form */}
-        <div className="lg:col-span-7 flex flex-col order-1">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="text-3xl md:text-4xl font-headline-lg font-bold mb-3 text-on-surface tracking-tight">
-              Complete your purchase
-            </h1>
-            <p className="text-on-surface-variant text-base mb-10">
-              Unlock unlimited mock exams, advanced analytics, and premium question banks.
-            </p>
-
-            {/* Account Details Panel */}
-            <div className="mb-8">
-              <h3 className="text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">Account Information</h3>
-              <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface flex items-center justify-between w-full shadow-sm">
-                <div className="flex items-center gap-4 w-full">
-                  {userLoading ? (
-                    <div className="w-10 h-10 rounded-full bg-outline-variant/30 animate-pulse shrink-0" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
-                      {user?.email?.charAt(0).toUpperCase() || "U"}
-                    </div>
-                  )}
-                  <div className="flex flex-col min-w-0 flex-1">
-                    {userLoading ? (
-                       <>
-                         <div className="h-4 w-24 bg-outline-variant/30 animate-pulse rounded mb-1" />
-                         <div className="h-3 w-40 bg-outline-variant/20 animate-pulse rounded" />
-                       </>
-                    ) : (
-                       <>
-                         <span className="font-semibold text-on-surface text-sm">{user?.displayName || "Student Account"}</span>
-                         <span className="text-sm text-on-surface-variant truncate">{user?.email || "user@example.com"}</span>
-                       </>
-                    )}
-                  </div>
-                  <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap self-center hidden sm:block">
-                    Current User
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-px w-full bg-outline-variant/40 my-8" />
-
-            {/* Plan Selector */}
-            <div className="mb-10">
-              <h3 className="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-wider">Choose subscription plan</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Individual Plan */}
-                <div 
-                  onClick={() => setSelectedPlan("individual")}
-                  className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${selectedPlan === "individual" ? "bg-primary/[0.03] border-primary shadow-sm" : "bg-surface border-outline-variant/60 hover:bg-surface-dim"}`}
-                >
-                  {selectedPlan === "individual" && (
-                    <span className="absolute top-3 right-3 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3" />
-                    </span>
-                  )}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`p-2 rounded-lg ${selectedPlan === "individual" ? "bg-primary/10 text-primary" : "bg-surface-dim text-on-surface-variant"}`}>
-                        <User className="w-4 h-4" />
-                      </div>
-                      <span className="font-bold text-sm text-on-surface">Individual Pro</span>
-                    </div>
-                    <p className="text-xs text-on-surface-variant/80 font-medium leading-relaxed mb-6">
-                      Lifetime private coaching and ultimate diagnostic exams just for you.
-                    </p>
-                  </div>
-                  <div className="flex items-baseline gap-1 mt-auto">
-                    <span className="text-2xl font-black text-on-surface">₦1,500</span>
-                    <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase">one-time</span>
-                  </div>
-                </div>
-
-                {/* Group Plan */}
-                <div 
-                  onClick={() => setSelectedPlan("group")}
-                  className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${selectedPlan === "group" ? "bg-primary/[0.03] border-primary shadow-md" : "bg-surface border-outline-variant/60 hover:bg-surface-dim"}`}
-                >
-                  <span className="absolute -top-3 left-4 bg-amber-500 text-white text-[8px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider animate-pulse shadow-sm">
-                    Best Value
-                  </span>
-                  {selectedPlan === "group" && (
-                    <span className="absolute top-3 right-3 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3" />
-                    </span>
-                  )}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`p-2 rounded-lg ${selectedPlan === "group" ? "bg-primary/10 text-primary" : "bg-surface-dim text-on-surface-variant"}`}>
-                        <Users className="w-4 h-4" />
-                      </div>
-                    <span className="font-bold text-sm text-on-surface">Study Group Premium</span>
-                    </div>
-                    <p className="text-xs text-on-surface-variant/80 font-medium leading-relaxed mb-6">
-                      Link and share premium access with up to 5 student accounts under a single plan.
-                    </p>
-                  </div>
-                  <div className="flex items-baseline gap-1 mt-auto">
-                    <span className="text-2xl font-black text-on-surface">₦3,500</span>
-                    <span className="text-[10px] text-on-surface-variant/80 font-bold uppercase">one-time</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Payment Section */}
-            <div className="space-y-5">
-              <h3 className="text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">Payment Details</h3>
-              <p className="text-sm text-on-surface-variant mb-6">Payment is securely processed by Flutterwave.</p>
-              
-              <button 
-                onClick={handleUpgrade}
-                disabled={loading || userLoading}
-                className="w-full h-14 bg-primary text-on-primary font-bold text-base rounded-xl hover:bg-primary/95 transition-all shadow-sm flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading || userLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    Pay ₦{selectedPlan === "group" ? "3,500" : "1,500"}
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
-              </button>
-              
-              <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant mt-4">
-                <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Secure encrypted transaction</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-        
-        {/* Right Column: Order Summary */}
-        <div className="lg:col-span-5 order-2">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-surface border border-outline-variant/50 rounded-2xl p-6 lg:p-8 shadow-sm lg:sticky lg:top-28"
-          >
-            <h2 className="text-lg font-bold font-headline-md mb-6 text-on-surface flex items-center gap-2">
-              <Star className="w-5 h-5 text-primary" />
-              Order Summary
+      <section className="py-8 md:py-12">
+        <div className="container max-w-5xl mx-auto px-4 sm:px-6">
+          {/* Header section with professional balanced text alignment */}
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-2.5 text-center mb-8 md:mb-10">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full">
+              Premium Upgrade
+            </span>
+            <h2 className="text-xl sm:text-2xl md:text-3.5xl font-black tracking-tight text-on-surface leading-tight mt-1.5">
+              Elevate Your Preparation
             </h2>
+            <div className="w-12 h-1 bg-primary/20 rounded-full my-1"></div>
+            <p className="text-on-surface-variant text-[11px] sm:text-xs md:text-sm max-w-2xl mx-auto leading-relaxed text-center font-medium px-2 sm:px-6">
+              Unlock unlimited interactive mock exams, advanced diagnostic metrics, deep study coach reasoning, and premium simulators instantly.
+            </p>
+          </div>
+
+          {/* Unified Bento Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch w-full max-w-5xl mx-auto select-none">
             
-            <div className="flex flex-col">
-              <div className="flex items-start gap-4 mb-6 pb-6 border-b border-outline-variant/30">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-                   <Zap className="w-6 h-6" />
-                </div>
-                <div>
-                   <h3 className="font-semibold text-base mb-0.5 text-on-surface">Pro Subscription</h3>
-                   <p className="text-on-surface-variant text-sm">
-                     {selectedPlan === "group" ? "Study Group (5 slots)" : "Individual Plan"}
-                   </p>
-                </div>
-              </div>
-              
-              <div className="space-y-3 font-medium mb-6 pb-6 border-b border-outline-variant/30 text-sm">
-                <div className="flex justify-between items-center text-on-surface-variant">
-                   <span>Subtotal</span>
-                   <span className="text-on-surface">₦{selectedPlan === "group" ? "3,500" : "1,500"}</span>
-                </div>
-                <div className="flex justify-between items-center text-on-surface-variant">
-                   <span>Taxes & Fees</span>
-                   <span className="text-on-surface">₦0</span>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-end mb-8">
-                <span className="text-sm font-semibold text-on-surface-variant">Total</span>
-                <div className="flex items-baseline gap-1 text-on-surface">
-                   <span className="text-sm font-medium text-on-surface-variant">NGN</span>
-                   <span className="text-3xl font-bold tracking-tight">₦{selectedPlan === "group" ? "3,500" : "1,500"}</span>
-                </div>
-              </div>
-              
-              <div className="bg-surface-dim/30 rounded-xl p-5 border border-outline-variant/30 space-y-3 mt-auto">
-                <h4 className="text-xs font-semibold text-on-surface uppercase tracking-wider mb-3">Includes:</h4>
-                {[
-                  "Unlimited premium exams",
-                  "Advanced AI recommendations",
-                  "Ad-free premium simulator",
-                  selectedPlan === "group" ? "Tie 4 friend accounts to your subscription" : "Personal study metric indicators",
-                ].map((feat, i) => (
-                  <div key={i} className="flex items-center gap-2.5 text-on-surface-variant text-sm">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>{feat}</span>
+            {/* Bento Module 1: Settings & Trust */}
+            <div className="bg-surface border border-outline-variant/40 rounded-[24px] p-5 sm:p-6 flex flex-col justify-between gap-6 transition-all shadow-xs">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary block mb-3 leading-none">Billing Settings</span>
+                
+                {/* Interval Toggle Switch */}
+                <div className="flex flex-col gap-3 bg-surface-dim/40 border border-outline-variant/30 rounded-[20px] p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest leading-none">Select Interval</span>
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span className={`text-[11px] sm:text-xs font-extrabold transition-colors duration-200 ${!isLifetime ? 'text-primary' : 'text-on-surface-variant'}`}>
+                      Monthly Pass
+                    </span>
+                    <button
+                      onClick={() => setIsLifetime(!isLifetime)}
+                      aria-label="Toggle subscription interval"
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        isLifetime ? "bg-primary" : "bg-neutral-300 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          isLifetime ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-[11px] sm:text-xs font-extrabold transition-colors duration-200 flex items-center gap-1 ${isLifetime ? 'text-primary' : 'text-on-surface-variant'}`}>
+                      Lifetime
+                      <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 rounded-full uppercase tracking-wider scale-90">
+                        Save
+                      </span>
+                    </span>
                   </div>
-                ))}
+                </div>
+              </div>
+
+              {/* Active Profile Info */}
+              <div className="space-y-4">
+                <div className="bg-surface-dim/40 border border-outline-variant/30 rounded-[20px] p-4 flex flex-col gap-2.5">
+                  <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest leading-none">Active Profile</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {userLoading ? (
+                      <div className="w-8 h-8 rounded-full bg-outline-variant/20 animate-pulse shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                        {user?.email?.charAt(0).toUpperCase() || "U"}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-on-surface truncate leading-none">{user?.email || "user@example.com"}</p>
+                      <span className="text-[9px] text-emerald-600 font-extrabold tracking-widest uppercase mt-1.5 block leading-none">Session Active</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Secure Badge */}
+                <div className="flex items-start gap-2 text-[10px] sm:text-xs text-on-surface-variant bg-surface-dim/35 p-3.5 rounded-[20px] border border-outline-variant/20">
+                  <Shield className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <span className="leading-snug font-medium">Secure checkout powered by Flutterwave TLS.</span>
+                </div>
               </div>
             </div>
-          </motion.div>
-        </div>
 
-      </main>
+            {/* Bento Module 2 & 3: Plan Selection Grid */}
+            {plans.map((plan) => {
+              const isSelected = selectedPlan === plan.id;
+              const currentPrice = isLifetime ? plan.lifetimePrice : plan.monthlyPrice;
+              const renewalText = isLifetime 
+                ? "Full premium access forever" 
+                : "Billed monthly, cancel anytime";
+
+              return (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlan(plan.id)}
+                  className={`flex flex-col justify-between text-left rounded-[24px] border p-5 sm:p-6 transition-all relative cursor-pointer ${
+                    isSelected
+                      ? "bg-surface border-primary ring-2 ring-primary/25 shadow-md scale-[1.01]"
+                      : "bg-surface border-outline-variant/60 hover:border-primary/40 hover:scale-[1.005] shadow-xs"
+                  }`}
+                >
+                  {/* Selected Indicator */}
+                  {isSelected && (
+                    <span className="absolute top-5 right-5 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center shadow-md">
+                      <Check className="w-3 h-3" />
+                    </span>
+                  )}
+
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-primary block mb-1">
+                      {plan.id === "group" ? "Multi-Account" : "Single Account"}
+                    </span>
+                    <span className="text-sm sm:text-base md:text-lg font-black text-on-surface">{plan.name}</span>
+                    <p className="text-[10px] sm:text-[11px] md:text-xs text-on-surface-variant mt-2 leading-relaxed min-h-[44px]">
+                      {plan.description}
+                    </p>
+                    
+                    <div className="flex items-baseline gap-1 mt-4">
+                      <span className="text-xl sm:text-2xl md:text-3xl font-black text-on-surface tracking-tight">
+                        {currentPrice}
+                      </span>
+                      <span className="text-[10px] sm:text-xs text-on-surface-variant font-bold">
+                        /{isLifetime ? "one-time" : "month"}
+                      </span>
+                    </div>
+
+                    <p className="text-[9px] sm:text-[10px] text-on-surface-variant/75 font-semibold mt-1">
+                      {renewalText}
+                    </p>
+                  </div>
+
+                  <div className="h-px bg-outline-variant/40 my-4" />
+
+                  <div className="flex-1">
+                    {plan.id === "group" && (
+                      <p className="text-[9px] font-black text-primary mb-2 uppercase tracking-widest leading-none">Everything in Individual plus:</p>
+                    )}
+                    
+                    <ul className="space-y-2">
+                      {plan.features.map((feature, index) => (
+                        <li key={index} className="flex items-start gap-2 text-[10px] sm:text-xs">
+                          <CircleCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                          <span className="text-on-surface-variant font-semibold leading-normal">{feature.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Activation CTA Button with rounded curve */}
+                  <div className="mt-6">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isSelected) {
+                          handleUpgrade();
+                        } else {
+                          setSelectedPlan(plan.id);
+                        }
+                      }}
+                      disabled={loading || userLoading}
+                      className={`w-full py-2.5 px-4 rounded-[16px] font-bold text-xs tracking-wide transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? "bg-primary text-on-primary hover:bg-primary/95 shadow-md shadow-primary/20"
+                          : "bg-surface-dim hover:bg-surface border border-outline text-on-surface"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {loading && isSelected ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          {isSelected ? `Pay ${currentPrice}` : `Select ${plan.name}`}
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      </section>
     </div>
   );
 }

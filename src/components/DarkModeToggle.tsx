@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
 
 export function DarkModeToggle() {
+  const location = useLocation();
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains("dark");
   });
@@ -14,6 +16,10 @@ export function DarkModeToggle() {
       document.documentElement.classList.remove("dark");
     }
   }, [isDark]);
+
+  if (location.pathname !== "/profile") {
+    return null;
+  }
 
   return (
     <motion.button

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image, ArrowLeft, Mic } from "lucide-react";
+import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image, ArrowLeft, Mic, Globe, Brain, Code } from "lucide-react";
 import { useUser } from "../UserContext";
 import Markdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -179,6 +179,8 @@ export default function TutorPage() {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState("");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const [thinkActive, setThinkActive] = useState(false);
 
   // File Upload States
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -486,7 +488,18 @@ export default function TutorPage() {
     }
 
     const userMessage = { role: 'user' as const, text: inputValue };
-    const promptText = inputValue;
+    
+    const modePrefixes = [];
+    if (searchActive) {
+      modePrefixes.push("[MODE: SEARCH WEB] Perform a virtual web-search simulation and verify real-time facts with the latest curriculum standards.");
+    }
+    if (thinkActive) {
+      modePrefixes.push("[MODE: DEEP REASONING] Activate clinical reasoning state. Break down the thinking steps thoroughly first, then write your final academic answer.");
+    }
+
+    const finalPromptText = modePrefixes.length > 0
+      ? `${modePrefixes.join("\n")}\n\nStudent Query: ${inputValue}`
+      : inputValue;
     
     const messagesBeforeResponse = [...messages, userMessage];
     setMessages(messagesBeforeResponse);
@@ -501,10 +514,15 @@ export default function TutorPage() {
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
              level: documentDifficulty,
-             messages: messagesBeforeResponse.map(m => ({
-               role: m.role,
-               parts: [{text: m.text}]
-             }))
+             searchActive,
+             thinkActive,
+             messages: messagesBeforeResponse.map((m, idx) => {
+               const isLast = (idx === messagesBeforeResponse.length - 1);
+               return {
+                 role: m.role,
+                 parts: [{text: isLast ? finalPromptText : m.text}]
+               };
+             })
           })
        });
        
@@ -562,7 +580,7 @@ export default function TutorPage() {
                updatedAt: new Date()
              });
            } else {
-             const cleanTitle = promptText.length > 50 ? promptText.slice(0, 50) + "..." : promptText;
+             const cleanTitle = userMessage.text.length > 50 ? userMessage.text.slice(0, 50) + "..." : userMessage.text;
              const newSessionRef = await addDoc(collection(db, "tutor_sessions"), {
                userId: user.uid,
                title: cleanTitle,
@@ -588,12 +606,12 @@ export default function TutorPage() {
          {sidebarOpen && (
             <div 
                onClick={() => setSidebarOpen(false)}
-               className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm transition-all"
+               className="fixed inset-0 bg-black/40 z-40 backdrop-blur-[2px] transition-all md:hidden"
             />
          )}
 
          {/* Collapsible history drawer */}
-         <aside className={`fixed inset-y-0 left-0 z-50 bg-surface border-r border-outline-variant/30 flex flex-col h-full transform transition-all duration-300 ease-in-out shadow-2xl ${sidebarOpen ? 'translate-x-0 w-[80vw] sm:w-[320px] shrink-0' : '-translate-x-full w-[80vw] sm:w-[320px] shrink-0'}`}>
+         <aside className={`fixed md:static inset-y-0 left-0 z-50 bg-surface border-r border-outline-variant/30 flex flex-col h-full transform transition-all duration-300 ease-in-out shadow-2xl md:shadow-none shrink-0 ${sidebarOpen ? 'translate-x-0 w-[80vw] sm:w-[280px]' : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden md:border-r-0'}`}>
           <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between shrink-0">
              <div className="flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" />
@@ -614,7 +632,7 @@ export default function TutorPage() {
                 {/* Close sidebar button on mobile */}
                 <button
                    onClick={() => setSidebarOpen(false)}
-                   className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors lg:hidden"
+                   className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-dim transition-colors md:hidden"
                    aria-label="Close history"
                 >
                    <X className="w-4 h-4" />
@@ -837,18 +855,18 @@ export default function TutorPage() {
                        initial={{ opacity: 0, y: 10 }}
                        animate={{ opacity: 1, y: 0 }}
                        key={idx} 
-                       className={`flex max-w-[88%] sm:max-w-[75%] ${m.role === 'model' ? 'self-start' : 'self-end'}`}
+                       className={`flex max-w-[90%] sm:max-w-[75%] ${m.role === 'model' ? 'self-start' : 'self-end'}`}
                     >
                        {m.role === 'model' && (
-                          <div className="w-10 h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 text-primary flex items-center justify-center mr-3 mt-auto shadow-sm hidden sm:flex">
-                             <Bot className="w-5 h-5" />
+                          <div className="w-8.5 h-8.5 flex-shrink-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 text-primary flex items-center justify-center mr-2.5 mt-auto shadow-sm hidden sm:flex">
+                             <Bot className="w-4 h-4" />
                           </div>
                        )}
-                       <div className={`p-4 sm:p-5 rounded-3xl text-sm font-normal font-sans leading-normal tracking-wide ${m.role === 'model' ? 'bg-surface border border-outline-variant/40 text-on-surface rounded-bl-sm shadow-sm' : 'bg-gradient-to-tr from-primary to-primary/90 text-white rounded-br-sm shadow-md'}`}>
+                       <div className={`p-3 sm:p-4 rounded-[20px] sm:rounded-[24px] text-[11px] sm:text-xs md:text-sm font-normal font-sans leading-normal tracking-wide ${m.role === 'model' ? 'bg-surface border border-outline-variant/40 text-on-surface rounded-bl-sm shadow-sm' : 'bg-gradient-to-tr from-primary to-primary/90 text-white rounded-br-sm shadow-md'}`}>
                           {m.role === 'user' ? (
                              <p className="whitespace-pre-wrap font-normal">{m.text}</p>
                           ) : (
-                             <div className="markdown-body prose prose-sm max-w-none prose-p:font-normal prose-headings:font-normal prose-strong:font-medium text-on-surface font-normal">
+                             <div className="markdown-body prose prose-xs sm:prose-sm max-w-none prose-p:font-normal prose-headings:font-normal prose-strong:font-medium text-on-surface font-normal text-[11px] sm:text-xs md:text-sm">
                                 <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>{m.text}</Markdown>
                              </div>
                           )}
@@ -856,14 +874,14 @@ export default function TutorPage() {
                     </motion.div>
                  ))}
                  {isLoading && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex self-start max-w-[80%] items-end">
-                       <div className="w-10 h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 text-primary items-center justify-center mr-3 hidden sm:flex">
-                          <Bot className="w-5 h-5" />
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex self-start max-w-[85%] items-end">
+                       <div className="w-8.5 h-8.5 flex-shrink-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 text-primary items-center justify-center mr-2.5 hidden sm:flex">
+                          <Bot className="w-4 h-4" />
                        </div>
-                       <div className="px-5 py-4 rounded-3xl bg-surface border border-outline-variant/40 rounded-bl-sm shadow-sm flex items-center gap-2 h-12 relative overflow-hidden">
-                          <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce delay-75"></div>
-                          <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce delay-150"></div>
+                       <div className="px-4 py-3 rounded-[24px] bg-surface border border-outline-variant/40 rounded-bl-sm shadow-sm flex items-center gap-1.5 h-10 relative overflow-hidden">
+                          <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce"></div>
+                          <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce delay-75"></div>
+                          <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce delay-150"></div>
                        </div>
                     </motion.div>
                  )}
@@ -974,8 +992,96 @@ export default function TutorPage() {
                </div>
              )}
 
-             <div className="max-w-4xl mx-auto w-full flex gap-2 sm:gap-3 items-center relative">
-                 <div className="flex-1 relative flex items-center">
+             <div className="max-w-4xl mx-auto w-full bg-white border border-outline-variant/60 rounded-[24px] shadow-md focus-within:ring-2 focus-within:ring-primary/20 hover:border-outline-variant/80 transition-all p-3 text-left">
+                  {/* Visually stunning multi-toggle Input workspace */}
+                  <textarea
+                    rows={1}
+                    value={inputValue}
+                    onChange={e => setInputValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder="Ask study coach questions, paste tricky exercises, or upload document guides..."
+                    className="w-full bg-transparent pl-4 pr-12 pt-3 pb-2 text-[11px] sm:text-xs md:text-sm font-medium outline-none text-on-surface placeholder:text-[10px] sm:placeholder:text-[13px] md:placeholder:text-sm resize-none min-h-[44px] max-h-[120px] sm:max-h-[160px] overflow-y-hidden sm:overflow-y-auto custom-scrollbar focus:ring-0 border-0 outline-none"
+                    style={{ height: 'auto' }}
+                  />
+
+                  {/* Actions Bar Footer Row */}
+                  <div className="flex items-center justify-between gap-3 px-3 pt-3 border-t border-outline-variant/30 mt-2">
+                     {/* Bottom Left: Toggles & Attachments */}
+                     <div className="flex items-center gap-2">
+                       {/* Upload Trigger Button */}
+                       <button
+                         type="button"
+                         onClick={() => fileInputRef.current?.click()}
+                         className="p-2 cursor-pointer text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-xl transition-all mr-1"
+                         title="Attach pdf, docx or image guide"
+                       >
+                         <Paperclip className="w-4.5 h-4.5" />
+                       </button>
+
+                       {/* Search Toggle */}
+                       <button
+                         type="button"
+                         onClick={() => setSearchActive(!searchActive)}
+                         className={`px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold border flex items-center gap-1 transition-all cursor-pointer ${
+                           searchActive 
+                             ? 'bg-primary/10 text-primary border-primary/30' 
+                             : 'bg-surface-dim hover:bg-surface border-outline-variant/30 text-on-surface-variant'
+                         }`}
+                         title="Toggle Web Search Grounding"
+                       >
+                         <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                         <span>Search</span>
+                       </button>
+
+                       {/* Think Toggle */}
+                       <button
+                         type="button"
+                         onClick={() => setThinkActive(!thinkActive)}
+                         className={`px-2.5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-bold border flex items-center gap-1 transition-all cursor-pointer ${
+                           thinkActive 
+                             ? 'bg-violet-500/10 text-violet-600 border-violet-500/30' 
+                             : 'bg-surface-dim hover:bg-surface border-outline-variant/30 text-on-surface-variant'
+                         }`}
+                         title="Toggle Deep Thought Reasoning"
+                       >
+                         <Brain className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                         <span>Think</span>
+                       </button>
+                     </div>
+
+                     {/* Bottom Right: Mic & Send Buttons */}
+                     <div className="flex items-center gap-2 ml-auto">
+                       {/* Voice microphone button */}
+                       {isSpeechSupported && (
+                         <button
+                           type="button"
+                           onClick={toggleListening}
+                           className={`p-2 rounded-xl transition-all flex items-center justify-center cursor-pointer ${isListening ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse ring-2 ring-red-500/10' : 'text-on-surface-variant/70 hover:text-primary hover:bg-primary/10'}`}
+                           title="Voice Dictate Mode"
+                         >
+                           <Mic className="w-4.5 h-4.5" />
+                         </button>
+                       )}
+
+                       {/* Send Message Trigger */}
+                       <button
+                         type="button"
+                         onClick={handleSend}
+                         disabled={!inputValue.trim() || isLoading}
+                         className="h-10 px-4 bg-primary text-white flex items-center justify-center rounded-2xl hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.97] transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-md gap-1.5 font-bold text-xs"
+                         aria-label="Send query"
+                       >
+                         <span>Send</span>
+                         <Send className="w-3.5 h-3.5 fill-white" />
+                       </button>
+                     </div>
+                  </div>
+                 <div className="hidden">
                    {/* Hidden File Input */}
                    <input
                      type="file"
@@ -1000,8 +1106,8 @@ export default function TutorPage() {
                       value={inputValue}
                       onChange={e => setInputValue(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSend()}
-                      placeholder="Ask questions or upload docs/images to generate questions..."
-                      className="w-full bg-surface-dim/50 border border-outline-variant/60 pl-12 pr-12 py-4 rounded-full text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60"
+                      placeholder="Ask study coach questions, paste tricky exercises, or upload document guides..."
+                      className="hidden"
                    />
 
                    {/* Microphone Button */}
@@ -1018,7 +1124,7 @@ export default function TutorPage() {
                  <button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isLoading}
-                    className="w-14 h-14 shrink-0 bg-primary text-white flex items-center justify-center rounded-full hover:bg-primary/90 hover:scale-105 active:scale-95 focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:hover:bg-primary shadow-md"
+                    className="hidden"
                     aria-label="Send message"
                  >
                     <Send className="w-6 h-6 -ml-0.5 mt-0.5 fill-white" />

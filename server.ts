@@ -232,11 +232,11 @@ app.post("/api/auth/login", async (req, res) => {
       await sendResendEmail({
         from: "Exam City <welcome@examcity.qzz.io>",
         to: email,
-        subject: `🔑 Your Exam City Access Code: ${otpCode}`,
+        subject: `Your Exam City Access Code: ${otpCode}`,
         text: `Hello! Welcome to Exam City. Use your requested access code to complete your login: ${otpCode}. This code will expire in 15 minutes. If you did not request this, you can safely ignore this email.`,
         html: `
           <div style="background-color: #f6f9fc; padding: 40px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100%; width: 100%;">
-            <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), ...">
+            <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
               <div style="font-size: 20px; font-weight: 700; color: #4f46e5; letter-spacing: -0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 24px;">Exam City</div>
               <h1 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px;">Secure Access Code</h1>
               <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 16px;">Hello!</p>
@@ -284,13 +284,13 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: "✨ Your Instant Sign-In Link for Exam City",
+      subject: "Your Instant Sign-In Link for Exam City",
       text: `Hello! Here is your requested magic link to sign in securely to your Exam City student dashboard: ${verificationLink}`,
       html: `
         <div style="background-color: #f6f9fc; padding: 40px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100%; width: 100%;">
-          <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), ...">
+          <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
             <div style="font-size: 20px; font-weight: 700; color: #4f46e5; letter-spacing: -0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 24px;">Exam City</div>
-            <h1 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px;">Ready to learn? 🚀</h1>
+            <h1 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px;">Ready to learn?</h1>
             <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 16px;">Hello!</p>
             <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 20px;">Click the button below to instantly sign in and jump right back into your custom test-prep program:</p>
             <div style="text-align: center; margin: 28px 0;">
@@ -341,13 +341,13 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
       replyTo: "support@examcity.qzz.io",
-      subject: `✨ Welcome to Exam City, ${name}! Let's start learning`,
+      subject: `Welcome to Exam City, ${name}! Let's start learning`,
       text: `Hello, ${name}! Welcome to Exam City. We're thrilled to join you on your learning journey. Click the following link to verify your email and activate your personal dashboard helper: ${verificationLink}`,
       html: `
         <div style="background-color: #f6f9fc; padding: 40px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100%; width: 100%;">
-          <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), ...">
+          <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
             <div style="font-size: 20px; font-weight: 700; color: #4f46e5; letter-spacing: -0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 24px;">Exam City</div>
-            <h1 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px;">Welcome aboard, ${name}! 👋</h1>
+            <h1 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px;">Welcome aboard, ${name}!</h1>
             <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 16px;">We are absolutely thrilled to accompany and support you in achieving your educational goals.</p>
             <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 20px;">To finalize your brand-new account setup and activate your personal learning environment, please confirm your email address below:</p>
             <div style="text-align: center; margin: 28px 0;">
@@ -552,11 +552,11 @@ app.post("/api/auth/resend-otp", async (req, res) => {
     await sendResendEmail({
       from: "Exam City <welcome@examcity.qzz.io>",
       to: verification.email,
-      subject: `🔄 Exam City Code: ${otpCode} (Resent)`,
+      subject: `Exam City Code: ${otpCode} (Resent)`,
       text: `Hello! Here is your requested code to access Exam City: ${otpCode}. If you did not request this, you can safely disregard this email.`,
       html: `
         <div style="background-color: #f6f9fc; padding: 40px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100%; width: 100%;">
-          <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), ...">
+          <div style="max-width: 480px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
             <div style="font-size: 20px; font-weight: 700; color: #4f46e5; letter-spacing: -0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 24px;">Exam City</div>
             <h1 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-top: 0; margin-bottom: 16px;">Your Access Code (Resend)</h1>
             <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 20px;">Hello!</p>
@@ -647,11 +647,11 @@ app.get("/api/auth/check-attempts", async (req, res) => {
         await sendResendEmail({
           from: "Exam City <welcome@examcity.qzz.io>",
           to: String(email),
-          subject: "🛡️ Exam City: Security Notice — Recent Sign-In Activity Check",
-          text: `Hello! We've noticed multiple sign-in attempts on your Exam City account. Details: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toLocaleTimeString()}`).join(', ')}. If this was not you, we suggest updating your account security details.`,
+          subject: "Exam City: Security Notice — Recent Sign-In Activity Check",
+          text: `Hello! We've noticed multiple failed sign-in attempts on your Exam City account. Details: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toLocaleTimeString()}`).join(', ')}. If this was not you, we suggest updating your account security details.`,
           html: `
             <div style="background-color: #f6f9fc; padding: 40px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100%; width: 100%;">
-              <div style="max-width: 520px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), ...">
+              <div style="max-width: 520px; margin: 0 auto; padding: 32px; color: #333333; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);">
                 <div style="font-size: 20px; font-weight: 700; color: #4f46e5; letter-spacing: -0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 24px;">Exam City Security</div>
                 <h1 style="font-size: 18px; font-weight: 600; color: #991b1b; margin-top: 0; margin-bottom: 16px;">Security Notification</h1>
                 <p style="font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 16px;">Hello!</p>
@@ -1465,7 +1465,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 
 // Study Coach / Chatbot Endpoint
 app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
-  const { messages = [], level = "standard" } = req.body;
+  const { messages = [], level = "standard", searchActive = false, thinkActive = false } = req.body;
   try {
     const { levelInstruction, curriculumInstruction } =
       getCurriculumInstructions(String(level));
@@ -1493,7 +1493,7 @@ app.post(["/api/chatbot", "/chatbot"], async (req, res) => {
       })),
     ];
 
-    const content = await executeAIFallback(formattedMessages);
+    const content = await executeAIFallback(formattedMessages, { searchActive, thinkActive });
     res.json({ success: true, text: content });
   } catch (error: any) {
     console.warn(
@@ -2172,6 +2172,134 @@ app.post("/api/sync-notion", async (req, res) => {
         error: err.message || "Failed to sync with Notion API",
       });
   }
+});
+
+// Sitemap & Robots.txt API Endpoints
+const BASE_URL = "https://examcity.qzz.io";
+
+function escapeXml(url: string): string {
+  return url
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function buildSitemapXml(
+  urls: { loc: string; lastmod?: string; changefreq?: string; priority?: number }[]
+): string {
+  const items = urls
+    .map(
+      ({ loc, lastmod, changefreq, priority }) => `  <url>
+    <loc>${escapeXml(loc)}</loc>${
+        lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ""
+      }${
+        changefreq ? `\n    <changefreq>${changefreq}</changefreq>` : ""
+      }${
+        priority !== undefined ? `\n    <priority>${priority.toFixed(2)}</priority>` : ""
+      }
+  </url>`
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${items}
+</urlset>`;
+}
+
+app.get(["/sitemap.xml", "/sitemap"], async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    // Static pages defined in React routing
+    const staticUrls = [
+      { loc: BASE_URL, lastmod: today, changefreq: "daily", priority: 1.0 },
+      { loc: `${BASE_URL}/login`, lastmod: today, changefreq: "weekly", priority: 0.8 },
+      { loc: `${BASE_URL}/signup`, lastmod: today, changefreq: "weekly", priority: 0.8 },
+      { loc: `${BASE_URL}/checkout`, lastmod: today, changefreq: "monthly", priority: 0.6 },
+      { loc: `${BASE_URL}/dashboard`, lastmod: today, changefreq: "daily", priority: 0.9 },
+      { loc: `${BASE_URL}/profile`, lastmod: today, changefreq: "weekly", priority: 0.7 },
+      { loc: `${BASE_URL}/tutor`, lastmod: today, changefreq: "daily", priority: 0.9 },
+      { loc: `${BASE_URL}/privacy`, lastmod: today, changefreq: "yearly", priority: 0.4 },
+      { loc: `${BASE_URL}/terms`, lastmod: today, changefreq: "yearly", priority: 0.4 },
+    ];
+
+    // Dynamic URLs matching the user's Sitemap configuration template
+    const courses = [
+      { slug: "mathematics-101", updatedAt: new Date().toISOString() },
+      { slug: "biology-fundamentals", updatedAt: new Date().toISOString() },
+      { slug: "chemistry-advanced", updatedAt: new Date().toISOString() },
+    ];
+
+    const exams = [
+      { slug: "midterm-2024", courseSlug: "mathematics-101", updatedAt: new Date().toISOString() },
+      { slug: "final-exam", courseSlug: "biology-fundamentals", updatedAt: new Date().toISOString() },
+    ];
+
+    const categories = [
+      { slug: "science", updatedAt: new Date().toISOString() },
+      { slug: "mathematics", updatedAt: new Date().toISOString() },
+      { slug: "humanities", updatedAt: new Date().toISOString() },
+    ];
+
+    const courseUrls = courses.map((c) => ({
+      loc: `${BASE_URL}/courses/${c.slug}`,
+      lastmod: c.updatedAt.split("T")[0],
+      changefreq: "weekly",
+      priority: 0.8,
+    }));
+
+    const examUrls = exams.map((e) => ({
+      loc: `${BASE_URL}/courses/${e.courseSlug}/exams/${e.slug}`,
+      lastmod: e.updatedAt.split("T")[0],
+      changefreq: "weekly",
+      priority: 0.75,
+    }));
+
+    const categoryUrls = categories.map((cat) => ({
+      loc: `${BASE_URL}/categories/${cat.slug}`,
+      lastmod: cat.updatedAt.split("T")[0],
+      changefreq: "weekly",
+      priority: 0.7,
+    }));
+
+    const allUrls = [
+      ...staticUrls,
+      ...courseUrls,
+      ...examUrls,
+      ...categoryUrls,
+    ];
+
+    const xml = buildSitemapXml(allUrls);
+
+    res.setHeader("Content-Type", "application/xml");
+    res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=43200");
+    res.status(200).send(xml);
+  } catch (err: any) {
+    console.error("[Sitemap API] Error:", err.message);
+    res.status(500).send("Error generating sitemap");
+  }
+});
+
+app.get("/robots.txt", (req, res) => {
+  const robotsText = `User-agent: *
+Allow: /
+
+# Block private/auth routes from indexing
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /settings/
+Disallow: /verify-login/
+Disallow: /verify-email/
+
+Sitemap: https://examcity.qzz.io/sitemap.xml`;
+
+  res.setHeader("Content-Type", "text/plain");
+  res.status(200).send(robotsText);
 });
 
 // API 404 Not Found Handler
