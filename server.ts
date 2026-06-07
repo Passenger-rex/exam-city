@@ -127,10 +127,33 @@ async function sendResendEmail(payload: {
     ...payload,
     from: finalFrom,
     replyTo: finalReplyTo,
+    headers: {
+      "X-Entity-Ref-ID": crypto.randomUUID(),
+      "List-Unsubscribe": `<mailto:support@examcity.qzz.io?subject=unsubscribe>`,
+    }
   };
 
   // Try sending using custom domain or override headers
   try {
+    const wrappedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${payload.subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f9fafb;">
+  ${finalPayload.html}
+  <div style="max-width: 600px; margin: 0 auto; text-align: center; padding: 20px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 11px;">
+    <p style="margin: 0 0 8px 0;">This email was sent to ${payload.to} regarding your Exam City account.</p>
+    <p style="margin: 0;">Exam City Headquarters &middot; 123 Education Way, Suite 100 &middot; San Francisco, CA 94105</p>
+  </div>
+</body>
+</html>`;
+
+    finalPayload.html = wrappedHtml;
+    finalPayload.text = payload.text || payload.html.replace(/<[^>]+>/g, '') + '\n\nThis email was sent to ' + payload.to + '.\nExam City Headquarters, 123 Education Way, Suite 100, San Francisco, CA 94105';
+
     const { data, error } = await resend.emails.send(finalPayload);
     if (!error) {
       console.log(`[Resend Deliver Success] Successfully sent email to ${payload.to} from sender ${finalFrom}`);
@@ -147,6 +170,8 @@ async function sendResendEmail(payload: {
     const fallbackPayload = {
       ...payload,
       from: fallbackFrom,
+      html: finalPayload.html,
+      text: finalPayload.text
     };
     const { data, error } = await resend.emails.send(fallbackPayload);
     if (error) {
