@@ -155,7 +155,7 @@ async function sendResendEmail(payload: {
 🚨 RESEND DELIVERY DIAGNOSIS:
   If you are testing sign-up with emails other than "johntobismart@gmail.com", Resend in Sandbox mode WILL reject them as unverified recipients.
   To resolve this so all your users can get emails:
-  1. Add a verified custom domain inside Resend settings (e.g. mail.examcity.qzz.io or examcity.qzz.io).
+  1. Add a verified custom domain inside Resend settings (e.g. examcity.qzz.io).
   2. Verify SPF/DKIM records are correctly propagated on your registrar DNS panel.
   3. Or add specific email addresses to Resend "Testing Recipients" while in sandbox mode.
       `);
@@ -314,7 +314,7 @@ app.post("/api/auth/login", async (req, res) => {
       });
 
       await sendResendEmail({
-        from: "Exam City <welcome@mail.examcity.qzz.io>",
+        from: "Exam City <welcome@examcity.qzz.io>",
         to: email,
         subject: `Verification Code: ${otpCode}`,
         text: `Hello, your requested verification code is: ${otpCode}. It is valid for 15 minutes.`,
@@ -357,9 +357,9 @@ app.post("/api/auth/send-verification-email", async (req, res) => {
     }
 
     const { error } = await sendResendEmail({
-      from: "Exam City <welcome@mail.examcity.qzz.io>",
+      from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
-      replyTo: "support@mail.examcity.qzz.io",
+      replyTo: "support@examcity.qzz.io",
       subject: "Verification Link",
       text: `Hello, please click the link below to verify your sign-in: ${verificationLink}`,
       html: `
@@ -406,9 +406,9 @@ app.post("/api/auth/send-welcome-email", async (req, res) => {
     }
 
     const { error } = await sendResendEmail({
-      from: "Exam City <welcome@mail.examcity.qzz.io>",
+      from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
-      replyTo: "support@mail.examcity.qzz.io",
+      replyTo: "support@examcity.qzz.io",
       subject: "Verify Your Email Address",
       text: `Hello ${name}, please click the link below to verify your email address: ${verificationLink}`,
       html: `
@@ -611,7 +611,7 @@ app.post("/api/auth/resend-otp", async (req, res) => {
       .eq("id", verification.id);
 
     await sendResendEmail({
-      from: "Exam City <welcome@mail.examcity.qzz.io>",
+      from: "Exam City <welcome@examcity.qzz.io>",
       to: verification.email,
       subject: `Verification Code: ${otpCode}`,
       text: `Hello, your requested verification code is: ${otpCode}. It is valid for 15 minutes.`,
@@ -698,7 +698,7 @@ app.get("/api/auth/check-attempts", async (req, res) => {
            .limit(10);
            
         await sendResendEmail({
-          from: "Exam City <welcome@mail.examcity.qzz.io>",
+          from: "Exam City <welcome@examcity.qzz.io>",
           to: String(email),
           subject: "Security Notification",
           text: `Hello, we noticed multiple failed sign-in attempts on your account. Attempts details: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toUTCString()}`).join(', ')}. If you didn't trigger this, please ensure your account is protected.`,

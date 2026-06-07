@@ -1625,6 +1625,8 @@ export default function AuthPage() {
 
 
 
+
+
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     type="button"
