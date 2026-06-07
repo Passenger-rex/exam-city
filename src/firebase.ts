@@ -24,7 +24,7 @@ const app = initializeApp(firebaseConfig);
 const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || (localConfig as any).firestoreDatabaseId || "ai-studio-f3bff7d7-cefd-4a42-aa3d-c8cfedf96ffe";
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-  ignoreUndefinedProperties: true,
+  ignoreUndefinedProperties: true
 }, dbId);
 
 export const auth = getAuth();

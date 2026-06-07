@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import crypto from "crypto";
-import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { Client } from "@notionhq/client";
 
@@ -18,22 +17,7 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-let supabaseAdmin: any = null;
 let resendClient: any = null;
-
-function getSupabase() {
-  if (!supabaseAdmin) {
-    const url = process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (url && key) {
-      let cleanUrl = url.trim();
-      if (cleanUrl && !cleanUrl.startsWith("http"))
-        cleanUrl = "https://" + cleanUrl;
-      supabaseAdmin = createClient(cleanUrl, key);
-    }
-  }
-  return supabaseAdmin;
-}
 
 function getResend() {
   if (!resendClient) {
@@ -210,695 +194,132 @@ function getRequestOrigin(req: express.Request): string {
 }
 
 // --- AUTH ENDPOINTS --- //
-app.post("/api/auth/login", async (req, res) => {
+
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc, query, collection, where, getDocs, updateDoc } from "firebase/firestore";
+import localConfig from "./firebase-applet-config.json" with { type: "json" };
+const fbApp = initializeApp(localConfig);
+const serverDb = getFirestore(fbApp, localConfig.firestoreDatabaseId);
+
+app.post("/api/auth/send-otp", async (req, res) => {
   try {
-    const { email, password, trustDevice } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ error: "Email and password are required" });
+    const { email, name, isSignup } = req.body;
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
 
-    const supabase = getSupabase();
-    if (!supabase)
-      return res.status(500).json({ error: "Supabase not configured" });
+    const verificationId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    const ipAddress =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
-      req.socket.remoteAddress ||
-      "0.0.0.0";
-    const userAgent = req.headers["user-agent"] || "";
-    const acceptLang = req.headers["accept-language"] || "";
-    const deviceFingerprint = crypto
-      .createHash("sha256")
-      .update(userAgent + acceptLang)
-      .digest("hex");
-
-    // Brute force check: IP & Email multi-check in last 10 mins / 1 hour
-    const now = new Date();
-    const ten_min = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
-    const one_hour = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-
-    const { count: ipFailCount } = await supabase
-      .from('login_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('ip_address', ipAddress)
-      .eq('success', false)
-      .gte('attempted_at', ten_min);
-
-    const { count: emailFailCount } = await supabase
-      .from('login_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('email', String(email))
-      .eq('success', false)
-      .gte('attempted_at', ten_min);
-
-    if ((ipFailCount || 0) >= 10 || (emailFailCount || 0) >= 10) {
-      return res
-        .status(429)
-        .json({ error: "Too many failed attempts. Try again later.", blocked: true });
-    }
-
-    const attemptId = crypto.randomUUID();
-    await supabase.from("login_attempts").insert({
-      id: attemptId,
-      email,
-      ip_address: ipAddress,
-      user_agent: userAgent,
-      success: false,
+    await setDoc(doc(serverDb, "login_verifications", verificationId), {
+      id: verificationId,
+      email: email,
+      otp_code: otpCode,
+      is_used: false,
+      expires_at: expiresAt,
+      attempt_count: 0,
+      resend_count: 0,
     });
 
-    const { data: authData, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">${isSignup ? 'Verify Your Email' : 'Verification Code'}</h2>
+        <p style="font-size: 16px; margin-bottom: 12px;">Hello ${name || ''},</p>
+        <p style="font-size: 16px; margin-bottom: 30px;">Please use the code below to verify your email address:</p>
 
-    if (authError || !authData.user) {
-      await supabase
-        .from("login_attempts")
-        .update({ failure_reason: "wrong_password" })
-        .eq("id", attemptId);
-      return res.status(401).json({ error: "Invalid email or password" });
-    }
-
-    const userId = authData.user.id;
-    await supabase.from("users").upsert(
-      {
-        id: userId,
-        email: email,
-        full_name: authData.user.user_metadata?.full_name || email,
-      },
-      { onConflict: "id" },
-    );
-
-    const { data: trustedDevice } = await supabase
-      .from("trusted_devices")
-      .select("id, trust_until")
-      .eq("user_id", userId)
-      .eq("device_fingerprint", deviceFingerprint)
-      .single();
-
-    let recognized = false;
-    if (trustedDevice) {
-      if (
-        !trustedDevice.trust_until ||
-        new Date(trustedDevice.trust_until) > new Date()
-      ) {
-        recognized = true;
-      }
-    }
-
-    if (recognized) {
-      await supabase
-        .from("trusted_devices")
-        .update({ last_used: new Date().toISOString() })
-        .eq("id", trustedDevice.id);
-      await supabase
-        .from("login_attempts")
-        .update({ success: true })
-        .eq("id", attemptId);
-      return res.json({
-        success: true,
-        session: authData.session,
-        user: authData.user,
-      });
-    } else {
-      const otpCode = crypto.randomInt(100000, 999999).toString();
-      const verificationId = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-
-      await supabase.from("login_verifications").insert({
-        id: verificationId,
-        user_id: userId,
-        email: email,
-        otp_code: otpCode,
-        ip_address: ipAddress,
-        device_info: userAgent.substring(0, 200),
-        is_used: false,
-        expires_at: expiresAt,
-        attempt_count: 0,
-        resend_count: 0,
-      });
-
-      await sendResendEmail({
-        from: "Exam City <security@examcity.qzz.io>",
-        to: email,
-        subject: `Your Exam City Verification Code`,
-        text: `Hello, you requested a verification code for your Exam City account. Your code is: ${otpCode}. It is valid for 15 minutes.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
-            <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Activation Code</h2>
-            <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
-            <p style="font-size: 16px; margin-bottom: 12px;">You requested a verification code to access your Exam City account.</p>
-            <p style="font-size: 16px; margin-bottom: 30px;">Please use the code below to complete your secure action:</p>
-
-            <div style="text-align: center; margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #18181b; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #f4f4f5;">
-              ${otpCode}
-            </div>
-
-            <p style="font-size: 16px; margin-bottom: 12px;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
-
-            <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
-            <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
-
-            <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
-              <p style="font-size: 12px; color: #666666;">
-                This is a mandatory security notice related to your account access.
-              </p>
-            </div>
-          </div>
-        `,
-      });
-
-      return res.json({ requiresOTP: true, userId: userId });
-    }
-  } catch (error: any) {
-    console.error("Login route error:", error);
-    return res
-      .status(500)
-      .json({ error: error.message || "Internal server error" });
-  }
-});
-
-app.post("/api/auth/send-verification-email", async (req, res) => {
-  try {
-    const { email, token } = req.body;
-    const origin = getRequestOrigin(req);
-    const verificationLink = `${origin}/verify-login?token=${token}`;
-
-    const resend = getResend();
-    if (!resend) {
-      console.log(`[Dev/Staging Sandbox] Device verification link: ${verificationLink}`);
-      return res.json({
-        success: true,
-        devLink: verificationLink,
-        warning: "Resend is not configured. Falling back to local verification link."
-      });
-    }
-
-    const { error } = await sendResendEmail({
-      from: "Exam City <security@examcity.qzz.io>",
-      to: email,
-      replyTo: "support@examcity.qzz.io",
-      subject: "Exam City Security Verification",
-      text: `Hello, please click the link below to verify your sign-in: ${verificationLink}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
-          <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Verify Your Sign-In</h2>
-          <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
-          <p style="font-size: 16px; margin-bottom: 12px;">We noticed a new sign-in attempt to your Exam City account.</p>
-          <p style="font-size: 16px; margin-bottom: 30px;">If this was you, simply click the following link to authorize this device:</p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationLink}" style="font-size: 16px; color: #000000; text-decoration: underline; font-weight: bold;">Verify Sign-In</a>
-          </div>
-
-          <p style="font-size: 16px; margin-bottom: 12px;">If you did not attempt to sign in, please secure your account immediately.</p>
-          <p style="font-size: 16px; margin-bottom: 12px;">If that doesn't work, copy and paste the following link in your browser:</p>
-          <p style="font-size: 14px; margin-bottom: 30px; word-break: break-all;">
-            <a href="${verificationLink}" style="color: #6a0dad; text-decoration: none;">${verificationLink}</a>
-          </p>
-
-          <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
-          <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
-
-          <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
-            <p style="font-size: 12px; color: #666666;">
-              This is a mandatory security notice related to your account access.
-            </p>
-          </div>
+        <div style="text-align: center; margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #18181b; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #f4f4f5;">
+          ${otpCode}
         </div>
-      `,
-    });
 
-    if (error) {
-      console.warn("Resend Security Email failed, falling back to local link. Error:", error);
-      return res.json({
-        success: true,
-        devLink: verificationLink,
-        warning: `Resend dispatch failed or was rejected: ${error.message || JSON.stringify(error)}. Falling back to local verification link.`
-      });
-    }
-    res.json({ success: true, devLink: verificationLink });
-  } catch (err: any) {
-    console.error("Failed to send device verification email:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+        <p style="font-size: 16px; margin-bottom: 12px;">This code is valid for 15 minutes.</p>
+        <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
+        <p style="font-size: 16px; margin-bottom: 40px;">Exam City</p>
+      </div>
+    `;
 
-app.post("/api/auth/send-welcome-email", async (req, res) => {
-  try {
-    const { email, name, token } = req.body;
-    const origin = getRequestOrigin(req);
-    const verificationLink = `${origin}/verify-email?token=${token}`;
-
-    const resend = getResend();
-    if (!resend) {
-      console.log(`[Dev/Staging Sandbox] Welcome/Activation Link: ${verificationLink}`);
-      return res.json({
-        success: true,
-        devLink: verificationLink,
-        warning: "Resend is not configured. Falling back to local verification link."
-      });
-    }
-
-    const { error } = await sendResendEmail({
+    await sendResendEmail({
       from: "Exam City <welcome@examcity.qzz.io>",
       to: email,
-      replyTo: "support@examcity.qzz.io",
-      subject: "Exam City Account Activation",
-      text: `Hello ${name}, please click the link below to verify your email address: ${verificationLink}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
-          <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Confirm Your Email Address</h2>
-          <p style="font-size: 16px; margin-bottom: 12px;">Hello ${name},</p>
-          <p style="font-size: 16px; margin-bottom: 12px;">Someone has signed up to Exam City with this email address.</p>
-          <p style="font-size: 16px; margin-bottom: 30px;">If this was you, simply click the following link and your account will be activated:</p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationLink}" style="font-size: 16px; color: #000000; text-decoration: underline; font-weight: bold;">Activate your Account</a>
-          </div>
-
-          <p style="font-size: 16px; margin-bottom: 12px;">If you did not sign up, please ignore this email.</p>
-          <p style="font-size: 16px; margin-bottom: 12px;">If that doesn't work, copy and paste the following link in your browser:</p>
-          <p style="font-size: 14px; margin-bottom: 30px; word-break: break-all;">
-            <a href="${verificationLink}" style="color: #6a0dad; text-decoration: none;">${verificationLink}</a>
-          </p>
-
-          <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
-          <p style="font-size: 16px; margin-bottom: 40px;">Exam City</p>
-
-          <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
-            <p style="font-size: 12px; color: #666666;">
-              You received this email because this email was used to signup for an account. If you didn't, you can safely ignore this email.
-            </p>
-          </div>
-        </div>
-      `,
+      subject: isSignup ? "Verify Your Exam City Account" : "Your Exam City Verification Code",
+      text: `Your verification code is: ${otpCode}. It is valid for 15 minutes.`,
+      html: emailHtml,
     });
 
-    if (error) {
-      console.warn("Resend Welcome Email failed, falling back to local link. Error:", error);
-      return res.json({
-        success: true,
-        devLink: verificationLink,
-        warning: `Resend dispatch failed or was rejected: ${error.message || JSON.stringify(error)}. Falling back to local verification link.`
-      });
-    }
-    res.json({ success: true, devLink: verificationLink });
-  } catch (err: any) {
-    console.error("Failed to send welcome activation email:", err);
-    res.status(500).json({ error: err.message });
+    return res.json({ success: true, verificationId });
+  } catch (error: any) {
+    console.error("Failed to send OTP:", error);
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
 
 app.post("/api/auth/verify-otp", async (req, res) => {
   try {
-    const { userId, otpCode, trustDevice } = req.body;
-    const supabase = getSupabase();
-    if (!supabase)
-      return res.status(500).json({ error: "Supabase not configured" });
-
-    const ipAddress =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
-      req.socket.remoteAddress ||
-      "0.0.0.0";
-    const userAgent = req.headers["user-agent"] || "";
-    const acceptLang = req.headers["accept-language"] || "";
-    const deviceFingerprint = crypto
-      .createHash("sha256")
-      .update(userAgent + acceptLang)
-      .digest("hex");
-
-    const attemptId = crypto.randomUUID();
-    const emailObj = await supabase
-      .from("users")
-      .select("email")
-      .eq("id", userId)
-      .single();
-    const email = emailObj?.data?.email || "unknown";
-
-    await supabase.from("login_attempts").insert({
-      id: attemptId,
-      email: email,
-      ip_address: ipAddress,
-      user_agent: userAgent,
-      success: false,
-    });
-
-    const { data: verifications } = await supabase
-      .from("login_verifications")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("is_used", false)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    const verification = verifications?.[0];
-
-    if (!verification) {
-      await supabase
-        .from("login_attempts")
-        .update({ failure_reason: "otp_expired" })
-        .eq("id", attemptId);
-      return res
-        .status(400)
-        .json({ error: "Session expired or verification not found" });
+    const { verificationId, otpCode } = req.body;
+    
+    // Using Firestore instead of Supabase
+    const q = query(
+      collection(serverDb, "login_verifications"),
+      where("id", "==", verificationId),
+      where("is_used", "==", false),
+      where("expires_at", ">", new Date().toISOString())
+    );
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      return res.status(400).json({ error: "Session expired or verification not found" });
     }
 
+    const verificationDoc = snap.docs[0];
+    const verification = verificationDoc.data();
+
     if (verification.attempt_count >= 5) {
-      await supabase
-        .from("login_attempts")
-        .update({ failure_reason: "locked" })
-        .eq("id", attemptId);
-      return res.status(429).json({ error: "Too many attempts", locked: true });
+      return res.status(429).json({ error: "Too many attempts" });
     }
 
     if (verification.otp_code !== String(otpCode).trim()) {
       const newCount = verification.attempt_count + 1;
-      await supabase
-        .from("login_verifications")
-        .update({ attempt_count: newCount })
-        .eq("id", verification.id);
-      await supabase
-        .from("login_attempts")
-        .update({ failure_reason: "otp_failed" })
-        .eq("id", attemptId);
-      return res
-        .status(400)
-        .json({
-          error: "Invalid OTP code",
-          attemptsLeft: Math.max(0, 5 - newCount),
-        });
+      await updateDoc(verificationDoc.ref, { attempt_count: newCount });
+      return res.status(400).json({ error: "Invalid OTP code", attemptsLeft: Math.max(0, 5 - newCount) });
     }
 
-    await supabase
-      .from("login_verifications")
-      .update({ is_used: true })
-      .eq("id", verification.id);
+    await updateDoc(verificationDoc.ref, { is_used: true });
 
-    let trustUntil = null;
-    if (trustDevice) {
-      trustUntil = new Date(
-        Date.now() + 30 * 24 * 60 * 60 * 1000,
-      ).toISOString();
-    }
-
-    await supabase.from("trusted_devices").upsert(
-      {
-        user_id: userId,
-        device_fingerprint: deviceFingerprint,
-        ip_address: ipAddress,
-        trust_until: trustUntil,
-        last_used: new Date().toISOString(),
-      },
-      { onConflict: "user_id, device_fingerprint" },
-    );
-
-    await supabase
-      .from("login_attempts")
-      .update({ success: true })
-      .eq("id", attemptId);
-    return res.json({ verified: true });
+    return res.json({ success: true, email: verification.email });
   } catch (error: any) {
     console.error("Verify OTP error:", error);
-    return res
-      .status(500)
-      .json({ error: error.message || "Internal server error" });
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
 
-app.post("/api/auth/resend-otp", async (req, res) => {
+app.post("/api/auth/send-welcome", async (req, res) => {
   try {
-    const { userId } = req.body;
-    const supabase = getSupabase();
-    if (!supabase)
-      return res.status(500).json({ error: "Supabase not configured" });
+    const { email, name } = req.body;
 
-    const { data: verifications } = await supabase
-      .from("login_verifications")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("is_used", false)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    const verification = verifications?.[0];
-    if (!verification) {
-      return res
-        .status(400)
-        .json({ error: "No active verification session found." });
-    }
-
-    if (verification.resend_count >= 3) {
-      return res.status(429).json({ error: "Max resends reached" });
-    }
-
-    if (verification.last_resend_at) {
-      const msSinceResend =
-        Date.now() - new Date(verification.last_resend_at).getTime();
-      const cooldownMs = 60 * 1000;
-      if (msSinceResend < cooldownMs) {
-        return res.status(429).json({
-          error: "Please wait before requesting another code",
-          cooldownSeconds: Math.ceil((cooldownMs - msSinceResend) / 1000),
-        });
-      }
-    }
-
-    const otpCode = crypto.randomInt(100000, 999999).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    const newResendCount = verification.resend_count + 1;
-
-    await supabase
-      .from("login_verifications")
-      .update({
-        otp_code: otpCode,
-        expires_at: expiresAt,
-        attempt_count: 0,
-        resend_count: newResendCount,
-        last_resend_at: new Date().toISOString(),
-      })
-      .eq("id", verification.id);
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
+        <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Welcome to Exam City!</h2>
+        <p style="font-size: 16px; margin-bottom: 12px;">Hello ${name || ''},</p>
+        <p style="font-size: 16px; margin-bottom: 12px;">Thank you for registering. Your account has been successfully created and verified.</p>
+        <p style="font-size: 16px; margin-bottom: 30px;">We're excited to have you on board!</p>
+        
+        <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Best regards,</p>
+        <p style="font-size: 16px; margin-bottom: 40px;">The Exam City Team</p>
+      </div>
+    `;
 
     await sendResendEmail({
-      from: "Exam City <security@examcity.qzz.io>",
-      to: verification.email,
-      subject: `Your Exam City Verification Code`,
-      text: `Hello, you requested a verification code for your Exam City account. Your code is: ${otpCode}. It is valid for 15 minutes.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
-          <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #18181b;">Activation Code</h2>
-          <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
-          <p style="font-size: 16px; margin-bottom: 12px;">You requested a verification code to access your Exam City account.</p>
-          <p style="font-size: 16px; margin-bottom: 30px;">Please use the code below to complete your secure action:</p>
-
-          <div style="text-align: center; margin: 30px 0; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #18181b; padding: 20px; border: 1px solid #e4e4e7; border-radius: 8px; background-color: #f4f4f5;">
-            ${otpCode}
-          </div>
-
-          <p style="font-size: 16px; margin-bottom: 12px;">This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
-
-          <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
-          <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
-
-          <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
-            <p style="font-size: 12px; color: #666666;">
-              This is a mandatory security notice related to your account access.
-            </p>
-          </div>
-        </div>
-      `,
+      from: "Exam City <welcome@examcity.qzz.io>",
+      to: email,
+      subject: "Welcome to Exam City!",
+      text: `Hello ${name || ''}, Welcome to Exam City! Your account has been successfully verified.`,
+      html: emailHtml,
     });
 
-    return res.json({ resendsLeft: 3 - newResendCount, success: true });
+    return res.json({ success: true });
   } catch (error: any) {
-    console.error("Resend OTP error:", error);
-    return res
-      .status(500)
-      .json({ error: error.message || "Internal server error" });
+    console.error("Failed to send welcome email:", error);
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 });
 
-app.get("/api/auth/check-attempts", async (req, res) => {
-  try {
-    const email = req.query.email;
-    const ip = req.query.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || "0.0.0.0";
-    if (!email) return res.status(400).json({ error: "Email is required" });
-
-    const supabase = getSupabase();
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
-
-    const now = new Date();
-    const ten_min = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
-    const one_hour = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-
-    // Check 1: 10+ failed attempts from same IP in last 10 minutes
-    const { count: ipFailCount } = await supabase
-      .from('login_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('ip_address', ip)
-      .eq('success', false)
-      .gte('attempted_at', ten_min);
-
-    // Check 2: 3+ different IPs tried same email in last 1 hour
-    const { data: ipVariants } = await supabase
-      .from('login_attempts')
-      .select('ip_address')
-      .eq('email', String(email))
-      .eq('success', false)
-      .gte('attempted_at', one_hour);
-
-    const uniqueIPs = new Set(ipVariants?.map((r: any) => r.ip_address) || []);
-
-    // Check 3: total failed attempts on this email in last 10 min
-    const { count: emailFailCount } = await supabase
-      .from('login_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('email', String(email))
-      .eq('success', false)
-      .gte('attempted_at', ten_min);
-
-    const ipBlocked = (ipFailCount || 0) >= 10;
-    const suspiciousIPs = uniqueIPs.size >= 3;
-    const emailThrottled = (emailFailCount || 0) >= 10;
-
-    let blocked = ipBlocked || emailThrottled;
-    let suspicious = suspiciousIPs;
-
-    if (ipBlocked || suspiciousIPs) {
-      console.warn(`[security] ${ipBlocked ? 'IP blocked' : 'Suspicious IPs'} for ${email} from ${ip}`);
-    }
-    
-    if (suspiciousIPs) {
-        // Send alert email
-        const { data: attempts } = await supabase
-           .from('login_attempts')
-           .select('ip_address, attempted_at')
-           .eq('email', String(email))
-           .eq('success', false)
-           .gte('attempted_at', one_hour)
-           .order('attempted_at', { ascending: false })
-           .limit(10);
-           
-        await sendResendEmail({
-          from: "Exam City <security@examcity.qzz.io>",
-          to: String(email),
-          subject: "Security Alert: Failed Sign-in Attempts",
-          text: `Hello, we noticed multiple failed sign-in attempts on your account. Attempts details: ${(attempts || []).map((a: any) => `${a.ip_address} at ${new Date(a.attempted_at).toUTCString()}`).join(', ')}. If you didn't trigger this, please ensure your account is protected.`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #000000; background-color: #ffffff;">
-              <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #ef4444;">Security Notification</h2>
-              <p style="font-size: 16px; margin-bottom: 12px;">Hello,</p>
-              <p style="font-size: 16px; margin-bottom: 12px;">We have registered multiple failed sign-in attempts on your Exam City account.</p>
-              <p style="font-size: 16px; margin-bottom: 20px;">Attempts details:</p>
-              <ul style="font-size: 14px; margin-bottom: 30px; line-height: 1.6; background-color: #f4f4f5; padding: 16px 16px 16px 32px; border-radius: 6px;">
-                ${(attempts || []).map((a: any) => `<li><strong>IP:</strong> ${a.ip_address} at ${new Date(a.attempted_at).toUTCString()}</li>`).join('')}
-              </ul>
-
-              <p style="font-size: 16px; margin-bottom: 12px;">If this was you, please make sure your credentials are correct.</p>
-              <p style="font-size: 16px; margin-bottom: 30px;">If you do not recognize these attempts, please review your account security immediately.</p>
-
-              <p style="font-size: 16px; margin-bottom: 4px; margin-top: 40px;">Thank you,</p>
-              <p style="font-size: 16px; margin-bottom: 40px;">Exam City Security</p>
-
-              <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
-                <p style="font-size: 12px; color: #666666;">
-                  This is a mandatory security notice regarding your account safety.
-                </p>
-              </div>
-            </div>
-          `
-        });
-    }
-
-    return res.json({
-      blocked,
-      suspicious,
-      reasons: [
-        ipBlocked && `IP ${ip} has ${ipFailCount} failed attempts in 10 min`,
-        emailThrottled && `${emailFailCount} failed attempts on this account in 10 min`,
-        suspiciousIPs && `${uniqueIPs.size} different IPs tried this account in 1 hour`,
-      ].filter(Boolean),
-      ipFailCount,
-      emailFailCount,
-      uniqueIPCount: uniqueIPs.size,
-    });
-  } catch (error: any) {
-    return res
-      .status(500)
-      .json({ error: error.message || "Internal server error" });
-  }
-});
-
-// GET — list all trusted devices for a user
-app.get('/api/auth/devices', async (req, res) => {
-  try {
-    const userId = req.query.userId;
-    if (!userId) return res.status(400).json({ error: 'userId required' });
-
-    const supabase = getSupabase();
-    if (!supabase) return res.status(500).json({ error: 'Supabase not configured' });
-
-    const { data, error } = await supabase
-      .from('trusted_devices')
-      .select('id, ip_address, trust_until, last_used, created_at')
-      .eq('user_id', String(userId))
-      .order('last_used', { ascending: false });
-
-    if (error) throw error;
-
-    const now = new Date();
-    const devices = (data || []).map((d: any) => ({
-      ...d,
-      isExpired: d.trust_until ? new Date(d.trust_until) < now : false,
-      isTrusted30: !!d.trust_until,
-      status: !d.trust_until
-        ? 'Session only'
-        : new Date(d.trust_until) < now
-        ? 'Expired'
-        : `Trusted until ${new Date(d.trust_until).toLocaleDateString()}`,
-    }));
-
-    return res.json({ devices });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-});
-
-// DELETE — revoke one device or all devices
-app.delete('/api/auth/devices', async (req, res) => {
-  try {
-    const { userId, deviceId, revokeAll } = req.body;
-    if (!userId) return res.status(400).json({ error: 'userId required' });
-
-    const supabase = getSupabase();
-    if (!supabase) return res.status(500).json({ error: 'Supabase not configured' });
-
-    if (revokeAll) {
-      const { error } = await supabase
-        .from('trusted_devices')
-        .delete()
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      return res.json({ success: true, message: 'All devices revoked' });
-    }
-
-    if (!deviceId) return res.status(400).json({ error: 'deviceId required' });
-
-    const { error } = await supabase
-      .from('trusted_devices')
-      .delete()
-      .eq('id', deviceId)
-      .eq('user_id', userId); 
-
-    if (error) throw error;
-    return res.json({ success: true, message: 'Device revoked' });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-});
 // --- END AUTH ENDPOINTS --- //
 
 // Exam Grading endpoint has been removed as grading is handled client-side

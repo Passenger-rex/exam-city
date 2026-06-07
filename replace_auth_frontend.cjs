@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+const fs = require('fs');
+
+const frontendCode = `import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth, db } from "../firebase";
 import {
@@ -258,13 +260,13 @@ export default function AuthPage() {
             <div className="flex gap-4 mb-8 bg-surface-dim p-1 rounded-2xl">
               <button
                 onClick={() => setIsLogin(true)}
-                className={`flex-1 py-2 font-medium rounded-xl transition-all ${isLogin ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant"}`}
+                className={\`flex-1 py-2 font-medium rounded-xl transition-all \${isLogin ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant"}\`}
               >
                 Sign In
               </button>
               <button
                 onClick={() => setIsLogin(false)}
-                className={`flex-1 py-2 font-medium rounded-xl transition-all ${!isLogin ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant"}`}
+                className={\`flex-1 py-2 font-medium rounded-xl transition-all \${!isLogin ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant"}\`}
               >
                 Sign Up
               </button>
@@ -339,3 +341,7 @@ export default function AuthPage() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/AuthPage.tsx', frontendCode);
+console.log('Successfully replaced AuthPage.tsx');
