@@ -45,6 +45,29 @@ function getResend() {
   return resendClient;
 }
 
+async function getBestVerifiedSenderDomain(resend: any): Promise<string | null> {
+  try {
+    const listResponse = await resend.domains.list();
+    if (listResponse && listResponse.data && Array.isArray(listResponse.data)) {
+      // Filter for active, verified, or ready custom email domains
+      const verifiedDomains = listResponse.data.filter(
+        (d: any) => d.status === "verified" || d.status === "ready" || d.status === "active"
+      );
+      if (verifiedDomains.length > 0) {
+        // If they verified multiple, prioritize one containing qzz.io
+        const qzzDomain = verifiedDomains.find((d: any) => d.name && d.name.toLowerCase().includes("qzz.io"));
+        if (qzzDomain) {
+          return qzzDomain.name;
+        }
+        return verifiedDomains[0].name;
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Resend Domain Check Warning] Could not query list of verified domains from your Resend account. Falling back to defaults. Error:", err?.message || err);
+  }
+  return null;
+}
+
 async function sendResendEmail(payload: {
   from: string;
   to: string;
@@ -54,10 +77,15 @@ async function sendResendEmail(payload: {
   replyTo?: string;
 }) {
   const resend = getResend();
-  if (!resend) return { error: { message: "Resend not configured" } };
+  if (!resend) {
+    console.warn(`[Resend Error] Skip sending email to ${payload.to}. RESEND_API_KEY is not defined in environment variables.`);
+    return { error: { message: "Resend not configured" } };
+  }
 
-  // Support overrides for custom verified sending domains
+  // 1. Support custom manually defined RESEND_FROM_EMAIL environment overrides
   let finalFrom = payload.from;
+  let finalReplyTo = payload.replyTo;
+
   if (process.env.RESEND_FROM_EMAIL) {
     const customEmail = process.env.RESEND_FROM_EMAIL.trim();
     if (customEmail.includes("<")) {
@@ -67,26 +95,53 @@ async function sendResendEmail(payload: {
       const displayName = displayNameMatch ? displayNameMatch[1].trim() : "Exam City";
       finalFrom = `${displayName} <${customEmail}>`;
     }
+  } else {
+    // 2. Dynamic Domain Auto-configuration (highly robust!)
+    // Automatically aligns sender headers with whatever custom domains are actually verified in Resend DB
+    const verifiedDomain = await getBestVerifiedSenderDomain(resend);
+    if (verifiedDomain) {
+      const fromMatch = payload.from.match(/^(.*)<([^@]+)@([^>]+)>(.*)$/);
+      if (fromMatch) {
+        const displayName = fromMatch[1].trim();
+        const localPart = fromMatch[2].trim();
+        finalFrom = `${displayName} <${localPart}@${verifiedDomain}>`;
+      } else {
+        finalFrom = `Exam City <welcome@${verifiedDomain}>`;
+      }
+
+      if (payload.replyTo) {
+        const replyToMatch = payload.replyTo.match(/^([^@]+)@(.*)$/);
+        if (replyToMatch) {
+          finalReplyTo = `${replyToMatch[1].trim()}@${verifiedDomain}`;
+        } else {
+          finalReplyTo = `support@${verifiedDomain}`;
+        }
+      }
+      console.log(`[Resend Auto-Domain] Successfully matched and updated send headers: from = "${finalFrom}", replyTo = "${finalReplyTo}"`);
+    } else {
+      console.log(`[Resend Auto-Domain] No active custom domain found in Resend account. Dispatched default envelope: "${finalFrom}"`);
+    }
   }
 
   const finalPayload = {
     ...payload,
     from: finalFrom,
+    replyTo: finalReplyTo,
   };
 
-  // 1. Try sending with the customized domain / RESEND_FROM_EMAIL
+  // Try sending using custom domain or override headers
   try {
     const { data, error } = await resend.emails.send(finalPayload);
     if (!error) {
-      console.log(`[Resend OK] Successfully sent email to ${payload.to} from ${finalFrom}`);
+      console.log(`[Resend Deliver Success] Successfully sent email to ${payload.to} from sender ${finalFrom}`);
       return { data, error: null };
     }
-    console.warn("Primary email send failed/rejected. Retrying with onboarding@resend.dev. Error:", error);
+    console.warn(`[Resend Delivery Warning] Primary delivery attempt failed. From: "${finalFrom}", Recipient: "${payload.to}". Retrying with onboarding@resend.dev... Error:`, error);
   } catch (e: any) {
-    console.warn("Primary email send threw error. Retrying with onboarding@resend.dev. Error:", e);
+    console.warn(`[Resend Delivery Error] Primary delivery attempt threw exception. From: "${finalFrom}", Recipient: "${payload.to}". Retrying with onboarding@resend.dev... Exception:`, e);
   }
 
-  // 2. Retry with onboarding@resend.dev
+  // 3. Sandbox Sandbox Bypass Fallback: Try with Resend onboarding default address
   try {
     const fallbackFrom = "Exam City <onboarding@resend.dev>";
     const fallbackPayload = {
@@ -95,13 +150,21 @@ async function sendResendEmail(payload: {
     };
     const { data, error } = await resend.emails.send(fallbackPayload);
     if (error) {
-      console.error("Fallback email dispatch failed too:", error);
+      console.error(`[Resend Error Dispatch Failed] Backup sandbox dispatcher also failed to send to ${payload.to}. Error:`, error);
+      console.error(`
+🚨 RESEND DELIVERY DIAGNOSIS:
+  If you are testing sign-up with emails other than "johntobismart@gmail.com", Resend in Sandbox mode WILL reject them as unverified recipients.
+  To resolve this so all your users can get emails:
+  1. Add a verified custom domain inside Resend settings (e.g. mail.examcity.qzz.io or examcity.qzz.io).
+  2. Verify SPF/DKIM records are correctly propagated on your registrar DNS panel.
+  3. Or add specific email addresses to Resend "Testing Recipients" while in sandbox mode.
+      `);
     } else {
-      console.log(`[Resend Onboarding Sandbox OK] Sent email to ${payload.to} using onboarding@resend.dev`);
+      console.log(`[Resend Deliver Success Sandbox] Successfully sent fallback email to ${payload.to} from onboarding@resend.dev`);
     }
     return { data, error };
   } catch (e: any) {
-    console.error("Fallback email send threw exception:", e);
+    console.error(`[Resend Exception Dispatch Failed] Backup sandbox dispatcher threw exception targeting recipient ${payload.to}:`, e);
     return { error: e };
   }
 }
