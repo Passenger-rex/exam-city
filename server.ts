@@ -125,18 +125,35 @@ async function sendResendEmail(payload: {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${payload.subject}</title>
+  <style>
+    body { background-color: #f8fafc; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.04); border: 1px solid #f1f5f9; }
+    .header { padding: 40px 20px; text-align: center; background: #ffffff; border-bottom: 1px solid #f8fafc; }
+    .logo { height: 60px; width: auto; }
+    .content { padding: 48px; color: #334155; line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .footer { padding: 32px; text-align: center; color: #94a3b8; font-family: Arial, sans-serif; font-size: 12px; background-color: #ffffff; border-top: 1px solid #f8fafc; }
+    .footer-brand { color: #475569; font-weight: 800; font-size: 14px; letter-spacing: -0.01em; margin-bottom: 6px; }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f9fafb;">
-  ${finalPayload.html}
-  <div style="max-width: 600px; margin: 0 auto; text-align: center; padding: 20px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 11px;">
-    <p style="margin: 0 0 8px 0;">This email was sent to ${payload.to} regarding your Exam City account.</p>
-    <p style="margin: 0;">Exam City Headquarters &middot; 123 Education Way, Suite 100 &middot; San Francisco, CA 94105</p>
+<body style="margin: 0; padding: 0; background-color: #f8fafc;">
+  <div class="container">
+    <div class="header">
+      <img src="https://examcity.qzz.io/examcity_no_bg.png" alt="ExamCity" class="logo" />
+    </div>
+    <div class="content">
+      ${finalPayload.html}
+    </div>
+    <div class="footer">
+      <div class="footer-brand">ExamCity</div>
+      <p style="margin: 0;">This email was sent to ${payload.to} regarding your account settings.</p>
+      <p style="margin: 4px 0 0 0;">&copy; 2024 ExamCity. All rights reserved.</p>
+    </div>
   </div>
 </body>
 </html>`;
 
     finalPayload.html = wrappedHtml;
-    finalPayload.text = payload.text || payload.html.replace(/<[^>]+>/g, '') + '\n\nThis email was sent to ' + payload.to + '.\nExam City Headquarters, 123 Education Way, Suite 100, San Francisco, CA 94105';
+    finalPayload.text = payload.text || payload.html.replace(/<[^>]+>/g, '') + '\n\nThis email was sent to ' + payload.to + '.\nExam City';
 
     const { data, error } = await resend.emails.send(finalPayload);
     if (!error) {
@@ -364,6 +381,153 @@ app.post("/api/auth/send-welcome", async (req, res) => {
 });
 
 // --- END AUTH ENDPOINTS --- //
+
+// --- RESEND WEBHOOK & SUPPORT LOGIC --- //
+app.post("/api/support/reply", async (req, res) => {
+  const { ticketId, to, subject, html, originalMessageId } = req.body;
+
+  if (!to || !html || !originalMessageId) {
+    return res.status(400).json({ error: "Missing required reply fields" });
+  }
+
+  try {
+    const replyResult = await replyToEmail({
+      to,
+      subject: subject || "Re: Support Inquiry",
+      html,
+      originalMessageId
+    });
+
+    if (replyResult.error) {
+      throw replyResult.error;
+    }
+
+    // Update ticket status in Firestore
+    const writeUrl = getFirestoreRestUrl("support_tickets", ticketId);
+    await fetch(writeUrl, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: {
+          status: { stringValue: "replied" },
+          lastRepliedAt: { stringValue: new Date().toISOString() }
+        }
+      })
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    console.error("[Manual Reply Error]", err);
+    return res.status(500).json({ error: err.message || "Failed to send reply" });
+  }
+});
+
+/**
+ * WEBHOOK ENDPOINT
+ * Listens for Resend's 'email.received' event.
+ */
+app.post("/api/webhooks/resend", async (req, res) => {
+  const { type, data } = req.body;
+
+  if (type === "email.received") {
+    const {
+      from,
+      to,
+      subject,
+      text,
+      html,
+      headers,
+    } = data;
+
+    // Extract 'Message-ID' to use for threading replies
+    const messageId = headers?.find((h: any) => h.name.toLowerCase() === "message-id")?.value;
+    const senderEmail = from.match(/<([^>]+)>/)?.[1] || from;
+
+    console.log(`[Resend Webhook] Email received from: ${senderEmail}, Subject: ${subject}`);
+
+    try {
+      // INJECTION POINT: Inject into database query (Firestore)
+      const ticketId = crypto.randomUUID();
+      const writeUrl = getFirestoreRestUrl("support_tickets", ticketId);
+      
+      await fetch(writeUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            id: { stringValue: ticketId },
+            fromEmail: { stringValue: senderEmail },
+            subject: { stringValue: subject || "No Subject" },
+            content: { stringValue: text || html || "" },
+            originalMessageId: { stringValue: messageId || "" },
+            status: { stringValue: "open" },
+            createdAt: { stringValue: new Date().toISOString() }
+          }
+        })
+      });
+
+      // AUTO-REPLY logic
+      if (senderEmail && !senderEmail.includes("no-reply")) {
+        await replyToEmail({
+          to: senderEmail,
+          subject: `Re: ${subject}`,
+          html: `<p>Hello,</p><p>We have received your support inquiry regarding <strong>"${subject}"</strong>. Our team will review this and get back to you shortly.</p><p>Best regards,<br>ExamCity Support</p>`,
+          originalMessageId: messageId
+        });
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (err: any) {
+      console.error("[Webhook Processing Error]", err);
+      return res.status(500).json({ error: "Internal processing error" });
+    }
+  }
+
+  return res.status(200).json({ received: true });
+});
+
+/**
+ * REPLY FUNCTION
+ * Uses Resend SDK to reply to an email while maintaining thread integrity.
+ */
+async function replyToEmail(payload: {
+  to: string;
+  subject: string;
+  html: string;
+  originalMessageId: string;
+}) {
+  const resend = getResend();
+  if (!resend) return;
+
+  const verifiedDomain = await getBestVerifiedSenderDomain(resend) || "examcity.qzz.io";
+  const fromEmail = `ExamCity Support <support@${verifiedDomain}>`;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      // Threading headers
+      headers: {
+        "In-Reply-To": payload.originalMessageId,
+        "References": payload.originalMessageId,
+      }
+    });
+
+    if (error) {
+      console.error("[Resend Reply Error]", error);
+    } else {
+      console.log(`[Resend Reply Success] Threaded reply sent to ${payload.to}`);
+    }
+    return { data, error };
+  } catch (err) {
+    console.error("[Resend Reply Exception]", err);
+    return { error: err };
+  }
+}
+
+// --- END RESEND WEBHOOK & SUPPORT LOGIC --- //
 
 // Exam Grading endpoint has been removed as grading is handled client-side
 // Upgrade endpoint removed since it's handled via Flutterwave webhook and client-side setup

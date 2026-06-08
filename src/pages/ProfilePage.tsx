@@ -560,13 +560,13 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://examcity.netlify.app/signup?ref=${auth.currentUser?.uid}`}
+                        value={`https://examcity.qzz.io/signup?ref=${auth.currentUser?.uid}`}
                         className="flex-1 bg-surface border border-outline-variant/60 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium text-on-surface outline-none"
                       />
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(
-                            `https://examcity.netlify.app/signup?ref=${auth.currentUser?.uid}`,
+                            `https://examcity.qzz.io/signup?ref=${auth.currentUser?.uid}`,
                           );
                           setMessage("Referral link copied to clipboard!");
                         }}

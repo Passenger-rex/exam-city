@@ -39,52 +39,14 @@ export const getDeviceId = () => {
   return id;
 };
 
-// Route wrapper that enforces authentication and device validation
+// Route wrapper that enforces authentication
 function ProtectedRoute({ children, allowGuests = false }: { children: React.ReactNode; allowGuests?: boolean }) {
   const [checking, setChecking] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        setAuthorized(false);
-        setChecking(false);
-        return;
-      }
-
-      try {
-        const userDocRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userDocRef);
-        const currentDeviceId = getDeviceId();
-        
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          const trustedDevices = userData?.trustedDevices || [];
-
-          if (trustedDevices.includes(currentDeviceId)) {
-            setAuthorized(true);
-          } else {
-            console.warn("Unrecognized device blocked in ProtectedRoute:", currentDeviceId);
-            setAuthorized(false);
-          }
-        } else {
-          // Profile doc does not exist yet! Securely create it on-the-fly for them initializing their original device
-          await setDoc(userDocRef, {
-            name: user.displayName || user.email?.split("@")[0] || "User",
-            email: user.email,
-            trustedDevices: [currentDeviceId],
-            createdAt: serverTimestamp(),
-          });
-          setAuthorized(true);
-        }
-      } catch (err) {
-        console.error("Error checking device authorization:", err);
-        // Do NOT authorize the user on error/failures as that permits effortless credentials bypass. Keep them restricted.
-        setAuthorized(false);
-      } finally {
-        setChecking(false);
-      }
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setChecking(false);
     });
 
     return () => unsubscribe();
@@ -106,11 +68,6 @@ function ProtectedRoute({ children, allowGuests = false }: { children: React.Rea
       return <>{children}</>;
     }
     return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
-  if (!authorized) {
-    // Force untrusted device to authenticate via device verification loop
-    return <Navigate to="/login?reason=unrecognized_device" replace state={{ from: location, email: auth.currentUser.email }} />;
   }
 
   return <>{children}</>;

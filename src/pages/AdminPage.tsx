@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { collection, addDoc, serverTimestamp, getDocs, orderBy, query, doc, getDoc, setDoc, where, updateDoc, deleteDoc } from "firebase/firestore";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { Upload, Database, CheckCircle2, AlertCircle, Edit2, Trash2, Check, X, Plus, Search, Sparkles, Info, LayoutGrid, Layers, RefreshCw } from "lucide-react";
+import { Upload, Database, CheckCircle2, AlertCircle, Edit2, Trash2, Check, X, Plus, Search, Sparkles, Info, LayoutGrid, Layers, RefreshCw, Ticket, Mail, Send } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Navbar } from "../components/Navbar";
 import { useUser } from "../UserContext";
@@ -151,7 +151,11 @@ export default function AdminPage() {
   const [editingTopicName, setEditingTopicName] = useState("");
 
   const [verificationResults, setVerificationResults] = useState<Record<string, { verified: boolean; hasMismatches: boolean; mismatches: string[]; levelMismatches: string[] }>>({});
-  const [adminTab, setAdminTab] = useState<"curriculum" | "upload" | "notion">("curriculum");
+  const [adminTab, setAdminTab] = useState<"curriculum" | "upload" | "notion" | "tickets">("curriculum");
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
   const [subjectSearchQuery, setSubjectSearchQuery] = useState("");
 
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -175,8 +179,54 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    setStatus("");
+    if (adminTab === "tickets") {
+      const fetchTickets = async () => {
+        try {
+          const q = query(collection(db, "support_tickets"), orderBy("createdAt", "desc"));
+          const snap = await getDocs(q);
+          const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setTickets(data);
+        } catch (err) {
+          console.error("Error fetching tickets", err);
+        }
+      };
+      fetchTickets();
+    }
   }, [adminTab]);
+
+  const handleSendReply = async () => {
+    if (!selectedTicket || !replyText.trim()) return;
+    setIsReplying(true);
+    setStatus("Sending reply...");
+    try {
+      const response = await fetch("/api/support/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          to: selectedTicket.fromEmail,
+          subject: `Re: ${selectedTicket.subject}`,
+          html: `<div style="font-family: sans-serif; color: #333; line-height: 1.6;">${replyText.replace(/\n/g, '<br>')}</div><hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="color: #666; font-size: 0.9em;">On ${new Date(selectedTicket.createdAt).toLocaleString()}, ${selectedTicket.fromEmail} wrote:</p><blockquote style="border-left: 2px solid #ccc; padding-left: 15px; margin-left: 0; color: #777;">${selectedTicket.content}</blockquote></div>`,
+          originalMessageId: selectedTicket.originalMessageId
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to send reply");
+
+      setStatus("Reply sent successfully!");
+      setReplyText("");
+      setSelectedTicket(null);
+      // Refresh tickets
+      const q = query(collection(db, "support_tickets"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      setTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err: any) {
+      console.error(err);
+      setStatus("Error: " + err.message);
+    } finally {
+      setIsReplying(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCurriculums = async () => {
@@ -840,6 +890,18 @@ export default function AdminPage() {
                 <Database className="w-4 h-4" />
                 <span>Notion Database Sync</span>
              </button>
+             <button
+                id="admin-tab-tickets"
+                onClick={() => setAdminTab("tickets")}
+                className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-6 rounded-lg text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer ${
+                   adminTab === "tickets" 
+                      ? "bg-white dark:bg-neutral-800 text-neutral-850 dark:text-white shadow-sm ring-1 ring-neutral-200/40 dark:ring-neutral-700/60" 
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-white/50 dark:hover:bg-neutral-800/50"
+                }`}
+             >
+                <Ticket className="w-4 h-4" />
+                <span>Support Tickets</span>
+             </button>
           </div>
 
           {/* Tab Content Display Area */}
@@ -1466,6 +1528,106 @@ export default function AdminPage() {
                           <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-extrabold uppercase tracking-widest">Background Auto-Sync Active (30s interval)</p>
                        </div>
                     )}
+                  </div>
+                </div>
+            )}
+
+            {adminTab === "tickets" && (
+                <div id="card-tickets-panel" className="bg-white dark:bg-neutral-900 p-6 sm:p-10 rounded-3xl border border-neutral-200 dark:border-neutral-800/80 shadow-md shadow-neutral-100/40 dark:shadow-none space-y-8">
+                  <div className="flex items-center gap-4 pb-6 border-b border-neutral-100 dark:border-neutral-800">
+                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                      <Ticket className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-extrabold text-neutral-900 dark:text-white">
+                        Support Tickets
+                      </h2>
+                      <p className="text-neutral-500 dark:text-neutral-400 font-medium text-xs sm:text-sm">
+                        View and reply to incoming support emails from Resend webhooks.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row gap-8">
+                    {/* Ticket List */}
+                    <div className="w-full lg:w-1/3 bg-neutral-50 dark:bg-neutral-900/60 rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 flex flex-col gap-4 max-h-[600px] overflow-y-auto">
+                      <h3 className="font-extrabold text-xs tracking-wider text-neutral-400 dark:text-neutral-500 uppercase px-2">Inbox</h3>
+                      {tickets.length === 0 ? (
+                        <div className="text-center py-10 text-neutral-400 text-sm italic">No tickets found</div>
+                      ) : (
+                        tickets.map(ticket => (
+                          <div 
+                            key={ticket.id}
+                            onClick={() => setSelectedTicket(ticket)}
+                            className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                              selectedTicket?.id === ticket.id 
+                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg" 
+                                : "bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-800 hover:border-indigo-500/50"
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                                ticket.status === 'replied' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'
+                              }`}>
+                                {ticket.status || 'open'}
+                              </span>
+                              <span className="text-[10px] opacity-60">
+                                {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'Unknown date'}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-sm truncate">{ticket.subject}</h4>
+                            <p className="text-xs opacity-80 truncate">{ticket.fromEmail}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Ticket Detail & Reply */}
+                    <div className="flex-1 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-6 min-h-[400px]">
+                      {selectedTicket ? (
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                             <div className="flex justify-between items-center">
+                               <h3 className="text-xl font-extrabold">{selectedTicket.subject}</h3>
+                               <span className="text-xs text-neutral-400">{selectedTicket.createdAt ? new Date(selectedTicket.createdAt).toLocaleString() : ''}</span>
+                             </div>
+                             <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">From: {selectedTicket.fromEmail}</p>
+                          </div>
+
+                          <div className="bg-neutral-50 dark:bg-neutral-800/40 p-5 rounded-2xl text-sm leading-relaxed border border-neutral-100 dark:border-neutral-800 whitespace-pre-wrap">
+                            {selectedTicket.content}
+                          </div>
+
+                          <div className="pt-6 border-t border-neutral-100 dark:border-neutral-800 space-y-4">
+                            <h4 className="text-sm font-bold flex items-center gap-2">
+                              <Mail className="w-4 h-4" />
+                              Send Reply
+                            </h4>
+                            <textarea 
+                               value={replyText}
+                               onChange={e => setReplyText(e.target.value)}
+                               placeholder="Type your reply here..."
+                               className="w-full p-4 bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl text-sm min-h-[150px] outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                            />
+                            <button
+                               onClick={handleSendReply}
+                               disabled={isReplying || !replyText.trim()}
+                               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                               {isReplying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                               Reply to Email
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-neutral-400 space-y-4 p-20 text-center">
+                          <div className="w-16 h-16 bg-neutral-50 dark:bg-neutral-800/40 rounded-full flex items-center justify-center">
+                            <Mail className="w-8 h-8 opacity-20" />
+                          </div>
+                          <p className="text-sm font-medium">Select a ticket from the inbox to view and reply</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
             )}

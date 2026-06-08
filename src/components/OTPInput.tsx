@@ -68,7 +68,7 @@ export function OTPInput({ length = 6, value, onChange, disabled = false }: OTPI
       {Array.from({ length }, (_, index) => (
         <input
           key={index}
-          ref={(el) => (inputRefs.current[index] = el)}
+          ref={(el) => { inputRefs.current[index] = el; }}
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"

@@ -129,35 +129,27 @@ export default function VerifyLoginPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans select-none antialiased">
-      
-      {/* Decorative ambient background blur lights */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-indigo-500/10 blur-[130px] -z-10 animate-pulse pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-violet-600/5 blur-[100px] -z-10 pointer-events-none" />
+    <div className="min-h-screen bg-background relative flex items-center justify-center p-4 font-sans overflow-hidden">
+      {/* Background Ambience with a subtle, elegant radial lighting glow */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[30%] left-[20%] w-[350px] h-[350px] bg-primary/10 blur-[120px] rounded-full mix-blend-multiply" />
+        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full mix-blend-multiply" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800c_1px,transparent_1px),linear-gradient(to_bottom,#8080800c_1px,transparent_1px)] bg-[size:24px_24px]" />
+      </div>
 
-      <div className="w-full max-w-[460px] relative z-10">
-        
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-800/80 mb-3 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
-            <Lock className="w-3 h-3 text-indigo-500 shrink-0" />
-            Security Guard Bridge
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight sm:text-3xl font-sans">
-            Exam<span className="text-indigo-500">City</span>
-          </h1>
-          <p className="text-xs text-neutral-400 mt-1.5 font-medium max-w-xs mx-auto">
-            Zero-Trust identity check & browser session vaulting
-          </p>
-        </div>
-
-        {/* Content Box with glass effect */}
-        <div className="bg-neutral-900/40 backdrop-blur-3xl border border-neutral-800/80 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-[400px] z-10">
+        {/* Auth Card with sleek glass borders */}
+        <div className="bg-surface p-8 sm:p-9 rounded-[2rem] border border-outline-variant/60 shadow-[0_12px_44px_-10px_rgba(0,0,0,0.06)] relative overflow-hidden">
           
-          {/* Subtle top scanner light beam */}
-          {status === "loading" && (
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent animate-shimmer" />
-          )}
+          {/* Top Logo design matching AuthPage */}
+          <div className="flex flex-col items-center justify-center mb-8">
+            <img 
+              src="/examcity_no_bg.png" 
+              alt="ExamCity Logo" 
+              className="h-12 w-auto max-w-[180px] object-contain transition-transform duration-300 hover:scale-[1.02]"
+              referrerPolicy="no-referrer" 
+            />
+          </div>
 
           <AnimatePresence mode="wait">
             
@@ -168,57 +160,24 @@ export default function VerifyLoginPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-6"
+                className="space-y-6 text-center"
               >
-                {/* Visualizer Circle */}
-                <div className="flex flex-col items-center justify-center pt-2">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
-                    <div className="relative w-20 h-20 rounded-2xl bg-neutral-900/90 flex items-center justify-center border border-neutral-800 text-indigo-400 group">
-                      <Fingerprint className="w-10 h-10 animate-pulse text-indigo-500" />
-                      <div className="absolute inset-1 rounded-xl border border-dashed border-indigo-500/30 animate-spin [animation-duration:15s]" />
-                    </div>
+                {/* Visualizer Spinner */}
+                <div className="flex justify-center pt-2">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute w-16 h-16 rounded-full border-4 border-primary/20 animate-pulse" />
+                    <div className="w-12 h-12 rounded-full border-4 border-solid border-primary border-t-transparent animate-spin" />
                   </div>
                 </div>
 
                 {/* Status Message */}
-                <div className="text-center space-y-1">
-                  <h3 className="text-sm font-semibold tracking-wide text-neutral-300 font-mono flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                    {message}
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-bold text-on-surface">
+                    Authorizing session...
                   </h3>
-                  <p className="text-[11px] text-neutral-500">
-                    Safe connection established. Verifying hardware hashes...
+                  <p className="text-xs text-on-surface-variant font-medium max-w-xs mx-auto">
+                    Please wait while we securely process your request.
                   </p>
-                </div>
-
-                {/* Security Progress Checklist */}
-                <div className="bg-neutral-950/60 rounded-2xl p-4 border border-neutral-800/40 space-y-3.5">
-                  <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider font-mono">
-                    Handshake Status log
-                  </div>
-                  <div className="space-y-3">
-                    {steps.map((step, idx) => {
-                      const isDone = stepIndex > idx;
-                      const isActive = stepIndex === idx;
-                      return (
-                        <div key={idx} className="flex items-start gap-3">
-                          <div className="mt-0.5 shrink-0">
-                            {isDone ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-950/40" />
-                            ) : isActive ? (
-                              <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-                            ) : (
-                              <div className="w-4 h-4 rounded-full border border-neutral-800 bg-neutral-900" />
-                            )}
-                          </div>
-                          <p className={`text-xs ${isDone ? "text-neutral-400 font-medium line-through decoration-neutral-800" : isActive ? "text-indigo-400 font-semibold" : "text-neutral-600"}`}>
-                            {step}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -226,105 +185,38 @@ export default function VerifyLoginPage() {
             {status === "success" && (
               <motion.div
                 key="success-view"
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="space-y-6"
+                className="space-y-6 text-center"
               >
-                {/* Visualizer Check Circle */}
-                <div className="flex flex-col items-center justify-center pt-2">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-emerald-500/25 blur-2xl animate-pulse" />
-                    <div className="relative w-24 h-24 rounded-3xl bg-neutral-900/90 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-950/20">
-                      <ShieldCheck className="w-12 h-12 text-emerald-400" />
-                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
-                        <CheckCircle2 className="w-3 h-3 text-neutral-950 stroke-[3]" />
-                      </div>
-                    </div>
+                {/* Success Indicator */}
+                <div className="flex justify-center pt-2">
+                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center border border-emerald-500/20 shadow-md">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                   </div>
                 </div>
 
                 {/* Status Message */}
-                <div className="text-center space-y-1.5">
-                  <h3 className="text-base font-bold text-white tracking-tight">
-                    Device Verified Successfully
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-bold text-on-surface">
+                    Session Authorized
                   </h3>
-                  <p className="text-xs text-neutral-400 leading-relaxed max-w-sm mx-auto">
-                    {message}
+                  <p className="text-xs text-on-surface-variant leading-relaxed max-w-sm mx-auto font-medium">
+                    Your login attempt has been verified successfully.
                   </p>
                 </div>
 
-                {/* Secure footprint info details block */}
-                {verificationData && (
-                  <div className="bg-neutral-950/80 rounded-2xl border border-neutral-800/80 divide-y divide-neutral-800/40 p-1">
-                    <div className="p-3">
-                      <div className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest font-mono mb-1">
-                        Device Metadata Footprint
-                      </div>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between items-center text-neutral-400">
-                          <span className="flex items-center gap-1.5 font-mono text-[10px]">
-                            <Laptop className="w-3.5 h-3.5 text-neutral-500" />
-                            Client ID
-                          </span>
-                          <span className="font-semibold text-white/90 truncate max-w-[180px] font-mono text-[10px]">
-                            {verificationData.device_id ? verificationData.device_id.substring(0, 16) + "..." : "Local System"}
-                          </span>
-                        </div>
-                        {verificationData.email && (
-                          <div className="flex justify-between items-center text-neutral-400">
-                            <span className="font-mono text-[10px]">Account target</span>
-                            <span className="font-semibold text-white/90 truncate max-w-[180px]">
-                              {verificationData.email}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center text-neutral-400">
-                          <span className="flex items-center gap-1.5 font-mono text-[10px]">
-                            <Globe className="w-3.5 h-3.5 text-neutral-500" />
-                            Location Ip
-                          </span>
-                          <span className="font-semibold text-white/90 truncate max-w-[180px]">
-                            {verificationData.location || "Unknown location"} • {verificationData.ip || "127.0.0.1"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-3 bg-neutral-900/20 text-center">
-                      <p className="text-[11px] text-green-400 font-medium flex items-center justify-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                        Signature enrolled in trusted keys vault
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Guidelines information */}
-                <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl space-y-1">
-                  <p className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                    💡 Perfect. It is safe to close this tab now.
-                  </p>
-                  <p className="text-[11px] text-neutral-400 leading-relaxed font-normal">
-                    This verification link has enabled access. Your other browser window where you initiated the login attempt will immediately automatically transition into your student learning dashboard.
-                  </p>
-                </div>
-
-                {/* Primary Action Button */}
-                <div className="space-y-3 pt-2">
+                {/* Clear Single Button Action */}
+                <div className="pt-2">
                   <Link
                     to="/dashboard"
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                    className="w-full flex items-center justify-center gap-1.5 py-3.5 bg-primary hover:bg-primary/95 text-on-primary font-bold rounded-xl transition-all shadow-md cursor-pointer text-sm"
                   >
-                    Go to Account Dashboard
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    Go to Dashboard
+                    <ArrowRight className="w-4 h-4" />
                   </Link>
-
-                  <p className="text-center">
-                    <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">
-                      Already log in there? You can safely close this window.
-                    </span>
-                  </p>
                 </div>
               </motion.div>
             )}
@@ -332,50 +224,37 @@ export default function VerifyLoginPage() {
             {status === "error" && (
               <motion.div
                 key="error-view"
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-6"
+                className="space-y-6 text-center"
               >
-                {/* Visualizer Warning Circle */}
-                <div className="flex flex-col items-center justify-center pt-2">
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-rose-500/15 blur-2xl animate-pulse" />
-                    <div className="relative w-20 h-20 rounded-2xl bg-neutral-900/90 flex items-center justify-center border border-rose-500/30 text-rose-500">
-                      <ShieldAlert className="w-10 h-10" />
-                    </div>
+                {/* Warning Indicator */}
+                <div className="flex justify-center pt-2">
+                  <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center border border-error/20">
+                    <ShieldAlert className="w-8 h-8" />
                   </div>
                 </div>
 
                 {/* Header Error Title */}
-                <div className="text-center space-y-1.5">
-                  <h3 className="text-base font-bold text-white tracking-tight">
-                    Link Validation Failed
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-bold text-on-surface">
+                    Authorization Failed
                   </h3>
-                  <p className="text-xs text-neutral-400 leading-relaxed max-w-sm mx-auto">
+                  <p className="text-xs text-error font-medium leading-relaxed max-w-xs mx-auto">
                     {message}
                   </p>
                 </div>
 
-                {/* Detailed Troubleshooting Advice */}
-                <div className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl text-left space-y-1.5">
-                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">
-                    Security Policy Advice
-                  </span>
-                  <p className="text-[11px] text-neutral-400 leading-relaxed font-normal">
-                    This verification bridge handles dynamic requests with unique single-use signatures. Tokens automatically self-expire in 15 minutes or turn null as soon as they are used. If you clicked the link multiple times, your browser is already authorized.
-                  </p>
-                </div>
-
-                {/* Primary Action Button */}
+                {/* Action button to return */}
                 <div className="pt-2">
                   <Link
                     to="/login"
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs rounded-xl border border-neutral-800 transition-all active:scale-[0.98] cursor-pointer"
+                    className="w-full flex items-center justify-center gap-1.5 py-3.5 bg-surface hover:bg-surface-dim/40 text-on-surface font-bold rounded-xl border border-outline-variant/60 transition-all cursor-pointer text-sm"
                   >
-                    Return to Login Hub
-                    <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+                    Return to Sign In
+                    <ChevronRight className="w-4 h-4 text-on-surface-variant/50" />
                   </Link>
                 </div>
               </motion.div>
@@ -384,14 +263,6 @@ export default function VerifyLoginPage() {
           </AnimatePresence>
 
         </div>
-
-        {/* Footer branding copyright */}
-        <div className="text-center mt-6">
-          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest font-mono">
-            Exam City Secure Port • System Guard Active
-          </p>
-        </div>
-
       </div>
     </div>
   );
