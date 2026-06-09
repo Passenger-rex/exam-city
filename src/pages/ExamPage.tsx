@@ -34,6 +34,7 @@ import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { useUser } from "../UserContext";
 // removed html2pdf.js import
 
 export default function ExamPage() {
@@ -62,6 +63,30 @@ export default function ExamPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [includeAnswers, setIncludeAnswers] = useState(answersParam);
+
+  const { profile, loading: userLoading } = useUser();
+
+  // Strict Trial Guard Policy Check
+  useEffect(() => {
+    if (userLoading) return;
+    if (printParam) return; // Allow offline print layout compilation without blocking
+    
+    const guestCountValue = Number(localStorage.getItem('guestExamCount') || 0);
+    const isFreeTier = !profile || profile.tier === "free";
+
+    if (!auth.currentUser) {
+      if (guestCountValue >= 1) {
+        alert("You have reached the demo trial limit (1 exam). Please create an account to take more exams or trials!");
+        navigate("/signup?fromDemo=true");
+      }
+    } else if (isFreeTier) {
+      const dbCount = profile?.testsTakenThisMonth || 0;
+      if (dbCount >= 2 || guestCountValue >= 2) {
+        alert("Free limit (2 exams total) reached. Upgrade to Pro for unlimited access!");
+        navigate("/checkout");
+      }
+    }
+  }, [userLoading, profile, navigate, printParam]);
 
   // We should not use localStorage state restore if print is enabled, to generate a fresh one or just prevent restoring.
   const stateKey = printParam 

@@ -75,11 +75,13 @@ export default function AuthPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: name });
         
+        const guestExamCount = Number(localStorage.getItem('guestExamCount') || 0);
         await setDoc(doc(db, "users", userCredential.user.uid), {
           name,
           email,
           role: "user",
           emailVerified: false,
+          examCount: guestExamCount,
           createdAt: serverTimestamp(),
         });
 
@@ -141,11 +143,13 @@ export default function AuthPage() {
       
       const userSnap = await getDoc(doc(db, "users", result.user.uid));
       if (!userSnap.exists()) {
+        const guestExamCount = Number(localStorage.getItem('guestExamCount') || 0);
         await setDoc(doc(db, "users", result.user.uid), {
           name: result.user.displayName || "Google User",
           email: result.user.email,
           role: "user",
           emailVerified: true,
+          examCount: guestExamCount,
           createdAt: serverTimestamp(),
         });
         

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Lock, Key, Play, Layers, Search, Zap, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CurriculumManager } from "../utils/CurriculumManager";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 
 interface ExamConfigModalProps {
@@ -271,13 +271,26 @@ export function ExamConfigModal({
     return ["postgrad", "professional", "400", "500", "600", "400_eng", "500_eng", "400_sci"].includes(lvl);
   };
 
+  const guestCount = Number(localStorage.getItem('guestExamCount') || 0);
+  const isGuestDemoBlocked = !auth.currentUser && guestCount >= 1;
+  const isFreeLimitReached = userTier === "free" && (testsTakenThisMonth >= 2 || guestCount >= 2);
+  const isBlocked = isGuestDemoBlocked || isFreeLimitReached;
+
   const handleStartExam = async () => {
-    const isCurrentLevelPremium = isLevelPremium(difficulty);
-    if ((bankType === "premium" || isCurrentLevelPremium) && userTier === "free") {
-      navigate("/checkout");
+    if (isGuestDemoBlocked) {
+      navigate("/signup?fromDemo=true");
+      onClose();
       return;
     }
-    if (!isDemo && userTier === "free" && testsTakenThisMonth >= 2) {
+
+    if (isFreeLimitReached) {
+      navigate("/checkout");
+      onClose();
+      return;
+    }
+
+    const isCurrentLevelPremium = isLevelPremium(difficulty);
+    if ((bankType === "premium" || isCurrentLevelPremium) && userTier === "free") {
       navigate("/checkout");
       return;
     }
@@ -535,42 +548,54 @@ export function ExamConfigModal({
 
         {/* Footer */}
         <div className="p-4 sm:p-5 md:p-6 bg-surface border-t border-outline-variant/30 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] pb-safe rounded-b-[1.5rem] sm:rounded-b-3xl">
-          {showPremiumGate && (
+          {isGuestDemoBlocked ? (
+            <div className="mb-3 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                You have completed 1 demo exam. Please create an account to take more exams or trials!
+              </span>
+            </div>
+          ) : isFreeLimitReached ? (
+            <div className="mb-3 px-3 py-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-center gap-2">
+              <Lock className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <span className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                Free limit (2 exams total) reached. Upgrade to Pro for unlimited access!
+              </span>
+            </div>
+          ) : showPremiumGate ? (
             <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-600 shrink-0" />
-              <span className="text-xs font-semibold text-amber-900">
+              <span className="text-xs font-semibold text-amber-900 font-medium">
                 {isCurrentLevelPremium 
                   ? "Upgrade to Pro to unlock Advanced clinical, Postgraduate, and Professional modules." 
                   : "Upgrade to Pro to unlock AI Predictive Mode."}
               </span>
             </div>
-          )}
-          {!isDemo && userTier === "free" && testsTakenThisMonth >= 2 && !showPremiumGate && (
-            <div className="mb-3 px-3 py-2 bg-error/10 border border-error/20 rounded-lg flex items-center gap-2">
-              <Lock className="w-4 h-4 text-error shrink-0" />
-              <span className="text-xs font-semibold text-error">Free limit (2/month) reached.</span>
-            </div>
-          )}
+          ) : null}
 
           <div className="flex flex-col gap-2">
             <button
               onClick={handleStartExam}
-              className={`w-full py-3.5 text-[15px] font-bold rounded-xl transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm ${
-                showPremiumGate || (!isDemo && userTier === "free" && testsTakenThisMonth >= 2)
+              className={`w-full py-3.5 text-[15px] font-bold rounded-xl transition-all active:scale-[0.98] flex justify-center items-center gap-2 shadow-sm cursor-pointer ${
+                isBlocked || showPremiumGate
                   ? "bg-on-surface text-surface hover:bg-on-surface/90" 
                   : "bg-primary text-on-primary hover:bg-primary/90 shadow-primary/25" 
               }`}
             >
-              {showPremiumGate || (!isDemo && userTier === "free" && testsTakenThisMonth >= 2) ? (
+              {isGuestDemoBlocked ? (
+                <>Create Account to Continue</>
+              ) : isFreeLimitReached ? (
+                <>Upgrade to Pro</>
+              ) : showPremiumGate ? (
                 <>Unlock Access</>
               ) : (
                 <><Play className="w-4 h-4 fill-current" /> {isDemo ? "Start Demo Exam" : "Initialize Exam"}</>
               )}
             </button>
             
-            {!showPremiumGate && userTier === "free" && testsTakenThisMonth < 2 && (
+            {!isBlocked && !showPremiumGate && userTier === "free" && (
               <p className="text-[11px] text-center text-on-surface-variant font-medium">
-                {2 - testsTakenThisMonth} free attempt{2 - testsTakenThisMonth !== 1 && 's'} remaining this month
+                {Math.max(0, 2 - Math.max(testsTakenThisMonth, guestCount))} free attempt{Math.max(0, 2 - Math.max(testsTakenThisMonth, guestCount)) !== 1 && 's'} remaining
               </p>
             )}
           </div>
