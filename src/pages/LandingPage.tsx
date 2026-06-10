@@ -176,16 +176,7 @@ export default function LandingPage() {
               </button>
             </div>
             
-            <div className="mt-10 md:hidden flex items-center justify-center gap-3">
-               <div className="flex -space-x-3">
-                 <div className="w-10 h-10 rounded-full border-2 border-surface bg-blue-100 flex items-center justify-center text-base sm:text-lg overflow-hidden shrink-0">👨‍🎓</div>
-                 <div className="w-10 h-10 rounded-full border-2 border-surface bg-green-100 flex items-center justify-center text-base sm:text-lg overflow-hidden shrink-0">👩‍🔬</div>
-                 <div className="w-10 h-10 rounded-full border-2 border-surface bg-purple-100 flex items-center justify-center text-base sm:text-lg overflow-hidden shrink-0">👨‍💻</div>
-               </div>
-               <p className="text-sm font-bold text-on-surface-variant">
-                 Trusted by <span className="text-on-surface">10,000+</span> Students
-               </p>
-            </div>
+
           </motion.div>
 
           {/* Bento Grid Preview Section */}

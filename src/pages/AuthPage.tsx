@@ -418,6 +418,9 @@ export default function AuthPage() {
                             <input
                               type="text"
                               required
+                              id="full-name"
+                              name="name"
+                              autoComplete="name"
                               value={name}
                               onChange={(e) => setName(e.target.value)}
                               placeholder="Full Name"
@@ -432,6 +435,9 @@ export default function AuthPage() {
                         <input
                           type="email"
                           required
+                          id="email-address"
+                          name="email"
+                          autoComplete="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="Email Address"
@@ -453,6 +459,9 @@ export default function AuthPage() {
                         <input
                           type={showPassword ? "text" : "password"}
                           required
+                          id="secret-password"
+                          name="password"
+                          autoComplete={isLogin ? "current-password" : "new-password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Password"
@@ -592,7 +601,7 @@ export default function AuthPage() {
                       </button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-outline-variant/40">
+                    <div className="mt-8 pt-6 border-t border-outline-variant/40 space-y-5">
                       <p className="text-center text-sm text-on-surface-variant/60 font-medium">
                         {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                         <button
@@ -603,6 +612,16 @@ export default function AuthPage() {
                           {isLogin ? "Sign up" : "Sign in"}
                         </button>
                       </p>
+
+                      <div className="flex flex-col items-center justify-center text-center space-y-1 p-3.5 bg-emerald-500/[0.04] rounded-2xl border border-emerald-500/10">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700/80">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>Secure Gateway Verification</span>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant/50 max-w-[280px] leading-relaxed">
+                          Protected by Firebase Security Core. Custom credentials are securely verified and never cached or shared.
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 )}
