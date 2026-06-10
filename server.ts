@@ -1,8 +1,24 @@
 import express from "express";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
 import { Resend } from "resend";
 import { Client } from "@notionhq/client";
+
+// Automatic startup synchronization of different required favicon dimensions from the master brand image
+try {
+  const source = path.join(process.cwd(), "public", "examcity_no_bg.png");
+  if (fs.existsSync(source)) {
+    fs.copyFileSync(source, path.join(process.cwd(), "public", "favicon.png"));
+    fs.copyFileSync(source, path.join(process.cwd(), "public", "favicon-16x16.png"));
+    fs.copyFileSync(source, path.join(process.cwd(), "public", "favicon-32x32.png"));
+    console.log("✅ Successfully duplicated and synced favicons: favicon.png, favicon-16x16.png, favicon-32x32.png");
+  } else {
+    console.warn("⚠️ Source examcity_no_bg.png not found under public/ folder.");
+  }
+} catch (err) {
+  console.error("❌ Failed to replicate favicon files during server initialization:", err);
+}
 
 import { OpenAI } from "openai";
 import { executeAIFallback } from "./src/ai-fallback";
