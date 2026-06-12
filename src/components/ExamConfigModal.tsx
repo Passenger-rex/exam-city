@@ -306,20 +306,26 @@ export function ExamConfigModal({
     navigate(url);
   };
 
-  if (!isOpen) return null;
-  
   const isCurrentLevelPremium = isLevelPremium(difficulty);
   const showPremiumGate = (bankType === "premium" || isCurrentLevelPremium) && userTier === "free";
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 sm:p-6">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="bg-surface w-full sm:max-w-[600px] md:max-w-[680px] max-h-[90vh] flex flex-col relative rounded-[32px] shadow-2xl overflow-hidden font-sans border border-outline-variant/30"
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 sm:p-6"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="bg-surface w-full sm:max-w-[600px] md:max-w-[680px] max-h-[90vh] flex flex-col relative rounded-[32px] shadow-2xl overflow-hidden font-sans border border-outline-variant/30"
+          >
         {/* Header */}
         <div className="px-6 py-5 border-b border-outline-variant/30 flex justify-between items-center bg-surface/80 backdrop-blur-xl shrink-0 z-10">
           <div>
@@ -600,8 +606,10 @@ export function ExamConfigModal({
             )}
           </div>
         </div>
-      </motion.div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

@@ -67,11 +67,18 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, conte
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        >
             <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
             className="bg-surface w-full max-w-[400px] rounded-[28px] overflow-hidden shadow-2xl border border-outline-variant/30 flex flex-col max-h-[85vh] relative"
           >
             {isSuccess ? (
@@ -163,7 +170,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, conte
               </>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

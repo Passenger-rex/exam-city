@@ -16,6 +16,9 @@ export default function CheckoutPage() {
   const [transactionId, setTransactionId] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"individual" | "group">("individual");
   const [isLifetime, setIsLifetime] = useState(true);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [partnerEmails, setPartnerEmails] = useState<string[]>(["", "", "", ""]);
+  const [savingPartners, setSavingPartners] = useState(false);
 
   const flutterwaveKey = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || "";
 
@@ -65,15 +68,13 @@ export default function CheckoutPage() {
     payment_options: "card,mobilemoney,ussd",
     customer: {
       email: user?.email || "user@example.com",
-      phone_number: "",
+      phone_number: phoneNumber,
       name: user?.displayName || "User",
     },
     customizations: {
-      title: selectedPlan === "group" ? "Study Group Premium" : "Pro Premium",
-      description: selectedPlan === "group" 
-        ? `${isLifetime ? "Lifetime" : "Monthly"} Group Access for 5 students` 
-        : `${isLifetime ? "Lifetime" : "Monthly"} Individual access to premium capabilities`,
-      logo: "https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg",
+      title: selectedPlan === "group" ? "Study Group Premium" : "Individual Pro",
+      description: "Secure upgrade for Exam City Premium Modules",
+      logo: `${window.location.origin}/examcity_no_bg.png`,
     },
   };
 
@@ -114,10 +115,12 @@ export default function CheckoutPage() {
             setPaymentSuccess(true);
             setLoading(false);
             
-            // Navigate faster for "immediate" feel
-            setTimeout(() => {
-              navigate("/dashboard", { state: { upgradeSuccess: true } });
-            }, 2000);
+            // Auto navigate for individual plan, stay to let group plan enter teammate emails
+            if (selectedPlan !== "group") {
+              setTimeout(() => {
+                navigate("/dashboard", { state: { upgradeSuccess: true } });
+              }, 2000);
+            }
           } catch (err: any) {
             alert("Upgrade failed to save: " + err.message);
             setLoading(false);
@@ -133,6 +136,35 @@ export default function CheckoutPage() {
     });
   };
 
+  const handlePartnerEmailChange = (index: number, val: string) => {
+    const updated = [...partnerEmails];
+    updated[index] = val;
+    setPartnerEmails(updated);
+  };
+
+  const handleSavePartners = async () => {
+    if (!user) return;
+    setSavingPartners(true);
+    try {
+      const validEmails = partnerEmails
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e !== "" && e.includes("@"));
+
+      const uniqueEmails = Array.from(new Set(validEmails));
+
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, { 
+        groupMembers: uniqueEmails
+      }, { merge: true });
+
+      navigate("/dashboard", { state: { upgradeSuccess: true } });
+    } catch (err: any) {
+      alert("Failed to save companion emails: " + err.message);
+    } finally {
+      setSavingPartners(false);
+    }
+  };
+
   if (paymentSuccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center font-body-md text-on-background p-4 relative overflow-hidden">
@@ -140,7 +172,9 @@ export default function CheckoutPage() {
         <motion.div 
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="bg-surface border border-outline-variant/30 rounded-3xl p-6 sm:p-8 md:p-12 max-w-md w-full shadow-2xl relative overflow-hidden text-center"
+          className={`bg-surface border border-outline-variant/30 rounded-3xl p-6 sm:p-8 md:p-10 ${
+            selectedPlan === "group" ? "max-w-xl" : "max-w-md"
+          } w-full shadow-2xl relative overflow-hidden text-center`}
         >
           <div className="absolute top-0 inset-x-0 h-1.5 bg-emerald-500" />
           <motion.div 
@@ -174,10 +208,65 @@ export default function CheckoutPage() {
               <span className="font-mono text-xs bg-surface-bright px-2.5 py-1 rounded-md text-on-surface border border-outline-variant/50 shadow-sm">{transactionId}</span>
             </div>
           </div>
-          <div className="flex items-center justify-center gap-3 text-sm font-semibold text-primary">
-            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-            Preparing your dashboard...
-          </div>
+          
+          {selectedPlan === "group" ? (
+            <div className="mt-8 border-t border-outline-variant/40 pt-6 text-left">
+              <h3 className="text-sm sm:text-base font-bold text-on-surface mb-1 flex items-center gap-1.5 leading-none">
+                <Users className="w-4 h-4 text-primary" />
+                Invite your 4 study partners immediately
+              </h3>
+              <p className="text-[11px] sm:text-xs text-on-surface-variant mb-5 font-medium leading-relaxed">
+                Add up to 4 teammate email addresses so they start utilizing their shared plan on day one.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6">
+                {partnerEmails.map((email, idx) => (
+                  <div key={idx} className="relative group">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-on-surface-variant/40 group-focus-within:text-primary/70 transition-colors">
+                      #{idx + 1}
+                    </span>
+                    <input
+                      type="email"
+                      id={`partner-email-${idx}`}
+                      value={email}
+                      onChange={(e) => handlePartnerEmailChange(idx, e.target.value)}
+                      placeholder="partner@example.com"
+                      className="w-full bg-surface-bright border border-outline-variant/50 rounded-xl pl-9 pr-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-primary/50 text-on-surface placeholder:text-on-surface-variant/30 shadow-none transition-all"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  onClick={handleSavePartners}
+                  disabled={savingPartners}
+                  className="w-full sm:flex-1 py-3 px-5 bg-primary text-on-primary hover:bg-primary/95 rounded-xl font-bold text-xs tracking-wide transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {savingPartners ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Save & Continue to Dashboard
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => navigate("/dashboard", { state: { upgradeSuccess: true } })}
+                  disabled={savingPartners}
+                  className="w-full sm:w-auto py-3 px-5 text-on-surface-variant hover:text-on-surface text-xs font-extrabold transition-all hover:bg-surface-dim rounded-xl border border-outline-variant/30 cursor-pointer text-center animate-none"
+                >
+                  Skip for now
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-3 text-sm font-semibold text-primary">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              Preparing your dashboard...
+            </div>
+          )}
         </motion.div>
       </div>
     );
@@ -248,6 +337,22 @@ export default function CheckoutPage() {
                       </span>
                     </span>
                   </div>
+                </div>
+
+                {/* Phone Verification Input */}
+                <div className="flex flex-col gap-2 mt-4 bg-surface-dim/40 border border-outline-variant/30 rounded-[20px] p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest leading-none">Phone Verification</span>
+                  <input
+                    type="tel"
+                    id="phone-number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+234 (0) 803 123 4567"
+                    className="w-full bg-surface-bright border border-outline-variant/50 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-primary/50 text-on-surface placeholder:text-on-surface-variant/35"
+                  />
+                  <p className="text-[9px] text-on-surface-variant/60 leading-normal">
+                    Required by payment networks to securely verify SMS/OTP checkout authorization instantly.
+                  </p>
                 </div>
               </div>
 

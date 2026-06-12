@@ -189,7 +189,11 @@ export default function LandingPage() {
             {/* Desktop Grid Layout */}
             <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {/* Mock Question Feature */}
-              <div className="md:col-span-2 bg-surface rounded-[2.5rem] p-2 flex flex-col md:flex-row border border-outline-variant/60 shadow-xl overflow-hidden relative">
+              <motion.div 
+                whileHover={{ y: -6, scale: 1.01 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className="md:col-span-2 bg-surface rounded-[2.5rem] p-2 flex flex-col md:flex-row border border-outline-variant/60 shadow-xl overflow-hidden relative"
+              >
                  <div className="p-6 sm:p-8 md:p-12 flex-1 flex flex-col justify-center text-left">
                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-6">
                      <Target className="w-7 h-7" />
@@ -220,10 +224,14 @@ export default function LandingPage() {
                      </div>
                    </div>
                  </div>
-              </div>
+              </motion.div>
 
               {/* AI Coach Feature */}
-              <div className="bg-surface rounded-[2.5rem] p-2 flex flex-col border border-outline-variant/60 shadow-xl overflow-hidden group">
+              <motion.div 
+                whileHover={{ y: -6, scale: 1.01 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className="bg-surface rounded-[2.5rem] p-2 flex flex-col border border-outline-variant/60 shadow-xl overflow-hidden group"
+              >
                  <div className="p-6 sm:p-8 pb-4 text-left">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-secondary/10 text-secondary mb-6 group-hover:scale-110 transition-transform duration-300">
                       <Sparkles className="w-7 h-7" />
@@ -256,7 +264,7 @@ export default function LandingPage() {
                      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface-container via-surface-container/80 to-transparent z-20 pointer-events-none"></div>
                    </div>
                  </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Mobile Stacked Format */}
@@ -351,7 +359,11 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Column 1: Brand Representation */}
-            <div className="bg-surface border border-outline-variant/50 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300">
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.01 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="bg-surface border border-outline-variant/50 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300"
+            >
               <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 border border-primary/20">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
@@ -359,10 +371,14 @@ export default function LandingPage() {
               <p className="text-on-surface-variant font-medium text-sm leading-relaxed">
                 <strong className="text-on-surface">Exam City</strong> is a dedicated student-success software. We make study tools, authentic testing modules, and educational feedback systems. We explicitly state our brand on every page, maintaining absolute alignment who we are and what we build.
               </p>
-            </div>
+            </motion.div>
 
             {/* Column 2: App Functionality */}
-            <div className="bg-surface border border-outline-variant/50 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300">
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.01 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="bg-surface border border-outline-variant/50 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300"
+            >
               <div className="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center mb-6 border border-secondary/20">
                 <Target className="w-6 h-6" />
               </div>
@@ -370,10 +386,14 @@ export default function LandingPage() {
               <p className="text-on-surface-variant font-medium text-sm leading-relaxed">
                 Our platform provides clear, real features to help students review: from generating dynamic past paper assessments aligned to custom grade-levels and academic subjects, to conducting smart tutor chat discussions, uploading study notes or summaries, and tracking historical quiz performance.
               </p>
-            </div>
+            </motion.div>
 
             {/* Column 3: Data Requests & Purpose */}
-            <div className="bg-surface border border-outline-variant/40 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300 relative overflow-hidden ring-1 ring-primary/20">
+            <motion.div 
+              whileHover={{ y: -5, scale: 1.01 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="bg-surface border border-outline-variant/40 rounded-3xl p-6 sm:p-8 flex flex-col text-left hover:shadow-lg transition-all duration-300 relative overflow-hidden ring-1 ring-primary/20"
+            >
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full pointer-events-none"></div>
               <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 border border-primary/30">
                 <Lock className="w-6 h-6" />
@@ -382,7 +402,7 @@ export default function LandingPage() {
               <p className="text-on-surface-variant font-medium text-sm leading-relaxed">
                 We only request user data that is strictly essential for service operation: your email/name to handle secure sign-in verification and progress monitoring, and uploaded files (such as PDFs, DOCX, and screenshots) to extract textual study matter so our AI generator can formulate customized mock questions.
               </p>
-            </div>
+            </motion.div>
           </div>
 
           <div className="mt-8 p-5 bg-surface-dim/50 border border-outline-variant/40 rounded-2xl text-left flex flex-col sm:flex-row items-center gap-4 justify-between">
