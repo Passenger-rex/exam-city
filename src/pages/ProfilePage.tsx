@@ -498,25 +498,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-outline-variant/30">
-                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-primary" /> Active Devices &amp; Sessions
-                </h2>
-                <div className="p-4 bg-outline-variant/10 rounded-2xl border border-outline-variant/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="text-left">
-                     <p className="font-bold text-sm text-on-surface">You are active on {activeSessions.length || 1} trusted terminal{activeSessions.length !== 1 ? "s" : ""}</p>
-                     <p className="text-xs text-on-surface-variant font-semibold mt-0.5">Control concurrent session instances to secure account data from unauthorized lookups.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDeviceModalOpen(true)}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-surface text-on-surface hover:bg-surface-dim font-bold text-xs rounded-xl border border-outline-variant/60 shadow-sm active:scale-[0.98] transition-all cursor-pointer text-center shrink-0"
-                  >
-                     Manage Devices
-                  </button>
-                </div>
-              </div>
-
               <div className="pt-6">
                 <button
                   type="submit"

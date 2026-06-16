@@ -127,23 +127,35 @@ export default function LandingPage() {
           <InteractiveBackground />
         </div>
         
-        <div className="max-w-7xl mx-auto text-center w-full relative z-10 flex flex-col">
+        {/* Animated abstract blobs for subtle parallax */}
+        <motion.div 
+          animate={{ y: [-30, 30, -30], x: [-20, 20, -20], scale: [1, 1.1, 1] }} 
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[10%] -left-[10%] w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen z-0"
+        />
+        <motion.div 
+          animate={{ y: [30, -30, 30], x: [20, -20, 20], scale: [1, 1.2, 1] }} 
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute top-[30%] -right-[10%] w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen z-0"
+        />
+        
+        <div className="max-w-7xl mx-auto text-center w-full relative z-10 flex flex-col hover-jelly-container">
           
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span className="inline-flex items-center justify-center text-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-secondary/10 text-secondary font-bold md:font-semibold text-[11px] sm:text-xs md:text-sm mb-5 md:mb-6 border border-secondary/20 hover-jelly backdrop-blur-sm shadow-sm dark:shadow-none max-w-[90vw] whitespace-normal md:whitespace-nowrap">
-              <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary flex-shrink-0" />
+            <span className="inline-flex items-center justify-center text-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary font-bold text-[11px] sm:text-xs md:text-sm mb-6 border border-secondary/20 backdrop-blur-md shadow-sm dark:shadow-none max-w-[90vw] whitespace-normal md:whitespace-nowrap">
+              <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
               <span>The Next Evolution in Testing</span>
             </span>
-            <h1 className="font-headline-xl text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-4 md:mb-8 text-on-surface leading-[1.1] md:leading-[1.1]">
+            <h1 className="font-headline-xl text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter mb-6 md:mb-10 text-on-surface leading-[1.05] md:leading-[1.05]">
               Master Exams. <br className="hidden sm:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary relative flex flex-col sm:inline-block z-10 w-fit sm:w-auto mx-auto sm:mx-0 pb-1 md:pb-0">
+              <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-primary to-secondary relative flex flex-col sm:inline-block z-10 w-fit sm:w-auto mx-auto sm:mx-0 pb-2 md:pb-0">
                 Stress Less.
                 <svg
-                  className="absolute w-full h-3 md:h-4 -bottom-1 left-0 text-secondary opacity-50 -z-10 hidden md:block"
+                  className="absolute w-full h-3 md:h-5 -bottom-2 md:-bottom-3 left-0 text-secondary opacity-40 -z-10 hidden md:block"
                   viewBox="0 0 100 10"
                   preserveAspectRatio="none"
                 >
@@ -156,27 +168,26 @@ export default function LandingPage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-base sm:text-xl text-on-surface-variant max-w-2xl mx-auto mb-8 md:mb-12 font-medium px-2 md:px-0 leading-relaxed md:leading-normal">
+            <p className="text-lg sm:text-xl md:text-2xl text-on-surface-variant max-w-3xl mx-auto mb-10 md:mb-14 font-medium px-4 md:px-0 leading-relaxed md:leading-relaxed">
               The smartest study companion. AI coaching, authentic past papers, and instantly graded mock tests designed to help you ace your exams.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-4 sm:px-0">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-4 sm:px-0 max-w-2xl mx-auto">
               <Link
                 to="/signup"
-                className="w-full sm:w-auto px-8 py-4 bg-primary text-on-primary font-bold rounded-2xl md:rounded-full hover:bg-primary/90 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95 text-base md:text-lg flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 px-8 py-5 bg-primary text-on-primary font-black rounded-2xl md:rounded-3xl hover:bg-primary/95 hover:scale-105 shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-95 text-lg flex items-center justify-center gap-3"
               >
                 Start Free Trial
-                <TrendingUp className="w-5 h-5" />
+                <TrendingUp className="w-6 h-6" />
               </Link>
               <button
                 onClick={() => setShowConfig(true)}
-                className="w-full sm:w-auto px-8 py-4 bg-surface-dim/80 text-on-surface font-bold rounded-2xl md:rounded-full hover:bg-surface-container backdrop-blur-md transition-all active:scale-95 text-base md:text-lg shadow-sm border border-outline-variant flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 px-8 py-5 bg-surface-dim/80 text-on-surface font-black rounded-2xl md:rounded-3xl hover:bg-surface-container backdrop-blur-md hover:scale-105 transition-all active:scale-95 text-lg shadow-sm border-2 border-outline-variant flex items-center justify-center gap-3"
               >
-                <Play className="w-5 h-5" />
+                <Play className="w-6 h-6" />
                 Try a Demo
               </button>
             </div>
             
-
           </motion.div>
 
           {/* Bento Grid Preview Section */}

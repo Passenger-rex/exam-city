@@ -180,69 +180,86 @@ export default function AuthPage() {
     : (name.trim() !== "" && validateEmail(email) && isPasswordComplexityMet);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] relative flex items-center justify-center p-4 font-sans overflow-hidden transition-colors duration-1000">
-      {/* Dynamic Background with high-end mesh-like gradients that shift based on auth mode */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+    <div className="min-h-screen bg-background flex font-sans overflow-hidden">
+      {/* Left Column - Brand & Value Prop */}
+      <div className="hidden lg:flex flex-col flex-1 relative bg-surface-dim overflow-hidden border-r border-outline-variant/30">
+        <div className="absolute inset-0 bg-primary/5"></div>
         <motion.div 
-          animate={{ 
-            backgroundColor: isLogin ? "rgba(129, 51, 255, 0.08)" : "rgba(139, 92, 246, 0.08)",
-            scale: isLogin ? 1 : 1.1
-          }}
-          className="absolute -top-[10%] -left-[5%] w-[600px] h-[600px] blur-[140px] rounded-full mix-blend-multiply animate-pulse" 
+          animate={{ scale: [1, 1.05, 1], rotate: [0, 2, -2, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[20%] -left-[10%] w-[800px] h-[800px] bg-primary/10 rounded-full blur-[100px] mix-blend-multiply" 
         />
         <motion.div 
-          animate={{ 
-            backgroundColor: isLogin ? "rgba(99, 102, 241, 0.08)" : "rgba(236, 72, 153, 0.1)",
-            scale: isLogin ? 1 : 1.2
-          }}
-          className="absolute top-[30%] -right-[10%] w-[500px] h-[500px] blur-[120px] rounded-full mix-blend-multiply animate-blob-slow" 
-        />
-        <motion.div 
-          animate={{ 
-            backgroundColor: isLogin ? "rgba(168, 85, 247, 0.05)" : "rgba(59, 130, 246, 0.08)",
-            scale: isLogin ? 1 : 0.9
-          }}
-          className="absolute -bottom-[10%] left-[20%] w-[550px] h-[550px] blur-[130px] rounded-full mix-blend-multiply animate-pulse" 
+          animate={{ scale: [1, 1.1, 1], rotate: [0, -3, 3, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[40%] -right-[20%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px] mix-blend-multiply" 
         />
         
-        {/* Subtle dot pattern grid */}
-        <div className="absolute inset-0 opacity-[0.25]" style={{ backgroundImage: 'radial-gradient(#C6C6CD 1px, transparent 0.5px)', backgroundSize: '32px 32px' }} />
-      </div>
-
-      {/* Back to Home Button - Floating elegantly in the top left */}
-      <motion.button
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        onClick={() => navigate("/")}
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-xs font-bold text-on-surface-variant/60 hover:text-primary transition-all group bg-white/40 backdrop-blur-md px-4 py-2 rounded-full border border-outline-variant/50 shadow-sm cursor-pointer"
-      >
-        <span className="rotate-180"><ArrowRight className="w-3.5 h-3.5" /></span>
-        Back to Home
-      </motion.button>
-      
-      <div className="w-full max-w-[420px] z-10">
-        {/* Auth Card with sleek glass borders and high-contrast spacing */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.96, y: 10 }} 
-          animate={{ opacity: 1, scale: 1, y: 0 }} 
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="bg-white/90 backdrop-blur-xl p-8 sm:p-10 rounded-[2.5rem] border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] relative overflow-hidden"
-        >
-          {/* Top Logo branding container - highly prominent */}
-          <div className="flex flex-col items-center justify-center mb-10 overflow-visible">
-            <motion.img 
-              initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-              transition={{ delay: 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ scale: 1.05 }}
+        <div className="relative z-10 flex flex-col justify-between h-full p-12 lg:p-20">
+          <div>
+            <img 
               src="/examcity_no_bg.png" 
               alt="ExamCity Logo" 
-              className="h-28 md:h-32 w-auto max-w-[340px] drop-shadow-2xl object-contain cursor-pointer"
-              referrerPolicy="no-referrer" 
+              className="h-16 w-auto object-contain cursor-pointer"
               onClick={() => navigate("/")}
             />
           </div>
+          
+          <div className="max-w-md space-y-6">
+            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-on-surface leading-tight">
+              {isLogin ? "Welcome back to your study hub." : "Start your journey to academic excellence."}
+            </h1>
+            <p className="text-on-surface-variant text-lg leading-relaxed">
+              {isLogin 
+                ? "Sign in to access your customized quizzes, track your progress, and continue mastering your subjects." 
+                : "Join thousands of students who are achieving their goals with ExamCity's premium modules."}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm font-semibold text-on-surface-variant">
+            <div className="flex -space-x-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="w-10 h-10 rounded-full border-2 border-surface bg-surface-dim overflow-hidden relative">
+                  <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt={`Student ${i}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+            <div>
+              <p className="text-on-surface"><span className="font-bold">10,000+</span> students</p>
+              <p className="text-xs">already learning with us</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      {/* Right Column - Auth Form */}
+      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 relative bg-surface">
+        {/* Mobile Logo & Back */}
+        <div className="absolute top-6 left-6 lg:hidden flex items-center gap-4 z-20">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center justify-center p-2 rounded-full border border-outline-variant/50 hover:bg-surface-dim/50 transition-colors"
+          >
+            <ArrowRight className="w-5 h-5 -scale-x-100 text-on-surface-variant" />
+          </button>
+        </div>
+        
+        {/* Mobile logo when small */}
+        <div className="lg:hidden mb-8 mt-12 w-full max-w-[440px] flex justify-center">
+            <img 
+              src="/examcity_no_bg.png" 
+              alt="ExamCity Logo" 
+              className="h-16 w-auto object-contain cursor-pointer"
+              onClick={() => navigate("/")}
+            />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-[440px] bg-surface border border-outline-variant/30 sm:border-outline-variant/50 sm:shadow-2xl sm:bg-white/50 sm:backdrop-blur-xl rounded-[2rem] p-8 sm:p-10 relative z-10"
+        >
           <AnimatePresence mode="wait">
             {isSuccess ? (
               <motion.div 
@@ -274,7 +291,6 @@ export default function AuthPage() {
                     />
                   </svg>
                   
-                  {/* Concentric expanding wave pulse representing success */}
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0.5 }}
                     animate={{ scale: 1.4, opacity: 0 }}
@@ -297,7 +313,7 @@ export default function AuthPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="text-xs text-on-surface-variant font-medium max-w-[260px] leading-relaxed mx-auto"
+                    className="text-sm text-on-surface-variant font-medium max-w-[260px] leading-relaxed mx-auto"
                   >
                     {isLogin 
                       ? "Authorization approved. Directing you to your learning dashboard..."
@@ -319,10 +335,10 @@ export default function AuthPage() {
                       initial={{ opacity: 0, height: 0, y: -10 }} 
                       animate={{ opacity: 1, height: 'auto', y: 0 }} 
                       exit={{ opacity: 0, height: 0, y: -10 }} 
-                      className="mb-5 overflow-hidden"
+                      className="mb-6 overflow-hidden"
                     >
-                      <div className="bg-error/10 text-error p-3 rounded-xl text-xs font-semibold border border-error/20 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0 text-error" />
+                      <div className="bg-error/10 text-error p-4 rounded-xl text-sm font-semibold border border-error/20 flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 shrink-0 text-error" />
                         <span>{error}</span>
                       </div>
                     </motion.div>
@@ -332,10 +348,10 @@ export default function AuthPage() {
                       initial={{ opacity: 0, height: 0, y: -10 }} 
                       animate={{ opacity: 1, height: 'auto', y: 0 }} 
                       exit={{ opacity: 0, height: 0, y: -10 }} 
-                      className="mb-5 overflow-hidden"
+                      className="mb-6 overflow-hidden"
                     >
-                      <div className="bg-emerald-500/10 text-emerald-600 p-3 rounded-xl text-xs font-semibold border border-emerald-500/20 flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-500" />
+                      <div className="bg-emerald-500/10 text-emerald-700 p-4 rounded-xl text-sm font-semibold border border-emerald-500/20 flex items-center gap-3">
+                        <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-500" />
                         <span>{message}</span>
                       </div>
                     </motion.div>
@@ -349,21 +365,22 @@ export default function AuthPage() {
                     animate={{ opacity: 1, x: 0 }} 
                     exit={{ opacity: 0, x: -15 }}
                     onSubmit={handleForgotPassword} 
-                    className="space-y-4"
+                    className="space-y-5"
                   >
-                    <div className="text-center mb-2">
-                      <h3 className="text-lg font-bold text-on-surface">Reset Password</h3>
+                    <div className="mb-6">
+                      <h3 className="text-2xl font-bold text-on-surface mb-2">Reset Password</h3>
+                      <p className="text-sm text-on-surface-variant">Enter your email and we'll send a link to reset it.</p>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="Email Address"
-                          className="w-full bg-surface-dim/30 border border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 text-on-surface placeholder:text-on-surface-variant/40 py-3.5 pl-11 pr-4 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 focus:ring-primary/10 text-sm font-medium"
+                          className="w-full bg-surface-dim/30 border border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 text-on-surface placeholder:text-on-surface-variant/40 py-4 pl-12 pr-4 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 focus:ring-primary/10 text-base"
                           required
                         />
                       </div>
@@ -373,19 +390,19 @@ export default function AuthPage() {
                       <button 
                         type="submit" 
                         disabled={loading} 
-                        className="w-full py-3.5 bg-primary hover:bg-primary/95 text-on-primary font-bold rounded-xl transition-all shadow-md active:translate-y-[1px] disabled:opacity-50 cursor-pointer text-sm"
+                        className="w-full py-4 bg-primary hover:bg-primary/95 text-on-primary font-bold rounded-xl transition-all shadow-md active:translate-y-[1px] disabled:opacity-50 cursor-pointer text-base"
                       >
                         {loading ? "Sending link..." : "Send Reset Link"}
                       </button>
                     </div>
 
-                    <div className="text-center pt-1">
+                    <div className="text-center pt-2">
                       <button 
                         type="button" 
                         onClick={() => setAuthView("auth")} 
-                        className="text-xs font-bold text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                        className="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
                       >
-                        Back to Sign In
+                        Back to sign in
                       </button>
                     </div>
                   </motion.form>
@@ -396,16 +413,16 @@ export default function AuthPage() {
                     animate={{ opacity: 1, x: 0 }} 
                     exit={{ opacity: 0, x: 15 }}
                   >
-                    <div className="text-center mb-8">
-                       <h2 className="text-2xl font-extrabold text-on-surface tracking-tight">
-                         {isLogin ? "Sign in to your account" : "Create your account"}
+                    <div className="mb-8">
+                       <h2 className="text-3xl font-bold text-on-surface tracking-tight mb-2">
+                         {isLogin ? "Welcome back" : "Create an account"}
                        </h2>
-                       <p className="text-sm text-on-surface-variant/60 font-medium mt-1">
-                         {isLogin ? "Welcome back! Please enter your details." : "Join ExamCity to start mapping your future."}
+                       <p className="text-sm text-on-surface-variant font-medium">
+                         {isLogin ? "Please enter your details to sign in." : "Start your journey to better grades today."}
                        </p>
                     </div>
 
-                    <form onSubmit={handleAuthProcess} className="space-y-4">
+                    <form onSubmit={handleAuthProcess} className="space-y-5">
                       <AnimatePresence mode="popLayout">
                         {!isLogin && (
                           <motion.div 
@@ -414,7 +431,7 @@ export default function AuthPage() {
                             exit={{ opacity: 0, height: 0 }} 
                             className="relative group overflow-hidden"
                           >
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
                             <input
                               type="text"
                               required
@@ -424,14 +441,14 @@ export default function AuthPage() {
                               value={name}
                               onChange={(e) => setName(e.target.value)}
                               placeholder="Full Name"
-                              className="w-full bg-surface-dim/30 border border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 text-on-surface placeholder:text-on-surface-variant/40 py-3.5 pl-11 pr-4 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 focus:ring-primary/10 text-sm font-medium"
+                              className="w-full bg-surface-dim/30 border border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 text-on-surface placeholder:text-on-surface-variant/40 py-4 pl-12 pr-4 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 focus:ring-primary/10 text-base"
                             />
                           </motion.div>
                         )}
                       </AnimatePresence>
 
                       <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
                         <input
                           type="email"
                           required
@@ -441,21 +458,21 @@ export default function AuthPage() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="Email Address"
-                          className={`w-full bg-surface-dim/30 border text-on-surface placeholder:text-on-surface-variant/40 py-3.5 pl-11 pr-11 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 text-sm font-medium ${isEmailDirty ? (isEmailFormatValid ? "border-emerald-500/50 focus:border-emerald-500/80 focus:ring-emerald-500/10" : "border-rose-500/50 focus:border-rose-500/80 focus:ring-rose-500/10") : "border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 focus:ring-primary/10"}`}
+                          className={`w-full bg-surface-dim/30 border text-on-surface placeholder:text-on-surface-variant/40 py-4 pl-12 pr-12 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 text-base ${isEmailDirty ? (isEmailFormatValid ? "border-emerald-500/50 focus:border-emerald-500/80 focus:ring-emerald-500/10" : "border-rose-500/50 focus:border-rose-500/80 focus:ring-rose-500/10") : "border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 focus:ring-primary/10"}`}
                         />
                         {isEmailDirty && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
                             {isEmailFormatValid ? (
-                              <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
+                              <Check className="w-5 h-5 text-emerald-500 stroke-[3]" />
                             ) : (
-                              <AlertCircle className="w-4 h-4 text-rose-500" />
+                              <AlertCircle className="w-5 h-5 text-rose-500" />
                             )}
                           </div>
                         )}
                       </div>
 
                       <div className="relative group">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
                         <input
                           type={showPassword ? "text" : "password"}
                           required
@@ -465,15 +482,15 @@ export default function AuthPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Password"
-                          className={`w-full bg-surface-dim/30 border text-on-surface placeholder:text-on-surface-variant/40 py-3.5 pl-11 pr-12 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 text-sm font-medium ${isPasswordDirty ? (isLogin ? (isPasswordValidLogin ? "border-emerald-500/50 focus:border-emerald-500/80 focus:ring-emerald-500/10" : "border-rose-500/50 focus:border-rose-500/80 focus:ring-rose-500/10") : (isPasswordComplexityMet ? "border-emerald-500/50 focus:border-emerald-500/80 focus:ring-emerald-500/10" : "border-rose-500/50 focus:border-rose-500/80 focus:ring-rose-500/10")) : "border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 focus:ring-primary/10"}`}
+                          className={`w-full bg-surface-dim/30 border text-on-surface placeholder:text-on-surface-variant/40 py-4 pl-12 pr-12 rounded-xl outline-none transition-all focus:bg-surface focus:ring-4 text-base ${isPasswordDirty ? (isLogin ? (isPasswordValidLogin ? "border-emerald-500/50 focus:border-emerald-500/80 focus:ring-emerald-500/10" : "border-rose-500/50 focus:border-rose-500/80 focus:ring-rose-500/10") : (isPasswordComplexityMet ? "border-emerald-500/50 focus:border-emerald-500/80 focus:ring-emerald-500/10" : "border-rose-500/50 focus:border-rose-500/80 focus:ring-rose-500/10")) : "border-outline-variant/60 hover:border-outline-variant focus:border-primary/60 focus:ring-primary/10"}`}
                         />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                           {isPasswordDirty && (
                             <span className="pointer-events-none">
                               {isLogin ? (
-                                isPasswordValidLogin ? <Check className="w-4 h-4 text-emerald-500 stroke-[3]" /> : <AlertCircle className="w-4 h-4 text-rose-500" />
+                                isPasswordValidLogin ? <Check className="w-5 h-5 text-emerald-500 stroke-[3]" /> : <AlertCircle className="w-5 h-5 text-rose-500" />
                               ) : (
-                                isPasswordComplexityMet ? <Check className="w-4 h-4 text-emerald-500 stroke-[3]" /> : <AlertCircle className="w-4 h-4 text-rose-500" />
+                                isPasswordComplexityMet ? <Check className="w-5 h-5 text-emerald-500 stroke-[3]" /> : <AlertCircle className="w-5 h-5 text-rose-500" />
                               )}
                             </span>
                           )}
@@ -482,7 +499,7 @@ export default function AuthPage() {
                             onClick={() => setShowPassword(!showPassword)} 
                             className="text-on-surface-variant/40 hover:text-on-surface transition-colors cursor-pointer"
                           >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
                       </div>
@@ -492,54 +509,54 @@ export default function AuthPage() {
                         <motion.div 
                           initial={{ opacity: 0, y: -5 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="space-y-1.5 text-[11px] font-medium text-on-surface-variant/70 bg-surface-dim/45 p-3 rounded-xl border border-outline-variant/40"
+                          className="space-y-2 text-xs font-medium text-on-surface-variant/70 bg-surface-dim/45 p-4 rounded-xl border border-outline-variant/40"
                         >
-                          <div className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider mb-1">
-                            Password Complexity checklist
+                          <div className="text-[11px] font-bold text-on-surface-variant/50 uppercase tracking-wider mb-2">
+                            Password Requirements
                           </div>
-                          <div className="flex items-center gap-1.5 transition-all">
+                          <div className="flex items-center gap-2 transition-all">
                             {pwdReq.length ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[3]" />
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[3]" />
                             ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/30 ml-1.5 mr-1.5" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/30 mx-[5px]" />
                             )}
                             <span className={pwdReq.length ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>At least 8 characters</span>
                           </div>
-                          <div className="flex items-center gap-1.5 transition-all">
+                          <div className="flex items-center gap-2 transition-all">
                             {pwdReq.hasNumber ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[3]" />
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[3]" />
                             ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/30 ml-1.5 mr-1.5" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/30 mx-[5px]" />
                             )}
-                            <span className={pwdReq.hasNumber ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>Contains a number (0-9)</span>
+                            <span className={pwdReq.hasNumber ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>Contains a number</span>
                           </div>
-                          <div className="flex items-center gap-1.5 transition-all">
+                          <div className="flex items-center gap-2 transition-all">
                             {pwdReq.hasSpecial ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[3]" />
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[3]" />
                             ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/30 ml-1.5 mr-1.5" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/30 mx-[5px]" />
                             )}
                             <span className={pwdReq.hasSpecial ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>Contains a special character</span>
                           </div>
                         </motion.div>
                       )}
 
-                      {/* Login simple mini indicator if password is typed but not long enough */}
+                      {/* Login simple mini indicator */}
                       {isLogin && isPasswordDirty && !isPasswordValidLogin && (
                         <motion.p 
                           initial={{ opacity: 0 }} 
                           animate={{ opacity: 1 }} 
-                          className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 px-1"
+                          className="text-xs text-rose-500 font-semibold flex items-center gap-1.5 px-1"
                         >
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <AlertCircle className="w-4 h-4 shrink-0" />
                           Password must be at least 8 characters.
                         </motion.p>
                       )}
 
-                      {/* Remember Me checkbox and Forgot Password link styled neatly */}
+                      {/* Remember Me and Forgot Password */}
                       {isLogin && (
                         <div className="flex items-center justify-between pt-1 font-sans">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <label className="flex items-center gap-2.5 cursor-pointer select-none">
                             <input
                               type="checkbox"
                               checked={rememberMe}
@@ -550,29 +567,29 @@ export default function AuthPage() {
                               }}
                               className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary cursor-pointer"
                             />
-                            <span className="text-xs text-on-surface-variant/75 font-semibold">Remember Me</span>
+                            <span className="text-sm text-on-surface-variant font-medium">Remember me</span>
                           </label>
 
                           <button
                             type="button"
                             onClick={() => setAuthView("forgot")}
-                            className="text-primary text-xs font-bold hover:text-primary/80 transition-colors cursor-pointer"
+                            className="text-primary text-sm font-semibold hover:text-primary/80 transition-colors cursor-pointer"
                           >
                             Forgot password?
                           </button>
                         </div>
                       )}
 
-                      <div className="pt-2">
+                      <div className="pt-4">
                         <button
                           type="submit"
                           disabled={loading || !isFormValid}
-                          className="w-full py-3.5 bg-primary hover:bg-primary/95 text-on-primary font-bold rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all shadow-lg shadow-primary/20 active:translate-y-[1px] cursor-pointer text-sm"
+                          className="w-full py-4 bg-primary hover:bg-primary/95 text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-lg shadow-primary/20 active:translate-y-[1px] cursor-pointer text-base"
                         >
                            {loading ? (
-                             <div className="w-4 h-4 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
+                             <div className="w-5 h-5 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
                            ) : (
-                             <>{isLogin ? "Sign In" : "Create Account"} <ArrowRight className="w-4 h-4"/></>
+                             <>{isLogin ? "Sign In" : "Create Account"} <ArrowRight className="w-5 h-5"/></>
                            )}
                         </button>
                       </div>
@@ -582,14 +599,14 @@ export default function AuthPage() {
                           <div className="w-full border-t border-outline-variant/60"></div>
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-surface px-4 text-on-surface-variant/40 font-bold tracking-widest">Or continue with</span>
+                          <span className="bg-surface sm:bg-white px-4 text-on-surface-variant/50 font-bold tracking-widest">Or</span>
                         </div>
                       </div>
 
                       <button
                         onClick={handleGoogleSignIn}
                         type="button"
-                        className="w-full py-3 bg-white dark:bg-surface-bright text-on-surface font-semibold rounded-xl hover:bg-surface-dim/40 flex items-center justify-center gap-3 transition-all border border-outline-variant hover:border-outline shadow-sm active:scale-[0.98] cursor-pointer text-xs"
+                        className="w-full py-3.5 bg-surface-bright text-on-surface font-semibold rounded-xl hover:bg-surface-dim flex items-center justify-center gap-3 transition-all border border-outline-variant hover:border-outline shadow-sm active:scale-[0.98] cursor-pointer text-sm"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -597,12 +614,12 @@ export default function AuthPage() {
                           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                         </svg>
-                        Google
+                        Continue with Google
                       </button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-outline-variant/40 space-y-5">
-                      <p className="text-center text-sm text-on-surface-variant/60 font-medium">
+                    <div className="mt-8 text-center">
+                      <p className="text-sm text-on-surface-variant font-medium">
                         {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                         <button
                           type="button"
@@ -612,16 +629,6 @@ export default function AuthPage() {
                           {isLogin ? "Sign up" : "Sign in"}
                         </button>
                       </p>
-
-                      <div className="flex flex-col items-center justify-center text-center space-y-1 p-3.5 bg-emerald-500/[0.04] rounded-2xl border border-emerald-500/10">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700/80">
-                          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>Secure Gateway Verification</span>
-                        </div>
-                        <p className="text-[10px] text-on-surface-variant/50 max-w-[280px] leading-relaxed">
-                          Protected by Firebase Security Core. Custom credentials are securely verified and never cached or shared.
-                        </p>
-                      </div>
                     </div>
                   </motion.div>
                 )}
