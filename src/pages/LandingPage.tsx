@@ -22,6 +22,7 @@ import {
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
 import { InteractiveBackground } from "../components/InteractiveBackground";
+import { AdSense } from "../components/AdSense";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -428,6 +429,11 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      
+      {/* Banner Ad Placement */}
+      <div className="max-w-7xl mx-auto px-6 mb-16">
+        <AdSense />
+      </div>
 
       {/* Footer */}
       <footer className="bg-surface-dim pt-20 pb-10 px-6 border-t border-outline-variant/50">

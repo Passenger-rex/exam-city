@@ -36,6 +36,7 @@ import {
 import { Logo } from "../components/Logo";
 import { ExamConfigModal } from "../components/ExamConfigModal";
 import { Navbar } from "../components/Navbar";
+import { AdSense } from "../components/AdSense";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -585,6 +586,10 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+        </div>
+        
+        <div className="mt-8">
+          <AdSense />
         </div>
       </main>
 
