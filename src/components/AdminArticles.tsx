@@ -12,6 +12,7 @@ interface Article {
   author: string;
   category: string;
   image: string;
+  tags?: string[];
   createdAt: any;
 }
 
@@ -20,6 +21,7 @@ export function AdminArticles() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [tagInput, setTagInput] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -28,7 +30,8 @@ export function AdminArticles() {
     excerpt: "",
     author: "",
     category: "News",
-    image: ""
+    image: "",
+    tags: [] as string[]
   });
 
   useEffect(() => {
@@ -54,8 +57,14 @@ export function AdminArticles() {
     setStatus("Saving...");
     try {
       const payload = {
-        ...formData,
+        title: formData.title,
         slug: formData.slug || generateSlug(formData.title),
+        content: formData.content,
+        excerpt: formData.excerpt,
+        author: formData.author,
+        category: formData.category,
+        image: formData.image,
+        tags: formData.tags,
         updatedAt: serverTimestamp()
       };
 
@@ -71,9 +80,10 @@ export function AdminArticles() {
         setStatus("Article added!");
       }
       
-      setFormData({ title: "", slug: "", content: "", excerpt: "", author: "", category: "News", image: "" });
+      setFormData({ title: "", slug: "", content: "", excerpt: "", author: "", category: "News", image: "", tags: [] });
       setEditingId(null);
       setIsAdding(false);
+      setTagInput("");
       fetchArticles();
     } catch (err: any) {
       setStatus("Error: " + err.message);
@@ -98,173 +108,252 @@ export function AdminArticles() {
       excerpt: article.excerpt,
       author: article.author || "",
       category: article.category || "News",
-      image: article.image || ""
+      image: article.image || "",
+      tags: article.tags || []
     });
     setEditingId(article.id);
     setIsAdding(true);
   };
 
+  const addTag = () => {
+    if (tagInput.trim() && !formData.tags.includes(tagInput.trim().toUpperCase())) {
+      setFormData({
+        ...formData,
+        tags: [...formData.tags, tagInput.trim().toUpperCase()]
+      });
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(t => t !== tag)
+    });
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 animate-fade-in pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black">Article Management</h2>
-          <p className="text-neutral-500 dark:text-neutral-400 text-sm">Publish educational news and study updates.</p>
+          <h2 className="text-3xl font-black tracking-tight text-neutral-900">Article Management</h2>
+          <p className="text-neutral-500 font-medium">Publish educational news, admission updates, and study guides.</p>
         </div>
         <button 
-          onClick={() => { setIsAdding(!isAdding); setEditingId(null); setFormData({ title: "", slug: "", content: "", excerpt: "", author: "", category: "News", image: "" }); }}
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:scale-105 transition-all"
+          onClick={() => { 
+            setIsAdding(!isAdding); 
+            setEditingId(null); 
+            setFormData({ title: "", slug: "", content: "", excerpt: "", author: "Exam City Editorial", category: "News", image: "", tags: [] }); 
+          }}
+          className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-sm tracking-widest transition-all shadow-xl ${
+            isAdding 
+              ? "bg-neutral-100 text-neutral-600 hover:bg-neutral-200" 
+              : "bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 shadow-indigo-500/20"
+          }`}
         >
-          {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {isAdding ? "Cancel" : "New Article"}
+          {isAdding ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          {isAdding ? "CANCEL EDITING" : "PUBLISH NEW ARTICLE"}
         </button>
       </div>
 
       {status && (
-        <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-2xl text-sm font-bold border border-indigo-100 dark:border-indigo-900/40">
-          {status}
+        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl text-sm font-black border border-indigo-100 flex items-center justify-between">
+          <span>{status}</span>
+          <button onClick={() => setStatus("")}><X className="w-4 h-4" /></button>
         </div>
       )}
 
       {isAdding && (
-        <div className="bg-white dark:bg-neutral-900 p-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Title</label>
-              <input 
-                type="text" 
-                value={formData.title}
-                onChange={e => setFormData({ ...formData, title: e.target.value, slug: generateSlug(e.target.value) })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="JAMB 2026 Updates..."
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Slug</label>
-              <input 
-                type="text" 
-                value={formData.slug}
-                onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Category</label>
-              <select 
-                value={formData.category}
-                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option>News</option>
-                <option>Admission</option>
-                <option>Study Tips</option>
-                <option>JAMB</option>
-                <option>WAEC</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Author</label>
-              <input 
-                type="text" 
-                value={formData.author}
-                onChange={e => setFormData({ ...formData, author: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white p-8 rounded-[2rem] border border-neutral-200 shadow-xl space-y-8">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Headline Title</label>
+                  <input 
+                    type="text" 
+                    value={formData.title}
+                    onChange={e => setFormData({ ...formData, title: e.target.value, slug: generateSlug(e.target.value) })}
+                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-lg placeholder:text-neutral-300"
+                    placeholder="JAMB 2026 Registration Dates Announced..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Section / Category</label>
+                    <select 
+                      value={formData.category}
+                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold cursor-pointer"
+                    >
+                      <option>News</option>
+                      <option>Admission</option>
+                      <option>Study Tips</option>
+                      <option>JAMB</option>
+                      <option>WAEC</option>
+                      <option>Scholarships</option>
+                      <option>Post-UTME</option>
+                    </select>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Byline Author</label>
+                    <input 
+                      type="text" 
+                      value={formData.author}
+                      onChange={e => setFormData({ ...formData, author: e.target.value })}
+                      className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold placeholder:text-neutral-300"
+                      placeholder="Exam City Editorial"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Short Teaser (Excerpt)</label>
+                  <textarea 
+                    value={formData.excerpt}
+                    onChange={e => setFormData({ ...formData, excerpt: e.target.value })}
+                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-sm min-h-[100px] leading-relaxed placeholder:text-neutral-300"
+                    placeholder="Briefly describe what this article covers..."
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Detailed Content (Markdown Enabled)</label>
+                  <textarea 
+                    value={formData.content}
+                    onChange={e => setFormData({ ...formData, content: e.target.value })}
+                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm leading-[1.8] min-h-[500px] placeholder:text-neutral-300"
+                    placeholder="Write your article here. Supports strong, headers, lists, etc."
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Featured Image URL</label>
-            <div className="flex gap-4">
-              <div className="flex-1">
+
+          <div className="space-y-8">
+            <div className="bg-white p-8 rounded-[2rem] border border-neutral-200 shadow-xl space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Featured Media URL</label>
                 <input 
                   type="text" 
                   value={formData.image}
                   onChange={e => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="https://..."
+                  className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-xs"
+                  placeholder="Paste image link here..."
+                />
+                {formData.image && (
+                  <div className="aspect-video w-full rounded-xl overflow-hidden border border-neutral-100 mt-4">
+                    <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-neutral-50">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Search Engine URL Slug</label>
+                <input 
+                  type="text" 
+                  value={formData.slug}
+                  onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-xs text-neutral-500"
                 />
               </div>
-              {formData.image && (
-                <div className="w-12 h-12 rounded-xl overflow-hidden border border-neutral-200">
-                  <img src={formData.image} className="w-full h-full object-cover" />
+
+              <div className="space-y-4 pt-4 border-t border-neutral-50">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Article Metadata Tags</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addTag()}
+                    className="flex-1 px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-xs"
+                    placeholder="Add tag..."
+                  />
+                  <button 
+                    onClick={addTag}
+                    className="px-4 py-2 bg-neutral-900 text-white rounded-xl font-black text-[10px] uppercase transition-all active:scale-95"
+                  >
+                    ADD
+                  </button>
                 </div>
-              )}
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map(tag => (
+                    <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase rounded-lg border border-indigo-100">
+                      {tag}
+                      <button onClick={() => removeTag(tag)} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                  {formData.tags.length === 0 && <span className="text-[10px] font-medium text-neutral-300 italic">No tags added yet</span>}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Excerpt (Short Summary)</label>
-            <textarea 
-              value={formData.excerpt}
-              onChange={e => setFormData({ ...formData, excerpt: e.target.value })}
-              className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]"
-              placeholder="Short description for list view..."
-            />
+            <button 
+              onClick={handleSave}
+              className="group w-full py-6 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-indigo-500/30 hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            >
+              <Check className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              {editingId ? "COMMIT CHANGES" : "PUBLISH TO HUB"}
+            </button>
           </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400">Content (Markdown Supported)</label>
-            <textarea 
-              value={formData.content}
-              onChange={e => setFormData({ ...formData, content: e.target.value })}
-              className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 min-h-[400px] font-mono text-sm leading-relaxed"
-              placeholder="Use markdown. Double newlines for paragraphs."
-            />
-          </div>
-
-          <button 
-            onClick={handleSave}
-            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 hover:scale-102 transition-all"
-          >
-            {editingId ? "Update Article" : "Publish Article"}
-          </button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {articles.map(article => (
-          <div key={article.id} className="group relative bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:shadow-indigo-500/10 transition-all p-4">
-            <div className="aspect-video rounded-2xl bg-neutral-100 dark:bg-neutral-950 overflow-hidden mb-4 relative">
+          <div key={article.id} className="group flex flex-col bg-white rounded-3xl border border-neutral-200 overflow-hidden hover:shadow-2xl hover:shadow-neutral-200 transition-all duration-300">
+            <div className="aspect-[16/10] bg-neutral-50 overflow-hidden relative">
               {article.image ? (
-                <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
+                <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-neutral-300">
+                <div className="w-full h-full flex items-center justify-center text-neutral-200">
                   <ImageIcon className="w-12 h-12" />
                 </div>
               )}
-              <div className="absolute top-2 right-2 flex gap-2">
-                <button onClick={() => handleEdit(article)} className="p-2 bg-white/90 dark:bg-neutral-800/90 rounded-lg text-indigo-600 shadow-sm hover:scale-110 transition-all">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleDelete(article.id)} className="p-2 bg-white/90 dark:bg-neutral-800/90 rounded-lg text-red-600 shadow-sm hover:scale-110 transition-all">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-2 w-full">
+                  <button 
+                    onClick={() => handleEdit(article)}
+                    className="flex-1 h-10 bg-white text-neutral-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-500 hover:text-white transition-all scale-90 group-hover:scale-100"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" /> EDIT
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(article.id)}
+                    className="w-10 h-10 bg-white/20 backdrop-blur-md text-white rounded-xl flex items-center justify-center hover:bg-red-500 transition-all scale-90 group-hover:scale-100"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              <div className="absolute top-4 left-4">
+                <span className="px-3 py-1 bg-white/90 backdrop-blur-md text-primary text-[9px] font-black uppercase tracking-widest rounded-lg shadow-sm border border-neutral-100">
+                  {article.category}
+                </span>
               </div>
             </div>
             
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-md">
-                  {article.category}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-bold">
-                  {article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString() : "Draft"}
-                </span>
+            <div className="p-6 flex-1 flex flex-col">
+              <h3 className="font-bold text-neutral-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-4 h-[2.8rem]">
+                {article.title}
+              </h3>
+              <div className="flex items-center gap-2 mb-4">
+                {article.tags?.slice(0, 2).map(tag => (
+                   <span key={tag} className="text-[8px] font-black text-neutral-400 uppercase tracking-widest">#{tag}</span>
+                ))}
               </div>
-              <h3 className="font-bold text-lg line-clamp-1">{article.title}</h3>
-              <p className="text-neutral-500 text-xs line-clamp-2 leading-relaxed">
-                {article.excerpt}
-              </p>
-              <div className="pt-4 flex items-center justify-between border-t border-neutral-100 dark:border-neutral-800 mt-2">
+              <div className="mt-auto pt-4 border-t border-neutral-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center">
                     <FileText className="w-3 h-3 text-neutral-400" />
                   </div>
-                  <span className="text-[10px] font-bold text-neutral-400">{article.author || "Admin"}</span>
+                  <span className="text-[9px] font-black text-neutral-400 uppercase tracking-widest truncate max-w-[80px]">
+                    {article.author || "Editorial"}
+                  </span>
                 </div>
-                <a href={`/articles/${article.slug}`} target="_blank" className="flex items-center gap-1 text-[10px] font-black text-indigo-600 hover:underline">
-                  VIEW <ExternalLink className="w-3 h-3" />
+                <a href={`/articles/${article.slug}`} target="_blank" className="flex items-center gap-1.5 text-[9px] font-black text-indigo-600 hover:underline tracking-widest">
+                  LIVE HUB <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
             </div>
@@ -274,3 +363,4 @@ export function AdminArticles() {
     </div>
   );
 }
+

@@ -42,16 +42,11 @@ export function Navbar() {
 
   const menuItems = [
     {
-      path: "/dashboard",
-      name: "Dashboard",
-      icon: LayoutGrid,
-    },
-    {
       path: "/admin",
       name: "Admin Hub",
       icon: Shield,
     },
-  ].filter(item => isAdmin || item.path !== "/admin");
+  ].filter(item => isAdmin);
 
   const userInitial = user.email?.charAt(0).toUpperCase() || "S";
   const userDisplayName = profile?.name || user.displayName || (user.email ? user.email.split("@")[0].split(/[^a-zA-Z]/).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).filter(Boolean).join(" ") : "Student Scholar");
@@ -62,7 +57,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo */}
           <div className="flex items-center gap-10">
-            <Link to="/dashboard" className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2">
               <Logo className="text-xl text-neutral-900" />
             </Link>
 

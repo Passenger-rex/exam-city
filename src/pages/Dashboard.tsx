@@ -220,15 +220,30 @@ export default function Dashboard() {
             if (data.userId) userIds.add(data.userId);
           });
 
-          // Fetch all users in parallel
-          const userDocsPromises = Array.from(userIds).map(uid => getDoc(doc(db, "users", uid)));
-          const userDocsSnaps = await Promise.all(userDocsPromises);
+          // Fetch all users in batches to be more efficient
+          const userIdsArr = Array.from(userIds);
           const usersMap = new Map<string, any>();
-          userDocsSnaps.forEach(userSnap => {
-            if (userSnap.exists()) {
-              usersMap.set(userSnap.id, userSnap.data());
+          
+          for (let i = 0; i < userIdsArr.length; i += 30) {
+            const batchIds = userIdsArr.slice(i, i + 30);
+            if (batchIds.length === 0) continue;
+            
+            try {
+              const usersBatchQ = query(
+                collection(db, "users"), 
+                where("__name__", "in", batchIds)
+              );
+              const batchSnap = await getDocs(usersBatchQ);
+              batchSnap.docs.forEach(uSnap => usersMap.set(uSnap.id, uSnap.data()));
+            } catch (err) {
+              console.warn("Failed to fetch user batch, falling back to individual lookups:", err);
+              const fallbackPromises = batchIds.map(uid => getDoc(doc(db, "users", uid)));
+              const fallbackSnaps = await Promise.all(fallbackPromises);
+              fallbackSnaps.forEach(uSnap => {
+                if (uSnap.exists()) usersMap.set(uSnap.id, uSnap.data());
+              });
             }
-          });
+          }
 
           const list: any[] = [];
           for (const docSnap of snap.docs) {
@@ -993,23 +1008,6 @@ export default function Dashboard() {
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                     </svg>
                     <span>Facebook</span>
-                  </a>
-
-                  {/* Telegram */}
-                  <a
-                    href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(modalShareText)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center p-3 rounded-xl bg-[#0088cc]/10 border border-[#0088cc]/25 hover:bg-[#0088cc]/20 transition-all text-[#0088cc] font-bold text-xs gap-1.5 shadow-sm group"
-                  >
-                    <svg
-                      className="w-4 h-4 text-[#0088cc] fill-current group-hover:scale-110 transition-transform"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-1-.65-.35-1 .22-1.62.15-.15 2.72-2.5 2.77-2.7.01-.03.01-.14-.05-.2-.06-.06-.15-.04-.22-.02-.1.02-1.61 1.02-4.54 3a8.9 8.9 0 0 1-2.9 1c-.63-.2-1.24-.4-1.85-.6-.74-.23-.93-.36-.88-.76.08-.41.53-.83 1.34-1.2h.01c4.89-2.12 8.16-3.53 9.77-4.2.49-.21.94-.31 1.31-.31.3 0 .91.16 1.25.75.14.23.22.51.24.78z" />
-                    </svg>
-                    <span>Telegram</span>
                   </a>
                 </div>
 

@@ -158,53 +158,6 @@ export default function LandingPage() {
           <InteractiveBackground />
         </div>
         
-        {/* News Feed - Top Level (Myschool.ng style) */}
-        {!articlesLoading && articles.length > 0 && (
-          <div className="w-full max-w-7xl mx-auto mb-16 relative z-10 px-4">
-            <div className="bg-surface/60 backdrop-blur-md rounded-[2.5rem] border border-outline-variant/30 p-8 shadow-xl">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-xl md:text-2xl font-black text-on-surface">Academic Pulse</h2>
-                </div>
-                <Link to="/articles" className="text-sm font-black text-primary hover:underline flex items-center gap-1 uppercase tracking-wider">
-                  View All Hub <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {articles.map((article) => (
-                  <Link 
-                    key={article.id} 
-                    to={`/articles/${article.slug}`}
-                    className="group"
-                  >
-                    <div className="bg-surface-dim/40 rounded-2xl p-5 border border-outline-variant/20 hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5 h-full flex flex-col">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary px-2 py-1 bg-primary/10 rounded-md">
-                          {article.category}
-                        </span>
-                        <div className="flex items-center gap-1 text-[10px] text-on-surface-variant font-bold">
-                          <Calendar className="w-3 h-3" />
-                          {article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString() : "News"}
-                        </div>
-                      </div>
-                      <h3 className="text-sm font-black text-on-surface group-hover:text-primary transition-colors line-clamp-3 mb-3 leading-snug">
-                        {article.title}
-                      </h3>
-                      <p className="text-[11px] text-on-surface-variant line-clamp-2 mt-auto">
-                        {article.summary}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Animated abstract blobs for subtle parallax */}
         <motion.div 
           animate={{ y: [-30, 30, -30], x: [-20, 20, -20], scale: [1, 1.1, 1] }} 
@@ -429,6 +382,64 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* Latest News Section - Standard Professional Layout */}
+      {!articlesLoading && articles.length > 0 && (
+        <section className="py-24 px-6 bg-white">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+              <div>
+                <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-[0.2em] mb-4">
+                  <div className="w-8 h-1 bg-primary rounded-full"></div>
+                  Latest Updates
+                </div>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-neutral-900 tracking-tight">
+                  Academic Highlights
+                </h2>
+              </div>
+              <Link 
+                to="/articles" 
+                className="inline-flex items-center gap-2 group text-sm font-bold text-neutral-500 hover:text-primary transition-colors"
+              >
+                BROWSE ALL NEWS 
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {articles.map((article) => (
+                <Link 
+                  key={article.id} 
+                  to={`/articles/${article.slug}`}
+                  className="group flex flex-col h-full bg-[#F8F9FA] rounded-2xl border border-neutral-100 hover:border-primary/20 hover:shadow-xl hover:shadow-neutral-200 transition-all duration-300 overflow-hidden"
+                >
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="px-2.5 py-1 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded border border-neutral-100">
+                        {article.category || "News"}
+                      </span>
+                      <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 font-bold">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : "Recently"}
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-black text-neutral-900 group-hover:text-primary transition-colors line-clamp-3 mb-4 leading-[1.4]">
+                      {article.title}
+                    </h3>
+                    <p className="text-sm text-neutral-500 line-clamp-2 mt-auto leading-relaxed">
+                      {article.summary}
+                    </p>
+                  </div>
+                  <div className="px-6 py-4 bg-white border-t border-neutral-50 flex items-center justify-between group-hover:bg-primary/5 transition-colors">
+                    <span className="text-[10px] font-black text-neutral-400 uppercase tracking-widest group-hover:text-primary">Read More</span>
+                    <TrendingUp className="w-3.5 h-3.5 text-neutral-300 group-hover:text-primary transition-colors" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Trust & Transparency Section */}
       <section className="relative py-20 px-5 md:px-6 z-10 border-t border-outline-variant/30 bg-surface/50 backdrop-blur-sm">

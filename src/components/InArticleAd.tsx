@@ -8,6 +8,7 @@ export function InArticleAd() {
     if (isLoaded.current) return;
 
     const pushAd = () => {
+      if (isLoaded.current) return;
       try {
         // @ts-ignore
         (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -19,24 +20,32 @@ export function InArticleAd() {
       }
     };
 
-    // Check if container has width
-    const checkWidth = () => {
-      if (containerRef.current && containerRef.current.offsetWidth > 0) {
-        pushAd();
-      } else {
-        // Try again in a moment if width is still 0
-        setTimeout(checkWidth, 100);
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0 && !isLoaded.current) {
+          // Add a small delay to ensure layout is fully settled
+          setTimeout(() => {
+            if (!isLoaded.current) {
+              pushAd();
+            }
+          }, 100);
+          observer.disconnect();
+        }
       }
-    };
+    });
 
-    checkWidth();
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full my-8 flex justify-center text-center overflow-hidden border-y border-outline-variant/10 py-4">
+    <div ref={containerRef} className="w-full my-8 flex justify-center text-center overflow-hidden border-y border-outline-variant/10 py-4 min-h-[100px]">
       <ins
         className="adsbygoogle"
-        style={{ display: 'block', textAlign: 'center' }}
+        style={{ display: 'block', textAlign: 'center', minWidth: '250px' }}
         data-ad-layout="in-article"
         data-ad-format="fluid"
         data-ad-client="ca-pub-3389078013547284"

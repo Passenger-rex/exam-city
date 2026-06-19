@@ -3,11 +3,12 @@ import { useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
 import { doc, getDoc, collection, query, where, getDocs, limit, orderBy } from "firebase/firestore";
 import { motion } from "motion/react";
-import { Calendar, User, Tag, ChevronLeft, Share2, Clock } from "lucide-react";
+import { Calendar, User, Tag, ChevronLeft, Share2, Clock, Check } from "lucide-react";
 import Markdown from "react-markdown";
 import { Navbar } from "../components/Navbar";
 import { InArticleAd } from "../components/InArticleAd";
 import { Skeleton } from "../components/Skeleton";
+import { Logo } from "../components/Logo";
 
 interface Article {
   id: string;
@@ -18,6 +19,7 @@ interface Article {
   author: string;
   category: string;
   image: string;
+  tags?: string[];
   createdAt: any;
   views: number;
 }
@@ -27,6 +29,7 @@ export default function ArticleDetailPage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentArticles, setRecentArticles] = useState<Article[]>([]);
+  const [isShared, setIsShared] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -59,6 +62,28 @@ export default function ArticleDetailPage() {
 
     init();
   }, [slug]);
+
+  const handleShare = async () => {
+    if (!article) return;
+    
+    const shareData = {
+      title: article.title,
+      text: article.excerpt,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        setIsShared(true);
+        setTimeout(() => setIsShared(false), 2000);
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
+    }
+  };
 
   if (loading) {
     return (
@@ -106,7 +131,12 @@ export default function ArticleDetailPage() {
 
   // Split content logic: 2 paragraphs then Ad
   // Sanitize content: ensure space after hashtags for better markdown rendering
-  const sanitizedContent = article.content.replace(/^(#+)([^\s#])/gm, '$1 $2');
+  // Remove unwanted skeletons like | |---|---|
+  // Remove promotional CTAs that might be in the content
+  const sanitizedContent = article.content
+    .replace(/^(#+)([^\s#])/gm, '$1 $2')
+    .replace(/\|\s*\|\s*---\s*\|\s*---\s*\|/g, '')
+    .replace(/Ready to success in your exams\?[\s\S]*?CREATE FREE ACCOUNT/gi, '');
   
   const paragraphs = sanitizedContent.split(/\n\s*\n|\r\n\s*\r\n/).filter(p => p.trim().length > 0);
   const firstPart = paragraphs.slice(0, 2).join("\n\n");
@@ -126,7 +156,7 @@ export default function ArticleDetailPage() {
           <article className="w-full lg:max-w-[800px] bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
             <div className="p-6 md:p-12 lg:p-14">
               <nav className="flex items-center gap-2 mb-10 text-[11px] font-bold uppercase tracking-widest overflow-x-auto whitespace-nowrap pb-2 scrollbar-hide">
-                <Link to="/dashboard" className="text-neutral-400 hover:text-primary transition-colors">Home</Link>
+                <Link to="/" className="text-neutral-400 hover:text-primary transition-colors">Home</Link>
                 <span className="text-neutral-300">/</span>
                 <Link to="/articles" className="text-neutral-400 hover:text-primary transition-colors">News Hub</Link>
                 <span className="text-neutral-300">/</span>
@@ -153,11 +183,7 @@ export default function ArticleDetailPage() {
                   <div className="flex items-center gap-5">
                     <div className="relative group">
                       <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 overflow-hidden ring-4 ring-neutral-50 shadow-inner">
-                        {article.image ? (
-                          <img src={article.image} alt={article.author} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
-                        ) : (
-                          <User className="w-7 h-7" />
-                        )}
+                        <Logo className="text-xl" />
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full" />
                     </div>
@@ -177,10 +203,17 @@ export default function ArticleDetailPage() {
                       <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Spread the Word</div>
                       <div className="text-xs font-bold text-neutral-900">Share this update</div>
                     </div>
-                    <button className="h-12 px-8 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-opacity-90 transition-all shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0">
-                      Share Now
+                    <button 
+                      onClick={handleShare}
+                      className="h-12 px-8 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-opacity-90 transition-all shadow-xl shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
+                    >
+                      {isShared ? <Check className="w-4 h-4" /> : null}
+                      {isShared ? "COPIED" : "Share Now"}
                     </button>
-                    <button className="w-12 h-12 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 hover:text-primary transition-all">
+                    <button 
+                      onClick={handleShare}
+                      className="w-12 h-12 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 hover:text-primary transition-all"
+                    >
                       <Share2 className="w-5 h-5" />
                     </button>
                   </div>
@@ -249,23 +282,19 @@ export default function ArticleDetailPage() {
 
               <footer className="mt-16 pt-10 border-t border-neutral-100">
                 <div className="flex flex-wrap gap-2 mb-10">
-                  {["EXAM NEWS", "CBT", "JAMB 2024", "ADMISSIONS"].map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-neutral-100 text-neutral-500 text-[10px] font-bold uppercase tracking-wider rounded border border-neutral-200">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-                
-                <div className="p-8 md:p-12 rounded-2xl bg-neutral-900 text-white text-center shadow-xl shadow-neutral-200 relative overflow-hidden group">
-                  <div className="relative z-10">
-                    <h3 className="text-2xl font-black mb-4">Ready to success in your exams?</h3>
-                    <p className="text-neutral-400 mb-8 max-w-md mx-auto text-sm leading-relaxed">Join over 100,000+ Nigerian students using Exam City to prepare for their future.</p>
-                    <Link to="/signup" className="inline-flex h-14 items-center px-10 bg-primary text-white font-black rounded-lg hover:scale-105 transition-all shadow-lg shadow-primary/20">
-                      CREATE FREE ACCOUNT
-                    </Link>
-                  </div>
-                  {/* Decorative element */}
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:bg-primary/20 transition-colors" />
+                  {article.tags && article.tags.length > 0 ? (
+                    article.tags.map(tag => (
+                      <span key={tag} className="px-3 py-1 bg-neutral-100 text-neutral-500 text-[10px] font-bold uppercase tracking-wider rounded border border-neutral-200">
+                        #{tag}
+                      </span>
+                    ))
+                  ) : (
+                    ["EXAM NEWS", "CBT", "JAMB 2024", "ADMISSIONS"].map(tag => (
+                      <span key={tag} className="px-3 py-1 bg-neutral-100 text-neutral-500 text-[10px] font-bold uppercase tracking-wider rounded border border-neutral-200">
+                        #{tag}
+                      </span>
+                    ))
+                  )}
                 </div>
               </footer>
             </div>
@@ -293,17 +322,6 @@ export default function ArticleDetailPage() {
                   </Link>
                 ))}
               </div>
-            </div>
-
-            <div className="bg-primary/5 rounded-2xl border border-primary/10 p-8 text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary mx-auto mb-4">
-                <Tag className="w-6 h-6" />
-              </div>
-              <h4 className="font-black text-sm uppercase tracking-widest mb-2">School Telegram</h4>
-              <p className="text-[11px] text-neutral-500 font-bold mb-6">Get instant alerts on JAMB and Post-UTME</p>
-              <button className="w-full py-3 bg-neutral-900 text-white text-xs font-black rounded-lg uppercase tracking-widest hover:bg-neutral-800 shadow-md">
-                JOIN FREE CHANNEL
-              </button>
             </div>
           </aside>
         </div>

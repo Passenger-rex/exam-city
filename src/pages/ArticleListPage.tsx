@@ -15,6 +15,7 @@ interface Article {
   author: string;
   category: string;
   image: string;
+  tags?: string[];
   createdAt: any;
   views: number;
 }
@@ -55,9 +56,9 @@ export default function ArticleListPage() {
       {/* Hero Header */}
       <section className="pt-32 pb-12 px-6 bg-surface-dim/40 border-b border-outline-variant/30">
         <div className="max-w-7xl mx-auto">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 px-4 py-2 bg-white/50 hover:bg-white text-neutral-700 font-bold text-xs rounded-full transition-all mb-8 shadow-sm">
+          <Link to="/" className="inline-flex items-center gap-2 px-4 py-2 bg-white/50 hover:bg-white text-neutral-700 font-bold text-xs rounded-full transition-all mb-8 shadow-sm">
             <ChevronLeft className="w-3.5 h-3.5" />
-            BACK TO DASHBOARD
+            BACK TO HOME
           </Link>
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex-1 text-center md:text-left">
@@ -145,10 +146,15 @@ export default function ArticleListPage() {
                    <span>5 min read</span>
                 </div>
                 <Link to={`/articles/${article.slug}`}>
-                  <h3 className="text-xl md:text-2xl font-bold mb-4 leading-tight group-hover:text-primary transition-colors cursor-pointer">
+                  <h3 className="text-xl md:text-2xl font-bold mb-3 leading-tight group-hover:text-primary transition-colors cursor-pointer">
                     {article.title}
                   </h3>
                 </Link>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {article.tags?.slice(0, 3).map(tag => (
+                    <span key={tag} className="text-[9px] font-black text-neutral-400 uppercase tracking-widest">#{tag}</span>
+                  ))}
+                </div>
                 <p className="text-on-surface-variant text-sm font-medium line-clamp-3 mb-6 leading-relaxed">
                   {article.excerpt}
                 </p>
@@ -187,8 +193,13 @@ export default function ArticleListPage() {
                      </span>
                    </div>
                    <Link to={`/articles/${article.slug}`}>
-                     <h3 className="text-2xl font-black mb-3 group-hover:text-primary transition-colors">{article.title}</h3>
+                     <h3 className="text-2xl font-black mb-2 group-hover:text-primary transition-colors">{article.title}</h3>
                    </Link>
+                   <div className="flex flex-wrap gap-2 mb-4">
+                     {article.tags?.slice(0, 4).map(tag => (
+                       <span key={tag} className="text-[8px] font-black text-neutral-400 uppercase tracking-widest">#{tag}</span>
+                     ))}
+                   </div>
                    <p className="text-on-surface-variant text-sm font-medium line-clamp-2 md:line-clamp-3 mb-6 max-w-3xl leading-relaxed">
                      {article.excerpt}
                    </p>

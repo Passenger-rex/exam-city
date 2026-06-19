@@ -49,9 +49,6 @@ function ProtectedRoute({ children, allowGuests = false }: { children: React.Rea
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (user) => {
-      // User requested a consistent 3-second skeleton experience instead of quick flash
-      const delay = new Promise(resolve => setTimeout(resolve, 3000));
-      await delay;
       setChecking(false);
     });
 
