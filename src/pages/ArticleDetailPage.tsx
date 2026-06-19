@@ -233,9 +233,6 @@ export default function ArticleDetailPage() {
               {article.image && (
                 <figure className="mb-14 -mx-6 md:-mx-12 lg:-mx-14 border-y border-neutral-100">
                   <img src={article.image} alt={article.title} className="w-full h-auto max-h-[600px] object-cover" referrerPolicy="no-referrer" />
-                  <figcaption className="p-4 text-center text-xs font-medium text-neutral-400 bg-neutral-50 uppercase tracking-widest">
-                    Featured Image: {article.title}
-                  </figcaption>
                 </figure>
               )}
 
@@ -252,7 +249,7 @@ export default function ArticleDetailPage() {
                       li: ({ children }) => <li className="pl-2">{children}</li>,
                       strong: ({ children }) => <strong className="font-extrabold text-neutral-900">{children}</strong>,
                       blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-8 italic my-14 text-2xl md:text-3xl text-neutral-500 leading-relaxed bg-neutral-50/50 py-10 rounded-r-2xl font-serif">{children}</blockquote>,
-                      a: ({ children, href }) => <a href={href} className="text-primary font-bold underline decoration-2 underline-offset-4 hover:no-underline">{children}</a>
+                      a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold underline decoration-blue-600/30 decoration-2 underline-offset-4 hover:decoration-blue-600 hover:text-blue-800 transition-colors">{children}</a>
                     }}
                   >
                     {firstPart}
@@ -282,7 +279,7 @@ export default function ArticleDetailPage() {
                       li: ({ children }) => <li className="pl-2">{children}</li>,
                       strong: ({ children }) => <strong className="font-extrabold text-neutral-900">{children}</strong>,
                       blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-8 italic my-14 text-2xl md:text-3xl text-neutral-500 leading-relaxed bg-neutral-50/50 py-10 rounded-r-2xl font-serif">{children}</blockquote>,
-                      a: ({ children, href }) => <a href={href} className="text-primary font-bold underline decoration-2 underline-offset-4 hover:no-underline">{children}</a>
+                      a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold underline decoration-blue-600/30 decoration-2 underline-offset-4 hover:decoration-blue-600 hover:text-blue-800 transition-colors">{children}</a>
                     }}
                   >
                     {secondPart}
