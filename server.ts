@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { Client } from "@notionhq/client";
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 import { OpenAI } from "openai";
 import { executeAIFallback } from "./src/ai-fallback";
@@ -13,6 +14,18 @@ import { FallbackGenerator } from "./src/utils/FallbackGenerator";
 
 const app = express();
 const PORT = 3000;
+
+// Add proxy for Firebase Auth iframe domain matching
+if (process.env.NODE_ENV !== "production") {
+  app.use(
+    "/__/auth",
+    createProxyMiddleware({
+      target: "https://gen-lang-client-0439821239.firebaseapp.com",
+      changeOrigin: true,
+      secure: false,
+    })
+  );
+}
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -1928,14 +1941,10 @@ app.get(["/sitemap.xml", "/sitemap"], async (req, res) => {
     // Static pages defined in React routing
     const staticUrls = [
       { loc: BASE_URL, lastmod: today, changefreq: "daily", priority: 1.0 },
-      { loc: `${BASE_URL}/login`, lastmod: today, changefreq: "weekly", priority: 0.8 },
-      { loc: `${BASE_URL}/signup`, lastmod: today, changefreq: "weekly", priority: 0.8 },
       { loc: `${BASE_URL}/checkout`, lastmod: today, changefreq: "monthly", priority: 0.6 },
       { loc: `${BASE_URL}/dashboard`, lastmod: today, changefreq: "daily", priority: 0.9 },
       { loc: `${BASE_URL}/profile`, lastmod: today, changefreq: "weekly", priority: 0.7 },
       { loc: `${BASE_URL}/tutor`, lastmod: today, changefreq: "daily", priority: 0.9 },
-      { loc: `${BASE_URL}/privacy`, lastmod: today, changefreq: "yearly", priority: 0.4 },
-      { loc: `${BASE_URL}/terms`, lastmod: today, changefreq: "yearly", priority: 0.4 },
       { loc: `${BASE_URL}/articles`, lastmod: today, changefreq: "daily", priority: 0.9 }
     ];
 
@@ -2032,6 +2041,10 @@ Disallow: /profile/
 Disallow: /settings/
 Disallow: /verify-login/
 Disallow: /verify-email/
+Disallow: /signup
+Disallow: /login
+Disallow: /privacy
+Disallow: /terms
 
 Sitemap: https://examcity.qzz.io/sitemap.xml`;
 

@@ -3,6 +3,12 @@
   publish = "dist"
 
 [[redirects]]
+  from = "/__/auth/*"
+  to = "https://gen-lang-client-0439821239.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/sitemap.xml"
   to = "/.netlify/functions/api/sitemap.xml"
   status = 200
