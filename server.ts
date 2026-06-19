@@ -552,51 +552,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Dynamic Sitemap URL Generator
-app.get(
-  ["/sitemap.xml", "/api/sitemap.xml", "/.netlify/functions/api/sitemap.xml"],
-  async (req, res) => {
-    res.header('Content-Type', 'application/xml');
-
-    // Add all your site URLs here
-    const urls = [
-      'https://examcity.qzz.io/',
-      'https://examcity.qzz.io/exams',
-      'https://examcity.qzz.io/login',
-      'https://examcity.qzz.io/signup',
-      'https://examcity.qzz.io/dashboard',
-      'https://examcity.qzz.io/profile',
-      'https://examcity.qzz.io/tutor',
-      'https://examcity.qzz.io/privacy',
-      'https://examcity.qzz.io/terms'
-    ];
-
-    const urlEntries = urls.map(url => `
-  <url>
-    <loc>${url}</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`).join('');
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urlEntries}
-</urlset>`;
-
-    res.send(xml);
-  },
-);
-
-app.get(
-  ["/robots.txt", "/api/robots.txt", "/.netlify/functions/api/robots.txt"],
-  (req, res) => {
-    res.type('text/plain');
-    res.send(`User-agent: *
-Allow: /
-
-Sitemap: https://examcity.qzz.io/sitemap.xml`);
-  },
-);
+// Moved to later down in the file
 
 // AI Explanations Endpoint
 app.post(["/api/explain", "/explain"], async (req, res) => {
@@ -1110,6 +1066,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       - Use inline LaTeX formatting with standard MathJax delimiters: use single dollar signs $...$ for inline equations, and double dollar signs $$...$$ for block/display equations.
       - Ensure mathematical expressions, fractions (\frac{a}{b}), subscripts, superscripts, algebras, and symbols are well-formatted in standard LaTeX.
       - DO NOT use raw HTML tags (like <sup> or <sub>) for mathematical equations.
+      - For Chemistry formulas (like Sodium Sulfide), use standard unicode subscript formatting (e.g., follow this exact pattern: Na₂S) instead of LaTeX or HTML subscripts.
       
       Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
       
@@ -1979,7 +1936,31 @@ app.get(["/sitemap.xml", "/sitemap"], async (req, res) => {
       { loc: `${BASE_URL}/tutor`, lastmod: today, changefreq: "daily", priority: 0.9 },
       { loc: `${BASE_URL}/privacy`, lastmod: today, changefreq: "yearly", priority: 0.4 },
       { loc: `${BASE_URL}/terms`, lastmod: today, changefreq: "yearly", priority: 0.4 },
+      { loc: `${BASE_URL}/articles`, lastmod: today, changefreq: "daily", priority: 0.9 }
     ];
+
+    let articleUrls: any[] = [];
+    try {
+      const articlesRes = await fetch(getFirestoreRestUrl("articles"));
+      if (articlesRes.ok) {
+        const data = await articlesRes.json();
+        if (data.documents && Array.isArray(data.documents)) {
+          articleUrls = data.documents.map((doc: any) => {
+            const slug = doc.fields?.slug?.stringValue || "";
+            const updatedAt = doc.updateTime ? doc.updateTime.split("T")[0] : today;
+            if (!slug) return null;
+            return {
+              loc: `${BASE_URL}/articles/${slug}`,
+              lastmod: updatedAt,
+              changefreq: "weekly",
+              priority: 0.8
+            };
+          }).filter(Boolean);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch articles for sitemap", e);
+    }
 
     // Dynamic URLs matching the user's Sitemap configuration template
     const courses = [
@@ -2022,6 +2003,7 @@ app.get(["/sitemap.xml", "/sitemap"], async (req, res) => {
 
     const allUrls = [
       ...staticUrls,
+      ...articleUrls,
       ...courseUrls,
       ...examUrls,
       ...categoryUrls,

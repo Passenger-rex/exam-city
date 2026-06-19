@@ -220,6 +220,9 @@ export function AdminArticles() {
 
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Detailed Content (Markdown Enabled)</label>
+                  <p className="text-[11px] font-bold text-neutral-500 mb-2">
+                    Formatting tips: **<b>bold</b>** • *<i>italic</i>* • [Link Text](https://example.com) • # Heading 1
+                  </p>
                   <textarea 
                     value={formData.content}
                     onChange={e => setFormData({ ...formData, content: e.target.value })}

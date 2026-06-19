@@ -5,6 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs, limit, orderBy } from "
 import { motion } from "motion/react";
 import { Calendar, User, Tag, ChevronLeft, Share2, Clock, Check } from "lucide-react";
 import Markdown from "react-markdown";
+import { Helmet } from "react-helmet-async";
 import { Navbar } from "../components/Navbar";
 import { InArticleAd } from "../components/InArticleAd";
 import { Skeleton } from "../components/Skeleton";
@@ -148,6 +149,15 @@ export default function ArticleDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-neutral-900 font-sans">
+      <Helmet>
+        <title>{article.title} - Exam City</title>
+        <meta name="description" content={article.excerpt || `Read about ${article.title} on Exam City`} />
+        {article.image && <meta property="og:image" content={article.image} />}
+        <meta property="og:title" content={article.title} />
+        <meta property="og:description" content={article.excerpt || `Read about ${article.title} on Exam City`} />
+        <link rel="canonical" href={`https://examcity.qzz.io/articles/${article.slug}`} />
+      </Helmet>
+      
       <Navbar />
       
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-28 pb-20">
@@ -182,8 +192,8 @@ export default function ArticleDetailPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 pb-10 border-b border-neutral-100">
                   <div className="flex items-center gap-5">
                     <div className="relative group">
-                      <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 overflow-hidden ring-4 ring-neutral-50 shadow-inner">
-                        <Logo className="text-xl" />
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center bg-transparent overflow-hidden ring-4 ring-neutral-50 shadow-inner">
+                        <img src="/examcity_no_bg.png" alt="Exam City Logo" className="w-full h-full object-contain p-1" />
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full" />
                     </div>
