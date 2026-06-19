@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /dashboard
-Disallow: /profile
-Disallow: /exam
-
-Sitemap: https://examcity.qzz.io/sitemap.xml
