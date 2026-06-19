@@ -5,10 +5,17 @@ import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 import localConfig from "../firebase-applet-config.json";
 
+const appDomain = window.location.hostname;
+const defaultAuthDomain = "gen-lang-client-0439821239.firebaseapp.com";
+// If we are actually on examcity.qzz.io, use that to show the branded popup.
+// Otherwise, fall back to the default firebaseapp.com to ensure login works reliably in dev/preview environments.
+const resolvedAuthDomain = appDomain === "examcity.qzz.io" 
+  ? "examcity.qzz.io" 
+  : defaultAuthDomain;
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || localConfig.apiKey,
-  authDomain:
-    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || localConfig.authDomain,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || resolvedAuthDomain,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || localConfig.projectId,
   storageBucket:
     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || localConfig.storageBucket,

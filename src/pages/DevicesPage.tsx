@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { ShieldCheck, ArrowRight } from 'lucide-react';
 import { useUser } from '../UserContext';
 import { Logo } from '../components/Logo';

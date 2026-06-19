@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { MessageSquare, X, Send, Bot, User, Sparkles, ChevronLeft, ChevronRight, History, Plus, Trash2, Clock, Edit2, Check, Award, Paperclip, FileText, Image, ArrowLeft, Mic, Globe, Brain, Code } from "lucide-react";
 import { useUser } from "../UserContext";
