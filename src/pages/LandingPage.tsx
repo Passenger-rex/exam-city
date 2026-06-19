@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
+import { db } from "../firebase";
+import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import {
   ChevronDown,
   CheckCircle2,
@@ -17,6 +19,8 @@ import {
   Bot,
   Shield,
   Lock,
+  Calendar,
+  ChevronRight,
   Linkedin
 } from "lucide-react";
 import { Logo } from "../components/Logo";
@@ -24,12 +28,38 @@ import { ExamConfigModal } from "../components/ExamConfigModal";
 import { InteractiveBackground } from "../components/InteractiveBackground";
 import { AdSense } from "../components/AdSense";
 
+interface Article {
+  id: string;
+  title: string;
+  summary: string;
+  category: string;
+  slug: string;
+  createdAt: any;
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const [showConfig, setShowConfig] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const q = query(collection(db, "articles"), orderBy("createdAt", "desc"), limit(4));
+        const snap = await getDocs(q);
+        setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() } as Article)));
+      } catch (err) {
+        console.error("Error fetching articles:", err);
+      } finally {
+        setArticlesLoading(false);
+      }
+    };
+    fetchArticles();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -123,11 +153,58 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 md:pt-40 pb-20 md:pb-32 px-5 md:px-6 overflow-hidden flex flex-col items-center justify-center min-h-[90vh]">
+      <section className="relative pt-32 md:pt-40 pb-20 md:pb-32 px-5 md:px-6 overflow-hidden flex flex-col items-center justify-center">
         <div className="absolute inset-0 z-0">
           <InteractiveBackground />
         </div>
         
+        {/* News Feed - Top Level (Myschool.ng style) */}
+        {!articlesLoading && articles.length > 0 && (
+          <div className="w-full max-w-7xl mx-auto mb-16 relative z-10 px-4">
+            <div className="bg-surface/60 backdrop-blur-md rounded-[2.5rem] border border-outline-variant/30 p-8 shadow-xl">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-black text-on-surface">Academic Pulse</h2>
+                </div>
+                <Link to="/articles" className="text-sm font-black text-primary hover:underline flex items-center gap-1 uppercase tracking-wider">
+                  View All Hub <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {articles.map((article) => (
+                  <Link 
+                    key={article.id} 
+                    to={`/articles/${article.slug}`}
+                    className="group"
+                  >
+                    <div className="bg-surface-dim/40 rounded-2xl p-5 border border-outline-variant/20 hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5 h-full flex flex-col">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary px-2 py-1 bg-primary/10 rounded-md">
+                          {article.category}
+                        </span>
+                        <div className="flex items-center gap-1 text-[10px] text-on-surface-variant font-bold">
+                          <Calendar className="w-3 h-3" />
+                          {article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString() : "News"}
+                        </div>
+                      </div>
+                      <h3 className="text-sm font-black text-on-surface group-hover:text-primary transition-colors line-clamp-3 mb-3 leading-snug">
+                        {article.title}
+                      </h3>
+                      <p className="text-[11px] text-on-surface-variant line-clamp-2 mt-auto">
+                        {article.summary}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Animated abstract blobs for subtle parallax */}
         <motion.div 
           animate={{ y: [-30, 30, -30], x: [-20, 20, -20], scale: [1, 1.1, 1] }} 

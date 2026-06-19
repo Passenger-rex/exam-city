@@ -3,11 +3,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import { collection, addDoc, serverTimestamp, getDocs, orderBy, query, doc, getDoc, setDoc, where, updateDoc, deleteDoc } from "firebase/firestore";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { Upload, Database, CheckCircle2, AlertCircle, Edit2, Trash2, Check, X, Plus, Search, Sparkles, Info, LayoutGrid, Layers, RefreshCw, Ticket, Mail, Send } from "lucide-react";
+import { Upload, Database, CheckCircle2, AlertCircle, Edit2, Trash2, Check, X, Plus, Search, Sparkles, Info, LayoutGrid, Layers, RefreshCw, Ticket, Mail, Send, FileText } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { Navbar } from "../components/Navbar";
 import { useUser } from "../UserContext";
 import { CurriculumManager } from "../utils/CurriculumManager";
+import { AdminArticles } from "../components/AdminArticles";
 
 const SECONDARY_SUBJECTS = [
   "Agricultural Science", "Basic Science", "Basic Technology", "Civic Education", "Commerce", "CRK", 
@@ -151,7 +152,7 @@ export default function AdminPage() {
   const [editingTopicName, setEditingTopicName] = useState("");
 
   const [verificationResults, setVerificationResults] = useState<Record<string, { verified: boolean; hasMismatches: boolean; mismatches: string[]; levelMismatches: string[] }>>({});
-  const [adminTab, setAdminTab] = useState<"curriculum" | "upload" | "notion" | "tickets">("curriculum");
+  const [adminTab, setAdminTab] = useState<"curriculum" | "upload" | "notion" | "tickets" | "articles">("curriculum");
   const [tickets, setTickets] = useState<any[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -902,6 +903,18 @@ export default function AdminPage() {
                 <Ticket className="w-4 h-4" />
                 <span>Support Tickets</span>
              </button>
+             <button
+                id="admin-tab-articles"
+                onClick={() => setAdminTab("articles")}
+                className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-6 rounded-lg text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer ${
+                   adminTab === "articles" 
+                      ? "bg-white dark:bg-neutral-800 text-neutral-850 dark:text-white shadow-sm ring-1 ring-neutral-200/40 dark:ring-neutral-700/60" 
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-white/50 dark:hover:bg-neutral-800/50"
+                }`}
+             >
+                <FileText className="w-4 h-4" />
+                <span>Articles</span>
+             </button>
           </div>
 
           {/* Tab Content Display Area */}
@@ -1630,6 +1643,10 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
+            )}
+
+            {adminTab === "articles" && (
+              <AdminArticles />
             )}
 
           </div>

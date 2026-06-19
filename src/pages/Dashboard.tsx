@@ -49,6 +49,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [isSubDropdownOpen, setIsSubDropdownOpen] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -58,6 +60,51 @@ export default function Dashboard() {
   const [sharedExamId, setSharedExamId] = useState<string | null>(null);
   const [shareModalExam, setShareModalExam] = useState<any | null>(null);
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+
+  const getStreakCount = () => {
+    if (recentExams.length === 0) return 0;
+    const activeDaysSet = new Set<string>();
+    recentExams.forEach(exam => {
+      if (exam.createdAt) {
+        let dateObj;
+        if (typeof exam.createdAt.toDate === 'function') {
+          dateObj = exam.createdAt.toDate();
+        } else if (exam.createdAt.seconds) {
+          dateObj = new Date(exam.createdAt.seconds * 1000);
+        } else {
+          dateObj = new Date(exam.createdAt);
+        }
+        if (dateObj instanceof Date && !isNaN(dateObj.getTime())) {
+          const dateStr = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+          activeDaysSet.add(dateStr);
+        }
+      }
+    });
+    
+    let streak = 0;
+    let checkDate = new Date();
+    while (true) {
+      const dateStr = `${checkDate.getFullYear()}-${checkDate.getMonth() + 1}-${checkDate.getDate()}`;
+      if (activeDaysSet.has(dateStr)) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        if (streak === 0) {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
+          if (activeDaysSet.has(yesterdayStr)) {
+            checkDate = yesterday;
+            continue;
+          }
+        }
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const currentStreak = getStreakCount();
 
   const getExamSubject = (exam: any) => {
     if (exam.subject) return String(exam.subject);
@@ -157,6 +204,64 @@ export default function Dashboard() {
           });
         }
 
+        // Load Leaderboard
+        try {
+          const resultsQ = query(
+            collection(db, "exam_results"),
+            orderBy("createdAt", "desc"),
+            limit(40) // Fetch more to account for duplicates from the same user
+          );
+          const snap = await getDocs(resultsQ);
+          
+          // Collect all unique user IDs to fetch in parallel
+          const userIds = new Set<string>();
+          snap.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.userId) userIds.add(data.userId);
+          });
+
+          // Fetch all users in parallel
+          const userDocsPromises = Array.from(userIds).map(uid => getDoc(doc(db, "users", uid)));
+          const userDocsSnaps = await Promise.all(userDocsPromises);
+          const usersMap = new Map<string, any>();
+          userDocsSnaps.forEach(userSnap => {
+            if (userSnap.exists()) {
+              usersMap.set(userSnap.id, userSnap.data());
+            }
+          });
+
+          const list: any[] = [];
+          for (const docSnap of snap.docs) {
+            const data = docSnap.data();
+            const uData = data.userId ? usersMap.get(data.userId) : null;
+            
+            const username = uData 
+              ? (uData.firstName || uData.name || (uData.email ? uData.email.split('@')[0] : "Student"))
+              : "Student Scholar";
+            
+            const calculatedPercent = data.percent || Math.round(((data.score || 0) / (data.total || 1)) * 100);
+
+            // Only add if user is unique in our display list
+            if (username && !list.some(l => l.username === username)) {
+              list.push({
+                id: docSnap.id,
+                username,
+                percent: calculatedPercent,
+                subject: data.subject || "CBT Practice",
+              });
+            }
+            if (list.length >= 5) break; // We only need top 5 for the display
+          }
+          
+          list.sort((a, b) => b.percent - a.percent);
+          setLeaderboard(list);
+        } catch (lErr) {
+          console.error("Error fetching leaderboard:", lErr);
+          setLeaderboard([]);
+        } finally {
+          setLeaderboardLoading(false);
+        }
+
       } catch (err: any) {
         console.error("Error fetching exams:", err);
         setError("Error fetching exam results: " + err.message);
@@ -178,8 +283,66 @@ export default function Dashboard() {
 
   if (loading || userLoading) {
     return (
-      <div className="min-h-screen bg-surface-dim flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-surface-dim flex flex-col w-full font-sans">
+        {/* Skeleton Top Navbar */}
+        <div className="bg-surface h-16 border-b border-outline-variant/30 px-6 sm:px-12 flex items-center justify-between shrink-0 animate-pulse">
+          <div className="w-28 h-6 bg-on-surface-variant/10 rounded-lg"></div>
+          <div className="flex gap-4">
+            <div className="w-16 h-8 bg-on-surface-variant/10 rounded-full"></div>
+            <div className="w-8 h-8 bg-on-surface-variant/10 rounded-full"></div>
+          </div>
+        </div>
+
+        <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-pulse pt-10">
+          {/* Welcome Banner Skeleton */}
+          <div className="h-44 bg-surface rounded-[2rem] border border-outline-variant/20 p-8 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-24 h-4 bg-on-surface-variant/10 rounded-full"></div>
+              <div className="w-1/3 h-8 bg-on-surface-variant/10 rounded-lg"></div>
+              <div className="w-1/2 h-4 bg-on-surface-variant/10 rounded-md"></div>
+            </div>
+            <div className="w-36 h-11 bg-on-surface-variant/10 rounded-xl"></div>
+          </div>
+
+          {/* Three Stat Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((idx) => (
+              <div key={idx} className="bg-surface p-6 h-36 rounded-[24px] border border-outline-variant/20 space-y-4">
+                <div className="w-10 h-10 bg-on-surface-variant/10 rounded-2xl"></div>
+                <div className="space-y-2">
+                  <div className="w-1/3 h-3 bg-on-surface-variant/10 rounded"></div>
+                  <div className="w-1/4 h-6 bg-on-surface-variant/10 rounded-md"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Large Content Section Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 h-96 bg-surface rounded-[32px] border border-outline-variant/20 p-8 space-y-6">
+              <div className="w-1/4 h-6 bg-on-surface-variant/10 rounded-lg"></div>
+              <div className="space-y-4">
+                {[1, 2, 3].map((row) => (
+                  <div key={row} className="flex justify-between items-center py-2">
+                    <div className="space-y-2 flex-1">
+                      <div className="w-1/3 h-4 bg-on-surface-variant/10 rounded"></div>
+                      <div className="w-12 h-2.5 bg-on-surface-variant/10 rounded"></div>
+                    </div>
+                    <div className="w-16 h-4 bg-on-surface-variant/10 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="lg:col-span-1 h-96 bg-surface rounded-[32px] border border-outline-variant/20 p-8">
+              <div className="w-1/3 h-6 bg-on-surface-variant/10 rounded-lg mb-6"></div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((it) => (
+                  <div key={it} className="h-12 bg-on-surface-variant/10 rounded-xl w-full"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -367,8 +530,8 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 gap-8">
-          <div className="col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
             <div className="bg-surface p-6 sm:p-8 rounded-[32px] border border-outline-variant/50 overflow-hidden bento-card">
               <div className="flex flex-row items-center justify-between gap-4 mb-6">
                 <h2 className="font-headline-md text-lg sm:text-xl font-bold truncate">
@@ -586,24 +749,102 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Right Column: Daily Rewards, Streaks & Leaderboard (takes 1/3 space) */}
+          <div className="lg:col-span-1 space-y-6 flex flex-col">
+            {/* Daily Streak Card */}
+            <motion.div 
+              whileHover={{ y: -3 }}
+              className="bg-surface p-6 rounded-[28px] border border-outline-variant/50 bento-card flex items-center justify-between"
+            >
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant/70">
+                  Study Retention
+                </span>
+                <h4 className="text-lg font-black text-on-surface tracking-tight">
+                  {currentStreak} Day Study Streak
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed font-semibold">
+                  {currentStreak >= 3 
+                    ? "🔥 You're on fire! Keep it going!" 
+                    : "⚡ Practice daily to earn Double XP."}
+                </p>
+              </div>
+              <div className={`w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 ${currentStreak > 0 ? "text-amber-500 animate-pulse" : "text-on-surface-variant/40"}`}>
+                <Zap className="w-7 h-7 fill-current" />
+              </div>
+            </motion.div>
+
+            {/* CBT Leaderboard Card */}
+            <div className="bg-surface p-6 rounded-[28px] border border-outline-variant/50 bento-card space-y-4 flex-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-amber-500/15 rounded-lg flex items-center justify-center text-amber-600">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black text-on-surface tracking-tight uppercase">
+                    Leaderboard
+                  </h3>
+                </div>
+                <span className="text-[9px] font-extrabold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  West Africa
+                </span>
+              </div>
+
+              {leaderboardLoading ? (
+                <div className="space-y-3 animate-pulse">
+                  {[1, 2, 3].map(item => (
+                    <div key={item} className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-on-surface-variant/10 rounded-full shrink-0"></div>
+                      <div className="flex-1 space-y-2 py-1">
+                        <div className="h-3 bg-on-surface-variant/10 rounded"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {leaderboard.map((item, idx) => (
+                    <div 
+                      key={item.id} 
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                        item.username === firstName || item.username === fullName
+                          ? "bg-primary/5 border-primary/25"
+                          : "bg-surface-dim/30 border-transparent hover:border-outline-variant/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                          idx === 0 ? "bg-amber-100 text-amber-800" :
+                          idx === 1 ? "bg-slate-100 text-slate-800" :
+                          idx === 2 ? "bg-amber-50 text-amber-700" : "bg-surface-dim text-on-surface-variant"
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-extrabold text-on-surface truncate">
+                            {item.username}
+                          </p>
+                          <p className="text-[9px] text-on-surface-variant font-medium truncate uppercase">
+                            {item.subject}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black text-primary ml-2 shrink-0">
+                        {item.percent}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         
         <div className="mt-8">
           <AdSense />
         </div>
       </main>
-
-      {/* Floating Study Coach */}
-      <motion.button
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => navigate("/tutor")}
-        className="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-primary/90 transition-all border-2 border-white/20 cursor-pointer"
-      >
-        <Bot className="w-7 h-7" />
-      </motion.button>
 
       {/* Social Media Share Modal Overlay */}
       <AnimatePresence>

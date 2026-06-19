@@ -23,11 +23,14 @@ import TermsPage from "./pages/TermsPage";
 import VerifyLoginPage from "./pages/VerifyLoginPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import DevicesPage from "./pages/DevicesPage";
+import ArticleListPage from "./pages/ArticleListPage";
+import ArticleDetailPage from "./pages/ArticleDetailPage";
 import { PageTransition } from "./components/PageTransition";
 import { UserProvider } from "./UserContext";
 
 import { SplashScreen } from "./components/SplashScreen";
 import { DarkModeToggle } from "./components/DarkModeToggle";
+import { AppSkeleton } from "./components/Skeleton";
 
 // Helper to retrieve permanent device footprint
 export const getDeviceId = () => {
@@ -45,22 +48,18 @@ function ProtectedRoute({ children, allowGuests = false }: { children: React.Rea
   const location = useLocation();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsub = auth.onAuthStateChanged(async (user) => {
+      // User requested a consistent 3-second skeleton experience instead of quick flash
+      const delay = new Promise(resolve => setTimeout(resolve, 3000));
+      await delay;
       setChecking(false);
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   if (checking) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center text-on-surface">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-semibold tracking-tight">Securing session...</p>
-        </div>
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   if (!auth.currentUser) {
@@ -211,6 +210,22 @@ function AnimatedRoutes() {
                 <DevicesPage />
               </PageTransition>
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/articles"
+          element={
+            <PageTransition>
+              <ArticleListPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/articles/:slug"
+          element={
+            <PageTransition>
+              <ArticleDetailPage />
+            </PageTransition>
           }
         />
       </Routes>

@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  LayoutGrid,
   Zap,
   Award,
 } from "lucide-react";
@@ -41,8 +42,13 @@ export function Navbar() {
 
   const menuItems = [
     {
+      path: "/dashboard",
+      name: "Dashboard",
+      icon: LayoutGrid,
+    },
+    {
       path: "/admin",
-      name: "Admin Center",
+      name: "Admin Hub",
       icon: Shield,
     },
   ].filter(item => isAdmin || item.path !== "/admin");
@@ -51,31 +57,29 @@ export function Navbar() {
   const userDisplayName = profile?.name || user.displayName || (user.email ? user.email.split("@")[0].split(/[^a-zA-Z]/).map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).filter(Boolean).join(" ") : "Student Scholar");
 
   return (
-    <header className="hidden md:block sticky top-0 z-[60] bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 w-full select-none">
+    <header className="hidden md:block sticky top-0 z-[60] bg-white border-b border-neutral-200 w-full select-none shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14">
           {/* Left: Logo */}
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-10">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <Logo className="text-xl md:text-2xl" />
+              <Logo className="text-xl text-neutral-900" />
             </Link>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1.5 ml-4">
+            <nav className="hidden md:flex items-center gap-2">
               {menuItems.map((item) => {
                 const isActive = location.pathname === item.path;
-                const Icon = item.icon;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-md text-[13px] font-bold transition-all duration-200 cursor-pointer border-b-2 ${
                       isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface-dim"
+                        ? "border-primary text-primary bg-primary/5"
+                        : "border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? "text-primary" : "text-on-surface-variant/70"}`} />
                     <span>{item.name}</span>
                   </Link>
                 );

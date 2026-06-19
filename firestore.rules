@@ -49,6 +49,14 @@ service cloud.firestore {
     match /curriculums/{curriculumId} {
       allow read, write: if true;
     }
+
+    match /articles/{articleId} {
+      allow read, write: if true;
+    }
+
+    match /support_tickets/{ticketId} {
+      allow read, write: if true;
+    }
   }
 }
 

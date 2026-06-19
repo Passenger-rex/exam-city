@@ -389,8 +389,24 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-dim flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-surface-dim flex flex-col w-full font-sans">
+        <div className="bg-surface h-16 border-b border-outline-variant/30 px-6 sm:px-12 flex items-center justify-between shrink-0 animate-pulse">
+          <div className="w-28 h-6 bg-on-surface-variant/10 rounded-lg"></div>
+          <div className="w-8 h-8 bg-on-surface-variant/10 rounded-full"></div>
+        </div>
+        <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-pulse pt-10">
+          <div className="flex items-center gap-6 pb-6 border-b border-outline-variant/20">
+            <div className="w-20 h-20 rounded-full bg-on-surface-variant/10"></div>
+            <div className="space-y-3 flex-1">
+              <div className="w-1/4 h-6 bg-on-surface-variant/10 rounded-lg"></div>
+              <div className="w-1/3 h-4 bg-on-surface-variant/10 rounded-md"></div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            <div className="h-48 bg-surface rounded-[24px] border border-outline-variant/20 p-6 space-y-4"></div>
+            <div className="h-48 bg-surface rounded-[24px] border border-outline-variant/20 p-6 space-y-4"></div>
+          </div>
+        </div>
       </div>
     );
   }

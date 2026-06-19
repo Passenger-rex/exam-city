@@ -947,6 +947,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       bank = "public",
       topic = "",
       level = "standard",
+      board = "",
     } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
 
@@ -1080,14 +1081,20 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
         topicInstruction = `The questions MUST test highly specific, advanced academic knowledge on the topic of "${topicStr}".`;
       }
 
+      let boardInstruction = "";
+      if (typeof board === "string" && board.trim().length > 0) {
+        boardInstruction = `The questions MUST perfectly match the style, format, and syllabus of the standard West African, Nigerian or international examination board known as "${board}". Ensure the style, specific content focus, and rigor match authentic past papers of "${board}".`;
+      }
+
       const { levelInstruction, curriculumInstruction: clinicalInstruction } =
         getCurriculumInstructions(String(level));
 
       const randomEntropy = Math.floor(Math.random() * 1000000000);
 
-      const prompt = `Generate exactly ${limitNum} novel, academically challenging, and high-quality mock exam multiple choice questions for the subject: "${subjectStr}". 
+      const prompt = `Generate exactly ${limitNum} novel, academically challenging, and high-quality mock exam multiple choice questions for the subject: "${subjectStr}"${board ? ` aligned with the ${board} board` : ""}. 
       ${yearInstruction} 
       ${topicInstruction}
+      ${boardInstruction}
       
       The questions MUST:
       1. Be entirely novel and highly varied. Absolutely NO duplication, repetition, or overlapping concepts. Vary the settings, values, variables, clinical presentations, or theoretical problems across all questions. (Internal entropy seed: ${randomEntropy})

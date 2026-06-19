@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-export function AdSense() {
+export function InArticleAd() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isLoaded = useRef(false);
 
@@ -33,14 +33,14 @@ export function AdSense() {
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full my-4 flex justify-center text-center overflow-hidden">
+    <div ref={containerRef} className="w-full my-8 flex justify-center text-center overflow-hidden border-y border-outline-variant/10 py-4">
       <ins
         className="adsbygoogle"
-        style={{ display: 'block', width: '100%' }}
+        style={{ display: 'block', textAlign: 'center' }}
+        data-ad-layout="in-article"
+        data-ad-format="fluid"
         data-ad-client="ca-pub-3389078013547284"
-        data-ad-slot="7197508906"
-        data-ad-format="auto"
-        data-full-width-responsive="true"
+        data-ad-slot="6378858044"
       ></ins>
     </div>
   );

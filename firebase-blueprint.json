@@ -23,9 +23,48 @@
     "/reviews/{reviewId}": {
       "schema": "Review",
       "description": "User feedback and ratings"
+    },
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Educational news and articles"
+    },
+    "/support_tickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "Customer support messages"
     }
   },
   "entities": {
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "A support message from a user",
+      "type": "object",
+      "properties": {
+        "fromEmail": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "Article": {
+      "title": "Article",
+      "description": "Educational blog post or news",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "content": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "author": { "type": "string" },
+        "category": { "type": "string" },
+        "image": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "views": { "type": "number" }
+      },
+      "required": ["title", "slug", "content"]
+    },
     "Question": {
       "title": "Question",
       "description": "Exam Question",

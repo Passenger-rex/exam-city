@@ -185,6 +185,7 @@ export default function TutorPage() {
   // File Upload States
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isFileUploading, setIsFileUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [documentDifficulty, setDocumentDifficulty] = useState<string>("standard");
   const [documentSubject, setDocumentSubject] = useState<string>("Biology");
@@ -251,17 +252,29 @@ export default function TutorPage() {
     if (!selectedFile) return;
     
     setIsFileUploading(true);
+    setUploadProgress(5);
     setIsLoading(true);
     setUploadError("");
     sessionStorage.removeItem("customUploadedExam");
+    
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev < 40) return prev + 12;
+        if (prev < 75) return prev + 6;
+        if (prev < 96) return prev + 1;
+        return prev;
+      });
+    }, 200);
     
     if (profile?.tier !== "pro" && auth.currentUser) {
       const todayStr = new Date().toISOString().split('T')[0];
       const queriesUsedToday = profile?.lastTutorQueryDate === todayStr ? (profile?.tutorQueriesUsed || 0) : 0;
       if (queriesUsedToday >= 5) {
         setShowUpgradeModal(true);
+        clearInterval(progressInterval);
         setIsFileUploading(false);
         setIsLoading(false);
+        setUploadProgress(0);
         return;
       }
     }
@@ -337,8 +350,13 @@ export default function TutorPage() {
       console.error(err);
       setUploadError(err.message || "An error occurred while uploading. Please ensure file content is readable.");
     } finally {
-      setIsFileUploading(false);
-      setIsLoading(false);
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      setTimeout(() => {
+        setIsFileUploading(false);
+        setIsLoading(false);
+        setUploadProgress(0);
+      }, 350);
     }
   };
 
@@ -643,9 +661,13 @@ export default function TutorPage() {
           {/* Past Sessions List */}
            <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
               {sessionsLoading ? (
-                 <div className="flex flex-col items-center justify-center py-10 space-y-3">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-xs text-on-surface-variant/70 font-medium tracking-wide">Loading history...</p>
+                 <div className="space-y-2.5 animate-pulse pb-4">
+                    {[1, 2, 3, 4, 5].map((idx) => (
+                       <div key={idx} className="h-11 bg-on-surface-variant/5 rounded-xl w-full flex items-center px-4 gap-3">
+                          <div className="w-4 h-4 bg-on-surface-variant/10 rounded-md shrink-0"></div>
+                          <div className="h-3 bg-on-surface-variant/10 rounded-md flex-1"></div>
+                       </div>
+                    ))}
                  </div>
               ) : sessions.length === 0 ? (
                  <div className="text-center py-10 space-y-3 px-4">
@@ -926,9 +948,25 @@ export default function TutorPage() {
                       <p className="text-sm font-bold text-on-surface truncate max-w-[250px] sm:max-w-sm">
                         {selectedFile.name}
                       </p>
-                      <p className="text-[11px] text-on-surface-variant/60 font-semibold uppercase tracking-wider mt-0.5 font-mono">
-                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready
-                      </p>
+                      {isFileUploading ? (
+                        <div className="mt-1.5 w-48 sm:w-64">
+                          <div className="h-1.5 w-full bg-surface-dim rounded-full overflow-hidden">
+                            <motion.div 
+                              className="h-full bg-primary rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${uploadProgress}%` }}
+                              transition={{ duration: 0.15 }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-primary font-bold mt-1 block">
+                            Uploading & analyzing... {uploadProgress}%
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-on-surface-variant/60 font-semibold uppercase tracking-wider mt-0.5 font-mono">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready
+                        </p>
+                      )}
                     </div>
                   </div>
                   

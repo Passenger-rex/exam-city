@@ -111,8 +111,23 @@ export default function ReviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-dim flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-surface-dim flex flex-col w-full font-sans">
+        <div className="bg-surface h-16 border-b border-outline-variant/30 px-6 sm:px-12 flex items-center justify-between shrink-0 animate-pulse">
+          <div className="w-28 h-6 bg-on-surface-variant/10 rounded-lg"></div>
+          <div className="w-8 h-8 bg-on-surface-variant/10 rounded-full"></div>
+        </div>
+        <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-pulse pt-10">
+          <div className="h-10 bg-on-surface-variant/10 rounded-lg w-1/3"></div>
+          <div className="h-32 bg-surface rounded-[24px] border border-outline-variant/20 p-6 space-y-4">
+            <div className="h-6 bg-on-surface-variant/10 rounded w-1/2"></div>
+            <div className="h-4 bg-on-surface-variant/10 rounded w-2/3"></div>
+          </div>
+          <div className="space-y-4 pt-4">
+            {[1, 2, 3].map((idx) => (
+              <div key={idx} className="h-24 bg-surface rounded-[18px] border border-outline-variant/20 p-4"></div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

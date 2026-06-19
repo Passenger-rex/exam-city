@@ -49,6 +49,7 @@ export default function ExamPage() {
   const topicParam = searchParams.get("topic") || "";
   const strictParam = searchParams.get("strict") === "true";
   const levelParam = searchParams.get("level") || "standard";
+  const boardParam = searchParams.get("board") || "";
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -223,7 +224,7 @@ export default function ExamPage() {
         }
 
         try {
-          const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}&topic=${encodeURIComponent(topicParam)}&level=${encodeURIComponent(levelParam)}`);
+          const res = await fetch(`/api/questions?subject=${encodeURIComponent(targetSubject)}&year=${encodeURIComponent(yearParam)}&type=${encodeURIComponent(typeParam)}&bank=${encodeURIComponent(bankParam)}&topic=${encodeURIComponent(topicParam)}&level=${encodeURIComponent(levelParam)}&board=${encodeURIComponent(boardParam)}`);
           const text = await res.text();
           let json;
           try {
@@ -434,6 +435,7 @@ export default function ExamPage() {
           userId: auth.currentUser.uid,
           score,
           total: questions.length,
+          percent: Math.round((score / questions.length) * 100),
           subject: displaySubject,
           answers, // storing answers to review later
           questions, // saving the specific questions for this test (ALOC or DB)
@@ -476,8 +478,11 @@ export default function ExamPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-dim flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center font-sans">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6" />
+        <p className="text-on-surface-variant font-black text-sm uppercase tracking-widest animate-pulse">
+          Securing Session...
+        </p>
       </div>
     );
   }
