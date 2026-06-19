@@ -1971,51 +1971,9 @@ app.get(["/sitemap.xml", "/sitemap"], async (req, res) => {
       console.warn("Failed to fetch articles for sitemap", e);
     }
 
-    // Dynamic URLs matching the user's Sitemap configuration template
-    const courses = [
-      { slug: "mathematics-101", updatedAt: new Date().toISOString() },
-      { slug: "biology-fundamentals", updatedAt: new Date().toISOString() },
-      { slug: "chemistry-advanced", updatedAt: new Date().toISOString() },
-    ];
-
-    const exams = [
-      { slug: "midterm-2024", courseSlug: "mathematics-101", updatedAt: new Date().toISOString() },
-      { slug: "final-exam", courseSlug: "biology-fundamentals", updatedAt: new Date().toISOString() },
-    ];
-
-    const categories = [
-      { slug: "science", updatedAt: new Date().toISOString() },
-      { slug: "mathematics", updatedAt: new Date().toISOString() },
-      { slug: "humanities", updatedAt: new Date().toISOString() },
-    ];
-
-    const courseUrls = courses.map((c) => ({
-      loc: `${BASE_URL}/courses/${c.slug}`,
-      lastmod: c.updatedAt.split("T")[0],
-      changefreq: "weekly",
-      priority: 0.8,
-    }));
-
-    const examUrls = exams.map((e) => ({
-      loc: `${BASE_URL}/courses/${e.courseSlug}/exams/${e.slug}`,
-      lastmod: e.updatedAt.split("T")[0],
-      changefreq: "weekly",
-      priority: 0.75,
-    }));
-
-    const categoryUrls = categories.map((cat) => ({
-      loc: `${BASE_URL}/categories/${cat.slug}`,
-      lastmod: cat.updatedAt.split("T")[0],
-      changefreq: "weekly",
-      priority: 0.7,
-    }));
-
     const allUrls = [
       ...staticUrls,
-      ...articleUrls,
-      ...courseUrls,
-      ...examUrls,
-      ...categoryUrls,
+      ...articleUrls
     ];
 
     const xml = buildSitemapXml(allUrls);

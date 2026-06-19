@@ -5,6 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs, limit, orderBy } from "
 import { motion } from "motion/react";
 import { Calendar, User, Tag, ChevronLeft, Share2, Clock, Check } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "../components/Navbar";
 import { InArticleAd } from "../components/InArticleAd";
@@ -239,6 +240,7 @@ export default function ArticleDetailPage() {
               <div className="max-w-[720px] mx-auto">
                 <div className="prose prose-neutral max-w-none font-serif text-[18px] md:text-[20px] leading-[1.8] text-neutral-800 antialiased selection:bg-primary/20">
                   <Markdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       h1: ({ children }) => <h1 className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight">{children}</h2>,
@@ -269,6 +271,7 @@ export default function ArticleDetailPage() {
                   </div>
                   
                   <Markdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       h1: ({ children }) => <h1 className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight">{children}</h2>,
