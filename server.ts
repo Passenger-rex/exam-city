@@ -1294,27 +1294,39 @@ function extractTextFromPdfRaw(buffer: Buffer): string {
 
 app.post("/api/social-cliffhanger", async (req, res) => {
   try {
-    const { title, excerpt, url } = req.body;
+    const { title, excerpt, url, platform = "Facebook", model = "Gemini" } = req.body;
     if (!title || !url) {
       return res.status(400).json({ error: "Missing article title or URL" });
     }
 
-    if (!genai) {
-      return res.status(503).json({ error: "Gemini API key is not configured" });
-    }
-
-    const prompt = `You are a social media copywriter. Given the title and excerpt of a new article, create a highly engaging, concise "cliffhanger" post for social media (Twitter/X or Facebook). It should build curiosity, end on a cliffhanger, include 2-3 relevant hashtags, and invite the user to click the link to find out more. Only output the post content itself. Include the literal text "[URL]" where the article link should go.
+    const prompt = `You are a social media copywriter. Given the title and excerpt of a new article, create a highly engaging, concise "cliffhanger" post for ${platform}. It should build curiosity, end on a cliffhanger, include 2-3 relevant hashtags for ${platform}, and invite the user to click the link to find out more. Only output the post content itself. Include the literal text "[URL]" where the article link should go.
 Title: ${title}
 Excerpt: ${excerpt || "A new update has been posted to Exam City."}
 `;
     
-    // Call Gemini
-    const response = await genai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    let generatedPost = "";
     
-    let generatedPost = response.text || "";
+    // We try to honor the requested model if we can via fallback engine
+    try {
+       const fallbackData = await executeAIFallback([{ role: "user", content: prompt }]);
+       if (fallbackData && fallbackData.text) {
+         generatedPost = fallbackData.text;
+       } else {
+         throw new Error("No response from fallback AI");
+       }
+    } catch(err) {
+       // if executeAIFallback fails, directly use Google GenAI if available
+       if (genai) {
+          const response = await genai.models.generateContent({
+             model: "gemini-2.5-flash",
+             contents: prompt,
+          });
+          generatedPost = response.text || "";
+       } else {
+          return res.status(503).json({ error: "No AI provider configured" });
+       }
+    }
+    
     // Replace the [URL] placeholder with real URL
     generatedPost = generatedPost.replace("[URL]", url);
     

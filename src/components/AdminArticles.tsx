@@ -24,6 +24,8 @@ export function AdminArticles() {
   const [status, setStatus] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [cliffhanger, setCliffhanger] = useState("");
+  const [cliffhangerPlatform, setCliffhangerPlatform] = useState("Instagram");
+  const [cliffhangerModel, setCliffhangerModel] = useState("Groq");
   const [isGeneratingCliffhanger, setIsGeneratingCliffhanger] = useState(false);
   const [showCliffhangerModal, setShowCliffhangerModal] = useState(false);
   const [selectedArticleForCliffhanger, setSelectedArticleForCliffhanger] = useState<Article | null>(null);
@@ -175,7 +177,7 @@ export function AdminArticles() {
     });
   };
 
-  const generateCliffhanger = async (article: Article) => {
+  const generateCliffhanger = async (article: Article, platform = cliffhangerPlatform, model = cliffhangerModel) => {
     setSelectedArticleForCliffhanger(article);
     setIsGeneratingCliffhanger(true);
     setShowCliffhangerModal(true);
@@ -187,6 +189,8 @@ export function AdminArticles() {
           title: article.title,
           excerpt: article.excerpt,
           url: `${window.location.origin}/articles/${article.slug}`,
+          platform,
+          model
         })
       });
       const data = await res.json();
@@ -491,49 +495,82 @@ export function AdminArticles() {
       </div>
 
       {showCliffhangerModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-neutral-900/60 backdrop-blur-sm overflow-hidden">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col"
+            className="bg-white rounded-3xl w-full max-w-3xl max-h-[85vh] shadow-2xl relative flex flex-col mx-auto"
           >
-            <div className="px-8 py-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
-              <h3 className="font-black text-2xl text-neutral-900 flex items-center gap-3">
-                <Wand2 className="w-6 h-6 text-indigo-600" /> AI Social CLIFFHANGER
+            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-white z-10 rounded-t-3xl">
+              <h3 className="font-black text-xl sm:text-2xl text-neutral-900 flex items-center gap-3">
+                <Wand2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" /> AI SOCIAL CLIFFHANGER
               </h3>
               <button
                 onClick={() => setShowCliffhangerModal(false)}
-                className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+                className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
                 title="Close"
               >
-                <X className="w-5 h-5 text-neutral-500" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-500" />
               </button>
             </div>
             
-            <div className="p-8 overflow-y-auto">
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
               {isGeneratingCliffhanger ? (
-                <div className="py-16 flex flex-col items-center justify-center text-center">
+                <div className="py-20 flex flex-col items-center justify-center text-center">
                   <div className="w-12 h-12 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mb-6" />
                   <p className="font-bold text-lg text-neutral-600">Generating the perfect cliffhanger...</p>
                 </div>
               ) : (
-                <div className="space-y-8">
-                  <div className="p-6 md:p-8 bg-neutral-50 rounded-3xl border border-neutral-100">
-                    <p className="text-neutral-800 font-serif text-lg leading-relaxed whitespace-pre-wrap">{cliffhanger}</p>
+                <div className="space-y-6 sm:space-y-8">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-2">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2 block">Target Platform</label>
+                      <select 
+                        value={cliffhangerPlatform}
+                        onChange={(e) => setCliffhangerPlatform(e.target.value)}
+                        className="w-full px-4 py-3 sm:py-4 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold text-neutral-800 transition-all cursor-pointer"
+                      >
+                        <option>Facebook</option>
+                        <option>LinkedIn</option>
+                        <option>Twitter / X</option>
+                        <option>Instagram</option>
+                        <option>Tumblr</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2 block">AI Model Provider</label>
+                      <select 
+                        value={cliffhangerModel}
+                        onChange={(e) => setCliffhangerModel(e.target.value)}
+                        className="w-full px-4 py-3 sm:py-4 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold text-neutral-800 transition-all cursor-pointer"
+                      >
+                        <option>Gemini</option>
+                        <option>OpenAI</option>
+                        <option>Groq</option>
+                        <option>Anthropic</option>
+                        <option>Mistral</option>
+                        <option>Together</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <button
-                      onClick={copyCliffhanger}
-                      className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white font-black tracking-widest text-sm rounded-2xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-3"
-                    >
-                      {isShared ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
-                      {isShared ? "COPIED TO CLIPBOARD" : "COPY TO CLIPBOARD"}
-                    </button>
+                  
+                  <div className="p-6 md:p-8 bg-neutral-50 rounded-2xl sm:rounded-3xl border border-neutral-200 shadow-inner">
+                    <p className="text-neutral-800 font-serif text-base sm:text-lg leading-relaxed whitespace-pre-wrap text-left break-words">{cliffhanger}</p>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end items-stretch sm:items-center pt-2">
                     <button
                       onClick={() => selectedArticleForCliffhanger && generateCliffhanger(selectedArticleForCliffhanger)}
-                      className="w-full sm:w-auto px-8 py-4 bg-neutral-100 text-neutral-700 font-black tracking-widest text-sm rounded-2xl hover:bg-neutral-200 transition-colors flex items-center justify-center gap-3"
+                      className="px-6 py-4 bg-white text-neutral-700 border border-neutral-200 font-black tracking-widest text-sm rounded-xl sm:rounded-2xl hover:bg-neutral-50 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2 sm:gap-3 flex-1 sm:flex-none text-center"
                     >
-                      <Wand2 className="w-5 h-5" /> REGENERATE
+                      <Wand2 className="w-5 h-5 shrink-0" /> <span className="whitespace-nowrap">REGENERATE</span>
+                    </button>
+                    <button
+                      onClick={copyCliffhanger}
+                      className="px-6 py-4 bg-indigo-600 text-white font-black tracking-widest text-sm rounded-xl sm:rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 sm:gap-3 flex-1 sm:flex-none text-center"
+                    >
+                      {isShared ? <Check className="w-5 h-5 shrink-0" /> : <Share2 className="w-5 h-5 shrink-0" />}
+                      <span className="whitespace-nowrap">{isShared ? "COPIED TO CLIPBOARD" : "COPY POST"}</span>
                     </button>
                   </div>
                 </div>
