@@ -6,6 +6,7 @@ interface ExecuteAIOptions {
   isVision?: boolean;
   searchActive?: boolean;
   thinkActive?: boolean;
+  preferredProvider?: string;
 }
 
 function isPlaceholderKey(key: string): boolean {
@@ -161,6 +162,14 @@ export async function executeAIFallback(messages: any[], options: ExecuteAIOptio
       if (bIndex !== -1) return 1;
       return 0;
     });
+  }
+  
+  if (options.preferredProvider) {
+    const prefIndex = prioritizedProviders.findIndex(p => p.name.toLowerCase() === options.preferredProvider?.toLowerCase());
+    if (prefIndex !== -1) {
+      const pref = prioritizedProviders.splice(prefIndex, 1)[0];
+      prioritizedProviders.unshift(pref);
+    }
   }
   
   for (const p of prioritizedProviders) {
