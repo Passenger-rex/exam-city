@@ -35,6 +35,7 @@ interface Article {
   category: string;
   slug: string;
   createdAt: any;
+  image?: string;
 }
 
 export default function LandingPage() {
@@ -410,6 +411,16 @@ export default function LandingPage() {
                   to={`/articles/${article.slug}`}
                   className="group flex flex-col h-full bg-[#F8F9FA] rounded-2xl border border-neutral-100 hover:border-primary/20 hover:shadow-xl hover:shadow-neutral-200 transition-all duration-300 overflow-hidden"
                 >
+                  {article.image && (
+                    <div className="aspect-[16/10] w-full overflow-hidden shrink-0">
+                      <img 
+                        src={article.image} 
+                        alt={article.title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                       <span className="px-2.5 py-1 bg-white text-primary text-[10px] font-black uppercase tracking-widest rounded border border-neutral-100">
