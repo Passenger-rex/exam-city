@@ -13,6 +13,7 @@ import { InArticleAd } from "../components/InArticleAd";
 import { Skeleton } from "../components/Skeleton";
 import { Logo } from "../components/Logo";
 import { ArticleComments } from "../components/ArticleComments";
+import { ArticleReactions } from "../components/ArticleReactions";
 
 interface Article {
   id: string;
@@ -322,6 +323,9 @@ export default function ArticleDetailPage() {
                     ))
                   )}
                 </div>
+                
+                <ArticleReactions articleId={article.id} />
+                
                 <ArticleComments articleId={article.id} />
               </footer>
             </div>

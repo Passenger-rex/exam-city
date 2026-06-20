@@ -58,6 +58,43 @@ export function AdminArticles() {
     return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setStatus("Optimizing & Uploading image...");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        setStatus("Image inserted!");
+        setFormData((prev) => ({
+          ...prev,
+          content: prev.content + `\n\n![${file.name}](${dataUrl})\n\n`
+        }));
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleSave = async () => {
     if (!formData.title || !formData.content) return;
     setStatus("Saving...");
@@ -258,7 +295,14 @@ export function AdminArticles() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Detailed Content (Markdown Enabled)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Detailed Content (Markdown Enabled)</label>
+                    <label className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold cursor-pointer hover:bg-indigo-100 transition-colors">
+                      <ImageIcon className="w-4 h-4" />
+                      Insert Image
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    </label>
+                  </div>
                   <p className="text-[11px] font-bold text-neutral-500 mb-2">
                     Formatting tips: **<b>bold</b>** • *<i>italic</i>* • [Link Text](https://example.com) • # Heading 1
                   </p>
