@@ -491,50 +491,49 @@ export function AdminArticles() {
       </div>
 
       {showCliffhangerModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-neutral-900/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative"
+            className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col"
           >
-            <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-black text-xl text-neutral-900 flex items-center gap-2">
-                <Wand2 className="w-5 h-5 text-blue-600" /> AI Social Post
+            <div className="px-8 py-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+              <h3 className="font-black text-2xl text-neutral-900 flex items-center gap-3">
+                <Wand2 className="w-6 h-6 text-indigo-600" /> AI Social CLIFFHANGER
               </h3>
               <button
                 onClick={() => setShowCliffhangerModal(false)}
-                className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+                className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
                 title="Close"
               >
-                <X className="w-4 h-4 text-neutral-500" />
+                <X className="w-5 h-5 text-neutral-500" />
               </button>
             </div>
             
-            <div className="p-6">
+            <div className="p-8 overflow-y-auto">
               {isGeneratingCliffhanger ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center">
-                  <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-4" />
-                  <p className="font-bold text-neutral-600">Generating the perfect cliffhanger...</p>
+                <div className="py-16 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mb-6" />
+                  <p className="font-bold text-lg text-neutral-600">Generating the perfect cliffhanger...</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-100">
-                    <p className="text-neutral-800 font-serif leading-relaxed whitespace-pre-wrap">{cliffhanger}</p>
+                <div className="space-y-8">
+                  <div className="p-6 md:p-8 bg-neutral-50 rounded-3xl border border-neutral-100">
+                    <p className="text-neutral-800 font-serif text-lg leading-relaxed whitespace-pre-wrap">{cliffhanger}</p>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <button
                       onClick={copyCliffhanger}
-                      className="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white font-black tracking-widest text-sm rounded-2xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-3"
                     >
-                      {isShared ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                      {isShared ? "Copied!" : "Copy to Clipboard"}
+                      {isShared ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
+                      {isShared ? "COPIED TO CLIPBOARD" : "COPY TO CLIPBOARD"}
                     </button>
                     <button
                       onClick={() => selectedArticleForCliffhanger && generateCliffhanger(selectedArticleForCliffhanger)}
-                      className="px-6 py-3.5 bg-neutral-100 text-neutral-700 font-bold rounded-xl hover:bg-neutral-200 transition-colors flex items-center justify-center"
-                      title="Regenerate"
+                      className="w-full sm:w-auto px-8 py-4 bg-neutral-100 text-neutral-700 font-black tracking-widest text-sm rounded-2xl hover:bg-neutral-200 transition-colors flex items-center justify-center gap-3"
                     >
-                      <Wand2 className="w-4 h-4" />
+                      <Wand2 className="w-5 h-5" /> REGENERATE
                     </button>
                   </div>
                 </div>
