@@ -265,13 +265,20 @@ export function AdminArticles() {
                     >
                       <option>News</option>
                       <option>Admission Updates</option>
+                      <option>Higher Education</option>
+                      <option>Primary & Secondary</option>
                       <option>Study Tips</option>
                       <option>JAMB Guide</option>
                       <option>WAEC / NECO</option>
                       <option>Post-UTME Info</option>
-                      <option>Scholarships</option>
+                      <option>Grants & Scholarships</option>
                       <option>Career Advice</option>
                       <option>Student Life</option>
+                      <option>Technology & EdTech</option>
+                      <option>Opinions & Editorials</option>
+                      <option>Policy & Leadership</option>
+                      <option>Educator's Corner</option>
+                      <option>Interviews</option>
                     </select>
                   </div>
                   <div className="space-y-3">

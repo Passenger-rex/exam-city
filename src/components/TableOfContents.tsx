@@ -69,14 +69,16 @@ export function TableOfContents({ content }: { content: string }) {
   if (headings.length === 0) return null;
 
   return (
-    <div className="bg-neutral-50 rounded-2xl p-6 border border-neutral-100 hidden md:block lg:sticky lg:top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
-      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-4">Table of Contents</h4>
-      <ul className="space-y-3">
+    <div className="bg-neutral-50/50 rounded-2xl p-6 md:p-8 border border-neutral-100 my-8 block clear-both font-sans">
+      <div className="flex items-center gap-3 mb-6">
+        <h4 className="text-sm font-black uppercase tracking-widest text-neutral-800 m-0">Table of Contents</h4>
+      </div>
+      <ul className="space-y-4 m-0 p-0 list-none">
         {headings.map((item, idx) => (
           <li
             key={idx}
-            className={`transition-colors ${
-              item.level === 1 ? "ml-0" : item.level === 2 ? "ml-3" : "ml-6"
+            className={`transition-colors m-0 p-0 ${
+              item.level === 1 ? "ml-0" : item.level === 2 ? "ml-4" : "ml-8"
             }`}
           >
             <a
@@ -86,12 +88,11 @@ export function TableOfContents({ content }: { content: string }) {
                 const el = document.getElementById(item.slug);
                 if (el) {
                   el.scrollIntoView({ behavior: "smooth" });
-                  // Add a little outline/highlight class if desired
                   setActiveId(item.slug);
                 }
               }}
-              className={`text-sm font-medium transition-colors block hover:text-primary ${
-                activeId === item.slug ? "text-primary font-bold" : "text-neutral-500"
+              className={`text-[15px] transition-colors block hover:text-primary decoration-transparent rounded focus:-outline-offset-2 ${
+                activeId === item.slug ? "text-primary font-bold" : "text-neutral-600 font-medium"
               }`}
             >
               {item.title}

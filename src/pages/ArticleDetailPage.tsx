@@ -267,12 +267,13 @@ export default function ArticleDetailPage() {
                 </figure>
               )}
 
-              <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 max-w-[1000px] mx-auto">
-                <div className="flex-1 min-w-0">
-                  <div className="prose prose-neutral max-w-none font-serif text-[18px] md:text-[20px] leading-[1.8] text-neutral-800 antialiased selection:bg-primary/20">
-                    <Markdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeRaw, rehypeSlug]}
+              <div className="max-w-[720px] mx-auto">
+                <div className="prose prose-neutral max-w-none font-serif text-[18px] md:text-[20px] leading-[1.8] text-neutral-800 antialiased selection:bg-primary/20">
+                  <TableOfContents content={article.content} />
+                  
+                  <Markdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, rehypeSlug]}
                       components={{
                         image: ({ node, src, alt, caption, ...props }: any) => (
                           <figure className="my-8">
@@ -335,11 +336,6 @@ export default function ArticleDetailPage() {
                   </div>
                 </div>
 
-                <aside className="w-full lg:w-48 xl:w-64 flex-shrink-0 relative">
-                  <TableOfContents content={article.content} />
-                </aside>
-              </div>
-
               <footer className="mt-16 pt-10 border-t border-neutral-100">
                 <div className="flex flex-wrap gap-2 mb-10">
                   {article.tags && article.tags.length > 0 ? (
@@ -361,13 +357,13 @@ export default function ArticleDetailPage() {
                 
                 <div className="my-16 pt-8 border-t border-neutral-100">
                   <h4 className="font-black text-2xl text-neutral-900 mb-8 flex items-center justify-between">
-                    <span>Read Next</span>
+                    <span>Related Articles</span>
                     <Link to="/articles" className="text-[10px] sm:text-xs text-primary hover:underline font-bold uppercase tracking-[0.2em]">
                       View all
                     </Link>
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {recentArticles.filter(a => a.id !== article.id).slice(0, 2).map((post) => (
+                    {(relatedArticles.length > 0 ? relatedArticles : recentArticles).filter(a => a.id !== article.id).slice(0, 2).map((post) => (
                       <Link key={post.id} to={`/articles/${post.slug}`} className="group flex flex-col bg-neutral-50 hover:bg-white rounded-[2rem] border border-neutral-200 p-6 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                         <div className="text-[10px] font-black text-primary mb-3 uppercase tracking-widest bg-primary/10 w-fit px-3 py-1 rounded-full">{post.category || "News"}</div>
                         <h5 className="font-bold text-lg md:text-xl leading-[1.3] text-neutral-900 group-hover:text-primary transition-colors line-clamp-3 mb-4 flex-1">
