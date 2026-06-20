@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp, getDocs, orderBy, query, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { Plus, Trash2, Edit2, Check, X, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Edit2, Check, X, FileText, Image as ImageIcon, ExternalLink, Wand2, Share2 } from "lucide-react";
+import { motion } from "motion/react";
 
 interface Article {
   id: string;
@@ -22,6 +23,11 @@ export function AdminArticles() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [cliffhanger, setCliffhanger] = useState("");
+  const [isGeneratingCliffhanger, setIsGeneratingCliffhanger] = useState(false);
+  const [showCliffhangerModal, setShowCliffhangerModal] = useState(false);
+  const [selectedArticleForCliffhanger, setSelectedArticleForCliffhanger] = useState<Article | null>(null);
+  const [isShared, setIsShared] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -130,6 +136,39 @@ export function AdminArticles() {
       ...formData,
       tags: formData.tags.filter(t => t !== tag)
     });
+  };
+
+  const generateCliffhanger = async (article: Article) => {
+    setSelectedArticleForCliffhanger(article);
+    setIsGeneratingCliffhanger(true);
+    setShowCliffhangerModal(true);
+    try {
+      const res = await fetch("/api/social-cliffhanger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: article.title,
+          excerpt: article.excerpt,
+          url: `${window.location.origin}/articles/${article.slug}`,
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCliffhanger(data.post);
+      } else {
+        setCliffhanger("Error generating Social Post: " + (data.error || "Unknown"));
+      }
+    } catch (err) {
+      setCliffhanger("Failed to connect to AI server.");
+    } finally {
+      setIsGeneratingCliffhanger(false);
+    }
+  };
+
+  const copyCliffhanger = () => {
+    navigator.clipboard.writeText(cliffhanger);
+    setIsShared(true);
+    setTimeout(() => setIsShared(false), 2000);
   };
 
   return (
@@ -314,11 +353,20 @@ export function AdminArticles() {
                   <ImageIcon className="w-12 h-12" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-2 w-full mb-2">
+                  <button 
+                    onClick={() => generateCliffhanger(article)}
+                    className="flex-1 h-10 bg-blue-600 text-white rounded-xl font-bold text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-blue-700 transition-all scale-90 group-hover:scale-100"
+                    title="Generate Social Cliffhanger"
+                  >
+                    <Wand2 className="w-3.5 h-3.5" /> POST
+                  </button>
+                </div>
                 <div className="flex gap-2 w-full">
                   <button 
                     onClick={() => handleEdit(article)}
-                    className="flex-1 h-10 bg-white text-neutral-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-500 hover:text-white transition-all scale-90 group-hover:scale-100"
+                    className="flex-1 h-10 bg-white text-neutral-900 rounded-xl font-bold text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-indigo-500 hover:text-white transition-all scale-90 group-hover:scale-100"
                   >
                     <Edit2 className="w-3.5 h-3.5" /> EDIT
                   </button>
@@ -363,6 +411,60 @@ export function AdminArticles() {
           </div>
         ))}
       </div>
+
+      {showCliffhangerModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative"
+          >
+            <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+              <h3 className="font-black text-xl text-neutral-900 flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-blue-600" /> AI Social Post
+              </h3>
+              <button
+                onClick={() => setShowCliffhangerModal(false)}
+                className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4 text-neutral-500" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {isGeneratingCliffhanger ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-4" />
+                  <p className="font-bold text-neutral-600">Generating the perfect cliffhanger...</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <p className="text-neutral-800 font-serif leading-relaxed whitespace-pre-wrap">{cliffhanger}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={copyCliffhanger}
+                      className="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      {isShared ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                      {isShared ? "Copied!" : "Copy to Clipboard"}
+                    </button>
+                    <button
+                      onClick={() => selectedArticleForCliffhanger && generateCliffhanger(selectedArticleForCliffhanger)}
+                      className="px-6 py-3.5 bg-neutral-100 text-neutral-700 font-bold rounded-xl hover:bg-neutral-200 transition-colors flex items-center justify-center"
+                      title="Regenerate"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

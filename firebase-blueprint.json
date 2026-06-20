@@ -31,9 +31,26 @@
     "/support_tickets/{ticketId}": {
       "schema": "SupportTicket",
       "description": "Customer support messages"
+    },
+    "/article_comments/{commentId}": {
+      "schema": "ArticleComment",
+      "description": "User comments on articles"
     }
   },
   "entities": {
+    "ArticleComment": {
+      "title": "ArticleComment",
+      "description": "User comment on an article",
+      "type": "object",
+      "properties": {
+        "articleId": { "type": "string" },
+        "content": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "parentId": { "type": ["string", "null"] }
+      }
+    },
     "SupportTicket": {
       "title": "SupportTicket",
       "description": "A support message from a user",

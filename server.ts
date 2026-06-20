@@ -9,6 +9,13 @@ import { OpenAI } from "openai";
 import { executeAIFallback } from "./src/ai-fallback";
 import { CurriculumManager } from "./src/utils/CurriculumManager";
 import { FallbackGenerator } from "./src/utils/FallbackGenerator";
+import { GoogleGenAI } from "@google/genai";
+
+// Initialize genai safely
+let genai: GoogleGenAI | null = null;
+if (process.env.GEMINI_API_KEY) {
+  genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+}
 
 // Firebase-admin was removed as all firestore operations are client-driven via Firebase Web SDK
 
@@ -1284,6 +1291,39 @@ function extractTextFromPdfRaw(buffer: Buffer): string {
 
   return textResult.trim();
 }
+
+app.post("/api/social-cliffhanger", async (req, res) => {
+  try {
+    const { title, excerpt, url } = req.body;
+    if (!title || !url) {
+      return res.status(400).json({ error: "Missing article title or URL" });
+    }
+
+    if (!genai) {
+      return res.status(503).json({ error: "Gemini API key is not configured" });
+    }
+
+    const prompt = `You are a social media copywriter. Given the title and excerpt of a new article, create a highly engaging, concise "cliffhanger" post for social media (Twitter/X or Facebook). It should build curiosity, end on a cliffhanger, include 2-3 relevant hashtags, and invite the user to click the link to find out more. Only output the post content itself. Include the literal text "[URL]" where the article link should go.
+Title: ${title}
+Excerpt: ${excerpt || "A new update has been posted to Exam City."}
+`;
+    
+    // Call Gemini
+    const response = await genai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+    
+    let generatedPost = response.text || "";
+    // Replace the [URL] placeholder with real URL
+    generatedPost = generatedPost.replace("[URL]", url);
+    
+    res.json({ post: generatedPost });
+  } catch (error: any) {
+    console.error("Error generating social cliffhanger:", error);
+    res.status(500).json({ error: "Failed to generate social post" });
+  }
+});
 
 // Process Study Material File Endpoint via Gemini/Groq Fallbacks
 app.post("/api/process-file", async (req, res) => {

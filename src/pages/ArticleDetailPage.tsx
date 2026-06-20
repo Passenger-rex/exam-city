@@ -6,11 +6,13 @@ import { motion } from "motion/react";
 import { Calendar, User, Tag, ChevronLeft, Share2, Clock, Check } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "../components/Navbar";
 import { InArticleAd } from "../components/InArticleAd";
 import { Skeleton } from "../components/Skeleton";
 import { Logo } from "../components/Logo";
+import { ArticleComments } from "../components/ArticleComments";
 
 interface Article {
   id: string;
@@ -241,7 +243,14 @@ export default function ArticleDetailPage() {
                 <div className="prose prose-neutral max-w-none font-serif text-[18px] md:text-[20px] leading-[1.8] text-neutral-800 antialiased selection:bg-primary/20">
                   <Markdown
                     remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
                     components={{
+                      image: ({ node, src, alt, caption, ...props }: any) => (
+                        <figure className="my-8">
+                          <img src={src} alt={alt || ""} className="w-full h-auto rounded-xl object-cover" referrerPolicy="no-referrer" {...props} />
+                          {caption && <figcaption className="text-center text-sm font-sans font-bold text-neutral-500 mt-3">{caption}</figcaption>}
+                        </figure>
+                      ),
                       h1: ({ children }) => <h1 className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight">{children}</h2>,
                       h3: ({ children }) => <h3 className="text-lg md:text-xl font-bold font-sans mt-12 mb-6 text-neutral-900">{children}</h3>,
@@ -272,7 +281,14 @@ export default function ArticleDetailPage() {
                   
                   <Markdown
                     remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
                     components={{
+                      image: ({ node, src, alt, caption, ...props }: any) => (
+                        <figure className="my-8">
+                          <img src={src} alt={alt || ""} className="w-full h-auto rounded-xl object-cover" referrerPolicy="no-referrer" {...props} />
+                          {caption && <figcaption className="text-center text-sm font-sans font-bold text-neutral-500 mt-3">{caption}</figcaption>}
+                        </figure>
+                      ),
                       h1: ({ children }) => <h1 className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight">{children}</h2>,
                       h3: ({ children }) => <h3 className="text-lg md:text-xl font-bold font-sans mt-12 mb-6 text-neutral-900">{children}</h3>,
@@ -306,6 +322,7 @@ export default function ArticleDetailPage() {
                     ))
                   )}
                 </div>
+                <ArticleComments articleId={article.id} />
               </footer>
             </div>
           </article>

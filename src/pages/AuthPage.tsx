@@ -64,8 +64,30 @@ export default function AuthPage() {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
         const res = await signInWithEmailAndPassword(auth, email, password);
         
-        // Removed the enforced verification check on login as per user request
-        // Users only verify once during registration
+        const userDoc = await getDoc(doc(db, "users", res.user.uid));
+        if (userDoc.exists() && userDoc.data().emailVerified === false) {
+          const otpRes = await fetch("/api/auth/send-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: res.user.email, name: res.user.displayName, isSignup: false }),
+          });
+          const otpData = await otpRes.json();
+          if (otpRes.ok) {
+            navigate("/verify-email", {
+              state: {
+                verificationId: otpData.verificationId,
+                email: res.user.email,
+                password,
+                uid: res.user.uid,
+                name: res.user.displayName,
+                isSignup: false
+              }
+            });
+            return;
+          } else {
+            throw new Error(otpData.error || "Failed to send OTP.");
+          }
+        }
         
         setIsSuccess(true);
         setTimeout(() => {

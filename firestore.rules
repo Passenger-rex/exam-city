@@ -57,6 +57,10 @@ service cloud.firestore {
     match /support_tickets/{ticketId} {
       allow read, write: if true;
     }
+
+    match /article_comments/{commentId} {
+      allow read, write: if true;
+    }
   }
 }
 

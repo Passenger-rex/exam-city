@@ -177,10 +177,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span className="inline-flex items-center justify-center text-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary font-bold text-[11px] sm:text-xs md:text-sm mb-6 border border-secondary/20 backdrop-blur-md shadow-sm dark:shadow-none max-w-[90vw] whitespace-normal md:whitespace-nowrap">
-              <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
-              <span>The Next Evolution in Testing</span>
-            </span>
+
             <h1 className="font-headline-xl text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter mb-6 md:mb-10 text-on-surface leading-[1.05] md:leading-[1.05]">
               Master Exams. <br className="hidden sm:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-primary to-secondary relative flex flex-col sm:inline-block z-10 w-fit sm:w-auto mx-auto sm:mx-0 pb-2 md:pb-0">
