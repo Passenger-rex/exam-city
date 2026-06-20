@@ -1,16 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Logo } from "./Logo";
+import { useLocation } from "react-router-dom";
 
 export function SplashScreen() {
   const [showSplash, setShowSplash] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
+    if (location.pathname.startsWith('/articles/')) {
+      setShowSplash(false);
+      return;
+    }
+
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 2500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [location.pathname]);
 
   return (
     <AnimatePresence>
