@@ -7,6 +7,7 @@ import { Calendar, User, Tag, ChevronLeft, Share2, Clock, Check } from "lucide-r
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import rehypeSlug from "rehype-slug";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "../components/Navbar";
 import { InArticleAd } from "../components/InArticleAd";
@@ -14,6 +15,7 @@ import { Skeleton } from "../components/Skeleton";
 import { Logo } from "../components/Logo";
 import { ArticleComments } from "../components/ArticleComments";
 import { ArticleReactions } from "../components/ArticleReactions";
+import { TableOfContents } from "../components/TableOfContents";
 
 interface Article {
   id: string;
@@ -34,17 +36,20 @@ export default function ArticleDetailPage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentArticles, setRecentArticles] = useState<Article[]>([]);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
   const [isShared, setIsShared] = useState(false);
 
   useEffect(() => {
     const init = async () => {
+      let currentArticle: Article | null = null;
       const fetchArticle = async () => {
         try {
           const q = query(collection(db, "articles"), where("slug", "==", slug), limit(1));
           const snap = await getDocs(q);
           if (!snap.empty) {
             const docData = snap.docs[0];
-            setArticle({ id: docData.id, ...docData.data() } as Article);
+            currentArticle = { id: docData.id, ...docData.data() } as Article;
+            setArticle(currentArticle);
           }
         } catch (err) {
           console.error("Error fetching article:", err);
@@ -61,7 +66,29 @@ export default function ArticleDetailPage() {
         }
       };
 
-      await Promise.all([fetchArticle(), fetchRecent()]);
+      await fetchArticle();
+      
+      const fetchRelated = async () => {
+        if (!currentArticle) return;
+        try {
+          // Fetch articles in the same category
+          const q = query(
+            collection(db, "articles"), 
+            where("category", "==", currentArticle.category), 
+            limit(4)
+          );
+          const snap = await getDocs(q);
+          const related = snap.docs
+            .map(d => ({ id: d.id, ...d.data() } as Article))
+            .filter(a => a.id !== currentArticle?.id) // exclude current
+            .slice(0, 3); // limit to 3 visually
+          setRelatedArticles(related);
+        } catch (err) {
+          console.error("Error fetching related articles:", err);
+        }
+      };
+
+      await Promise.all([fetchRecent(), fetchRelated()]);
       setLoading(false);
     };
 
@@ -240,71 +267,77 @@ export default function ArticleDetailPage() {
                 </figure>
               )}
 
-              <div className="max-w-[720px] mx-auto">
-                <div className="prose prose-neutral max-w-none font-serif text-[18px] md:text-[20px] leading-[1.8] text-neutral-800 antialiased selection:bg-primary/20">
-                  <Markdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
-                    components={{
-                      image: ({ node, src, alt, caption, ...props }: any) => (
-                        <figure className="my-8">
-                          <img src={src} alt={alt || ""} className="w-full h-auto rounded-xl object-cover" referrerPolicy="no-referrer" {...props} />
-                          {caption && <figcaption className="text-center text-sm font-sans font-bold text-neutral-500 mt-3">{caption}</figcaption>}
-                        </figure>
-                      ),
-                      h1: ({ children }) => <h1 className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-lg md:text-xl font-bold font-sans mt-12 mb-6 text-neutral-900">{children}</h3>,
-                      p: ({ children }) => <p className="mb-10">{children}</p>,
-                      ul: ({ children }) => <ul className="list-disc pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary marker:font-black">{children}</ol>,
-                      li: ({ children }) => <li className="pl-2">{children}</li>,
-                      strong: ({ children }) => <strong className="font-extrabold text-neutral-900">{children}</strong>,
-                      blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-8 italic my-14 text-2xl md:text-3xl text-neutral-500 leading-relaxed bg-neutral-50/50 py-10 rounded-r-2xl font-serif">{children}</blockquote>,
-                      a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold underline decoration-blue-600/30 decoration-2 underline-offset-4 hover:decoration-blue-600 hover:text-blue-800 transition-colors">{children}</a>
-                    }}
-                  >
-                    {firstPart}
-                  </Markdown>
-                  
-                  <div className="my-16 flex flex-col items-center">
-                    <div className="w-full h-px bg-neutral-100 mb-12" />
-                    <div className="text-[10px] uppercase font-black text-neutral-400 mb-8 tracking-[0.3em] flex items-center gap-4">
-                      <div className="w-12 h-px bg-neutral-100" />
-                      ADVERTISEMENT
-                      <div className="w-12 h-px bg-neutral-100" />
+              <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 max-w-[1000px] mx-auto">
+                <div className="flex-1 min-w-0">
+                  <div className="prose prose-neutral max-w-none font-serif text-[18px] md:text-[20px] leading-[1.8] text-neutral-800 antialiased selection:bg-primary/20">
+                    <Markdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeSlug]}
+                      components={{
+                        image: ({ node, src, alt, caption, ...props }: any) => (
+                          <figure className="my-8">
+                            <img src={src} alt={alt || ""} className="w-full h-auto rounded-xl object-cover" referrerPolicy="no-referrer" {...props} />
+                            {caption && <figcaption className="text-center text-sm font-sans font-bold text-neutral-500 mt-3">{caption}</figcaption>}
+                          </figure>
+                        ),
+                        h1: ({ children, id }: any) => <h1 id={id} className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6 scroll-mt-28">{children}</h1>,
+                        h2: ({ children, id }: any) => <h2 id={id} className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight scroll-mt-28">{children}</h2>,
+                        h3: ({ children, id }: any) => <h3 id={id} className="text-lg md:text-xl font-bold font-sans mt-12 mb-6 text-neutral-900 scroll-mt-28">{children}</h3>,
+                        p: ({ children }: any) => <p className="mb-10">{children}</p>,
+                        ul: ({ children }: any) => <ul className="list-disc pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary">{children}</ul>,
+                        ol: ({ children }: any) => <ol className="list-decimal pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary marker:font-black">{children}</ol>,
+                        li: ({ children }: any) => <li className="pl-2">{children}</li>,
+                        strong: ({ children }: any) => <strong className="font-extrabold text-neutral-900">{children}</strong>,
+                        blockquote: ({ children }: any) => <blockquote className="border-l-4 border-primary pl-8 italic my-14 text-2xl md:text-3xl text-neutral-500 leading-relaxed bg-neutral-50/50 py-10 rounded-r-2xl font-serif">{children}</blockquote>,
+                        a: ({ children, href }: any) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold underline decoration-blue-600/30 decoration-2 underline-offset-4 hover:decoration-blue-600 hover:text-blue-800 transition-colors">{children}</a>
+                      }}
+                    >
+                      {firstPart}
+                    </Markdown>
+                    
+                    <div className="my-16 flex flex-col items-center">
+                      <div className="w-full h-px bg-neutral-100 mb-12" />
+                      <div className="text-[10px] uppercase font-black text-neutral-400 mb-8 tracking-[0.3em] flex items-center gap-4">
+                        <div className="w-12 h-px bg-neutral-100" />
+                        ADVERTISEMENT
+                        <div className="w-12 h-px bg-neutral-100" />
+                      </div>
+                      <div className="w-full flex justify-center py-4 bg-neutral-50/30 rounded-3xl border border-neutral-100">
+                        <InArticleAd />
+                      </div>
+                      <div className="w-full h-px bg-neutral-100 mt-12" />
                     </div>
-                    <div className="w-full flex justify-center py-4 bg-neutral-50/30 rounded-3xl border border-neutral-100">
-                      <InArticleAd />
-                    </div>
-                    <div className="w-full h-px bg-neutral-100 mt-12" />
+                    
+                    <Markdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeSlug]}
+                      components={{
+                        image: ({ node, src, alt, caption, ...props }: any) => (
+                          <figure className="my-8">
+                            <img src={src} alt={alt || ""} className="w-full h-auto rounded-xl object-cover" referrerPolicy="no-referrer" {...props} />
+                            {caption && <figcaption className="text-center text-sm font-sans font-bold text-neutral-500 mt-3">{caption}</figcaption>}
+                          </figure>
+                        ),
+                        h1: ({ children, id }: any) => <h1 id={id} className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6 scroll-mt-28">{children}</h1>,
+                        h2: ({ children, id }: any) => <h2 id={id} className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight scroll-mt-28">{children}</h2>,
+                        h3: ({ children, id }: any) => <h3 id={id} className="text-lg md:text-xl font-bold font-sans mt-12 mb-6 text-neutral-900 scroll-mt-28">{children}</h3>,
+                        p: ({ children }: any) => <p className="mb-10">{children}</p>,
+                        ul: ({ children }: any) => <ul className="list-disc pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary">{children}</ul>,
+                        ol: ({ children }: any) => <ol className="list-decimal pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary marker:font-black">{children}</ol>,
+                        li: ({ children }: any) => <li className="pl-2">{children}</li>,
+                        strong: ({ children }: any) => <strong className="font-extrabold text-neutral-900">{children}</strong>,
+                        blockquote: ({ children }: any) => <blockquote className="border-l-4 border-primary pl-8 italic my-14 text-2xl md:text-3xl text-neutral-500 leading-relaxed bg-neutral-50/50 py-10 rounded-r-2xl font-serif">{children}</blockquote>,
+                        a: ({ children, href }: any) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold underline decoration-blue-600/30 decoration-2 underline-offset-4 hover:decoration-blue-600 hover:text-blue-800 transition-colors">{children}</a>
+                      }}
+                    >
+                      {secondPart}
+                    </Markdown>
                   </div>
-                  
-                  <Markdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
-                    components={{
-                      image: ({ node, src, alt, caption, ...props }: any) => (
-                        <figure className="my-8">
-                          <img src={src} alt={alt || ""} className="w-full h-auto rounded-xl object-cover" referrerPolicy="no-referrer" {...props} />
-                          {caption && <figcaption className="text-center text-sm font-sans font-bold text-neutral-500 mt-3">{caption}</figcaption>}
-                        </figure>
-                      ),
-                      h1: ({ children }) => <h1 className="text-2xl md:text-3xl font-black font-sans mb-10 leading-tight tracking-tight text-neutral-900 border-l-8 border-primary pl-6">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-xl md:text-2xl font-black font-sans mt-16 mb-8 text-neutral-900 leading-tight">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-lg md:text-xl font-bold font-sans mt-12 mb-6 text-neutral-900">{children}</h3>,
-                      p: ({ children }) => <p className="mb-10">{children}</p>,
-                      ul: ({ children }) => <ul className="list-disc pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal pl-8 mb-10 space-y-6 font-sans text-neutral-700 marker:text-primary marker:font-black">{children}</ol>,
-                      li: ({ children }) => <li className="pl-2">{children}</li>,
-                      strong: ({ children }) => <strong className="font-extrabold text-neutral-900">{children}</strong>,
-                      blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-8 italic my-14 text-2xl md:text-3xl text-neutral-500 leading-relaxed bg-neutral-50/50 py-10 rounded-r-2xl font-serif">{children}</blockquote>,
-                      a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold underline decoration-blue-600/30 decoration-2 underline-offset-4 hover:decoration-blue-600 hover:text-blue-800 transition-colors">{children}</a>
-                    }}
-                  >
-                    {secondPart}
-                  </Markdown>
                 </div>
+
+                <aside className="w-full lg:w-48 xl:w-64 flex-shrink-0 relative">
+                  <TableOfContents content={article.content} />
+                </aside>
               </div>
 
               <footer className="mt-16 pt-10 border-t border-neutral-100">
@@ -326,6 +359,29 @@ export default function ArticleDetailPage() {
                 
                 <ArticleReactions articleId={article.id} />
                 
+                <div className="my-16 pt-8 border-t border-neutral-100">
+                  <h4 className="font-black text-2xl text-neutral-900 mb-8 flex items-center justify-between">
+                    <span>Read Next</span>
+                    <Link to="/articles" className="text-[10px] sm:text-xs text-primary hover:underline font-bold uppercase tracking-[0.2em]">
+                      View all
+                    </Link>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {recentArticles.filter(a => a.id !== article.id).slice(0, 2).map((post) => (
+                      <Link key={post.id} to={`/articles/${post.slug}`} className="group flex flex-col bg-neutral-50 hover:bg-white rounded-[2rem] border border-neutral-200 p-6 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                        <div className="text-[10px] font-black text-primary mb-3 uppercase tracking-widest bg-primary/10 w-fit px-3 py-1 rounded-full">{post.category || "News"}</div>
+                        <h5 className="font-bold text-lg md:text-xl leading-[1.3] text-neutral-900 group-hover:text-primary transition-colors line-clamp-3 mb-4 flex-1">
+                          {post.title}
+                        </h5>
+                        <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-bold mt-auto pt-4 border-t border-neutral-200/60">
+                           <Calendar className="w-3.5 h-3.5" />
+                           {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' }) : "Recently"}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
                 <ArticleComments articleId={article.id} />
               </footer>
             </div>

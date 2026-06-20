@@ -264,12 +264,14 @@ export function AdminArticles() {
                       className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold cursor-pointer"
                     >
                       <option>News</option>
-                      <option>Admission</option>
+                      <option>Admission Updates</option>
                       <option>Study Tips</option>
-                      <option>JAMB</option>
-                      <option>WAEC</option>
+                      <option>JAMB Guide</option>
+                      <option>WAEC / NECO</option>
+                      <option>Post-UTME Info</option>
                       <option>Scholarships</option>
-                      <option>Post-UTME</option>
+                      <option>Career Advice</option>
+                      <option>Student Life</option>
                     </select>
                   </div>
                   <div className="space-y-3">
@@ -306,12 +308,37 @@ export function AdminArticles() {
                   <p className="text-[11px] font-bold text-neutral-500 mb-2">
                     Formatting tips: **<b>bold</b>** • *<i>italic</i>* • [Link Text](https://example.com) • # Heading 1
                   </p>
-                  <textarea 
-                    value={formData.content}
-                    onChange={e => setFormData({ ...formData, content: e.target.value })}
-                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm leading-[1.8] min-h-[500px] placeholder:text-neutral-300"
-                    placeholder="Write your article here. Supports strong, headers, lists, etc."
-                  />
+                  <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    <textarea 
+                      value={formData.content}
+                      onChange={e => setFormData({ ...formData, content: e.target.value })}
+                      className="w-full lg:flex-1 px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm leading-[1.8] min-h-[500px] placeholder:text-neutral-300"
+                      placeholder="Write your article here. Supports strong, headers, lists, etc."
+                    />
+                    <div className="w-full lg:w-64 flex-shrink-0">
+                      <div className="bg-neutral-50 rounded-2xl p-6 border border-neutral-100 max-h-[500px] overflow-y-auto">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-4">TOC Preview</h4>
+                        <div className="text-sm font-medium text-neutral-600 space-y-2">
+                           {formData.content.split('\n')
+                             .filter(line => line.match(/^(#{1,3})\s+(.+)$/))
+                             .map((line, idx) => {
+                               const match = line.match(/^(#{1,3})\s+(.+)$/);
+                               if (!match) return null;
+                               const level = match[1].length;
+                               const title = match[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/(\*\*|__|\*|_)(.*?)\1/g, '$2').replace(/`([^`]+)`/g, '$1');
+                               return (
+                                 <div key={idx} className={`${level === 1 ? 'ml-0' : level === 2 ? 'ml-3' : 'ml-6'} truncate`}>
+                                   {title}
+                                 </div>
+                               );
+                             })}
+                           {!formData.content.match(/^(#{1,3})\s+(.+)$/m) && (
+                             <p className="text-neutral-400 italic font-normal text-xs">No headings found in content.</p>
+                           )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
