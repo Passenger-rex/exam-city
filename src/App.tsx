@@ -30,6 +30,7 @@ import { UserProvider } from "./UserContext";
 
 import { SplashScreen } from "./components/SplashScreen";
 import { DarkModeToggle } from "./components/DarkModeToggle";
+import { FloatingTutor } from "./components/FloatingTutor";
 import { AppSkeleton } from "./components/Skeleton";
 
 // Helper to retrieve permanent device footprint
@@ -236,6 +237,7 @@ export default function App() {
       <BrowserRouter>
         <SplashScreen />
         <DarkModeToggle />
+        <FloatingTutor />
         <AnimatedRoutes />
       </BrowserRouter>
     </UserProvider>

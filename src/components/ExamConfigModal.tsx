@@ -359,26 +359,7 @@ export function ExamConfigModal({
         {/* Scrollable Content */}
         <div className="overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar p-4 sm:p-5 md:p-6 space-y-6 md:space-y-8">
           
-          <div className="grid sm:grid-cols-3 gap-4">
-            {/* Exam Board selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-on-surface">Exam Board</label>
-              <div className="relative">
-                <select
-                  value={examBoard}
-                  onChange={(e) => setExamBoard(e.target.value)}
-                  className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none text-on-surface font-semibold text-sm appearance-none pr-10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 cursor-pointer"
-                >
-                  {EXAM_BOARDS.map((eb) => (
-                    <option key={eb.value} value={eb.value}>{eb.label}</option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-
+          <div className="grid sm:grid-cols-2 gap-4">
             {/* Subject Dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-bold text-on-surface">Subject</label>

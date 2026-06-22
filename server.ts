@@ -1360,6 +1360,23 @@ app.post("/api/process-file", async (req, res) => {
     const { levelInstruction, curriculumInstruction: clinicalInstruction } =
       getCurriculumInstructions(String(level));
 
+    const curTopics = CurriculumManager.getSubTopics(String(subject), String(level));
+    const curMeta = CurriculumManager.getCurriculumMetadata(String(subject), String(level));
+    const curScope = curMeta?.scope || "";
+    const curDifficultyRating = curMeta?.difficultyRating || "";
+
+    const curriculumDetailsBlock = `
+        CRITICAL OFFICIAL CURRICULUM SYNC:
+        The action is requested for Subject "${subject}" at difficulty Level "${level}".
+        - Academic Standard / Rating: ${curDifficultyRating}
+        - Official Scope of Work: ${curScope}
+        - Core Curriculum Topics to Align questions and content with:
+          ${curTopics && curTopics.length > 0 ? curTopics.map((t, idx) => `* ${idx + 1}. ${t}`).join("\n          ") : "Standard curriculum guidelines."}
+        
+        ALIGNED GENERATION REQUIREMENT:
+        You MUST align generated questions or summaries directly with the official curriculum specified above. Scan the uploaded file content, identify the overlapping academic topics, and frame the study questions or mock questions so that they test these formal curriculum areas.
+    `;
+
     const isImage =
       mimeType.startsWith("image/") ||
       /\.(png|jpe?g|gif|webp)$/i.test(fileName);
@@ -1373,6 +1390,8 @@ app.post("/api/process-file", async (req, res) => {
         ${levelInstruction}
         ${clinicalInstruction}
         Ensure your explanations and generated content tightly adhere to this specific academic level's curriculum.
+
+        ${curriculumDetailsBlock}
 
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
 
@@ -1403,6 +1422,8 @@ app.post("/api/process-file", async (req, res) => {
         ${levelInstruction}
         ${clinicalInstruction}
         
+        ${curriculumDetailsBlock}
+
         CRITICAL QUALITY AND DIVERSITY DIRECTIVES:
         1. DO NOT MAKE THE QUESTIONS TOO ALIKE. Generate a highly varied set of questions in terms of phrasing, grammatical structure, cognitive depth, and sentence flow. Do not use the exact same template (e.g., do not start multiple questions with identical clinical vignettes or 'A 45-year-old patient presents with...').
         2. BALANCE CLINICAL CONTEXT: If the academic level or uploaded content is non-clinical or focuses on basic sciences (like pure Gross Anatomy, Botany, Physics, etc.), do not force heavy clinical diagnoses or patient scenarios. Let questions match the actual native style, focus, and terminology of the curriculum material.
@@ -1559,6 +1580,8 @@ app.post("/api/process-file", async (req, res) => {
         ${clinicalInstruction}
         Ensure your explanations and generated content tightly adhere to this specific academic level's curriculum.
 
+        ${curriculumDetailsBlock}
+
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
 
         const content = await executeAIFallback([
@@ -1579,6 +1602,8 @@ app.post("/api/process-file", async (req, res) => {
         ${levelInstruction}
         ${clinicalInstruction}
         
+        ${curriculumDetailsBlock}
+
         CRITICAL QUALITY AND DIVERSITY DIRECTIVES:
         1. DO NOT MAKE THE QUESTIONS TOO ALIKE. Generate a highly varied set of questions in terms of phrasing, grammatical structure, cognitive depth, and sentence flow. Do not use the exact same template (e.g., do not start multiple questions with identical clinical vignettes or 'A 45-year-old patient presents with...').
         2. BALANCE CLINICAL CONTEXT: If the academic level or uploaded content is non-clinical or focuses on basic sciences (like pure Gross Anatomy, Botany, Physics, etc.), do not force heavy clinical diagnoses or patient scenarios. Let questions match the actual native style, focus, and terminology of the curriculum material.
