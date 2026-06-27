@@ -34,6 +34,7 @@ import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { TheoryEditor } from "../components/TheoryEditor";
 import { useUser } from "../UserContext";
 // removed html2pdf.js import
 
@@ -50,6 +51,8 @@ export default function ExamPage() {
   const strictParam = searchParams.get("strict") === "true";
   const levelParam = searchParams.get("level") || "standard";
   const boardParam = searchParams.get("board") || "";
+  const qtypeParam = searchParams.get("qtype") || "mcq";
+  const isTheory = qtypeParam === "theory";
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -424,9 +427,39 @@ export default function ExamPage() {
     }
 
     let score = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correct_answer) score++;
-    });
+    let aiMarks: Record<string, number> = {};
+    let aiFeedback: Record<string, string> = {};
+
+    if (isTheory) {
+      try {
+        const res = await fetch("/api/grade-theory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questions, answers, level: levelParam })
+        });
+        if (res.ok) {
+          const gradingResult = await res.json();
+          questions.forEach(q => {
+            const grade = gradingResult[q.id];
+            if (grade) {
+              aiMarks[q.id] = grade.mark || 0;
+              aiFeedback[q.id] = grade.feedback || "";
+              score += grade.mark || 0;
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Failed to grade theory exam", err);
+      }
+    } else {
+      questions.forEach((q) => {
+        if (answers[q.id] === q.correct_answer) score++;
+      });
+    }
+
+    const finalPercent = isTheory 
+      ? Math.round((score / (questions.length * 10)) * 100) 
+      : Math.round((score / questions.length) * 100);
 
     try {
       if (auth.currentUser) {
@@ -435,10 +468,13 @@ export default function ExamPage() {
           userId: auth.currentUser.uid,
           score,
           total: questions.length,
-          percent: Math.round((score / questions.length) * 100),
+          percent: finalPercent || 0,
           subject: displaySubject,
           answers, // storing answers to review later
           questions, // saving the specific questions for this test (ALOC or DB)
+          isTheory,
+          aiMarks,
+          aiFeedback,
           createdAt: serverTimestamp(),
         });
 
@@ -456,9 +492,13 @@ export default function ExamPage() {
         sessionStorage.setItem("demoResult", JSON.stringify({
           score,
           total: questions.length,
+          percent: finalPercent || 0,
           subject: displaySubject || "demo",
           answers,
-          questions
+          questions,
+          isTheory,
+          aiMarks,
+          aiFeedback
         }));
         navigate("/signup?fromDemo=true");
       }
@@ -584,7 +624,7 @@ export default function ExamPage() {
              <div className="flex justify-center items-center gap-3">
                <Logo className="text-4xl !text-black" />
              </div>
-             <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{displaySubject} MOCK EXAMINATION</h1>
+             <h1 className="text-3xl font-bold uppercase tracking-[0.15em] mt-6">{displaySubject} {isTheory ? "THEORY " : ""}MOCK EXAMINATION</h1>
              <p className="text-sm font-semibold uppercase tracking-widest mt-2 text-gray-800">Exam City Assessment Series</p>
              <p className="text-sm italic mt-1 text-gray-600">
                 Year: {yearParam} • Format: {typeParam === 'micro' ? 'Quick Study' : 'Mock Exam'}
@@ -599,7 +639,11 @@ export default function ExamPage() {
             <ul className="list-disc pl-5 space-y-1.5 italic text-gray-700">
               <li>Do not open this booklet until you are told to do so.</li>
               <li>Read all instructions carefully. Answer all questions securely.</li>
-              <li>Each question is followed by four options lettered A to D. Find out the correct option for each question and mark it accordingly.</li>
+              {isTheory ? (
+                <li>Write your answers clearly and show all working where applicable.</li>
+              ) : (
+                <li>Each question is followed by four options lettered A to D. Find out the correct option for each question and mark it accordingly.</li>
+              )}
             </ul>
           </div>
 
@@ -724,6 +768,12 @@ export default function ExamPage() {
           <Logo />
           <div className="hidden md:flex items-center gap-2 pl-4 ml-4 border-l border-outline-variant/50">
             <span className="text-sm font-semibold text-on-surface-variant uppercase tracking-widest">{displaySubject}</span>
+            {isTheory && (
+              <>
+                <span className="w-1 h-1 bg-outline rounded-full"></span>
+                <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 rounded-full uppercase tracking-wider">Theory</span>
+              </>
+            )}
             {topicParam && (
               <>
                 <span className="w-1 h-1 bg-outline rounded-full"></span>
@@ -836,44 +886,63 @@ export default function ExamPage() {
               )}
 
               <div className="space-y-3 sm:space-y-4">
-                {Object.entries(currentQ?.options || {}).map(
-                  ([key, val]: [string, any]) => {
-                    const isSelected = answers[currentQ.id] === key;
-                    return (
-                      <label
-                        key={key}
-                        className={`w-full text-left p-4 sm:p-5 md:p-6 flex gap-3 sm:gap-4 lg:gap-5 items-start rounded-xl sm:rounded-2xl border-b sm:border-2 transition-all group cursor-pointer ${isSelected ? "border-primary bg-primary/5 text-primary sm:shadow-sm" : "border-outline-variant/30 hover:bg-surface-dim bg-surface"}`}
-                      >
-                        <input
-                           type="radio"
-                           name={`question-${currentQ.id}`}
-                           value={key}
-                           checked={isSelected}
-                           onChange={() => handleSelect(key)}
-                           className="hidden"
-                        />
-                        <div className="flex flex-col items-center gap-1 sm:gap-2 shrink-0 pt-0.5">
-                          <span className={`text-[10px] sm:hidden font-bold uppercase ${isSelected ? "text-primary" : "text-on-surface-variant"}`}>{key}</span>
-                          <div 
-                            className={`mt-0.5 sm:mt-1 shrink-0 w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center transition-colors font-bold text-xs sm:text-sm ${isSelected ? "border-primary bg-primary text-white" : "border-outline-variant text-on-surface-variant group-hover:border-outline"}`}
-                          >
-                            {isSelected ? (
-                               <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            ) : (
-                               <span className="hidden sm:inline">{key.toUpperCase()}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div
-                          className={`text-[15px] sm:text-[15px] md:text-base font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full pt-1 sm:pt-0 markdown-body ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
+                {currentQ?.options && Object.keys(currentQ.options).length > 0 ? (
+                  Object.entries(currentQ.options).map(
+                    ([key, val]: [string, any]) => {
+                      const isSelected = answers[currentQ.id] === key;
+                      return (
+                        <label
+                          key={key}
+                          className={`w-full text-left p-4 sm:p-5 md:p-6 flex gap-3 sm:gap-4 lg:gap-5 items-start rounded-xl sm:rounded-2xl border-b sm:border-2 transition-all group cursor-pointer ${isSelected ? "border-primary bg-primary/5 text-primary sm:shadow-sm" : "border-outline-variant/30 hover:bg-surface-dim bg-surface"}`}
                         >
-                          <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
-                             {val}
-                          </Markdown>
-                        </div>
-                      </label>
-                    );
-                  },
+                          <input
+                             type="radio"
+                             name={`question-${currentQ.id}`}
+                             value={key}
+                             checked={isSelected}
+                             onChange={() => handleSelect(key)}
+                             className="hidden"
+                          />
+                          <div className="flex flex-col items-center gap-1 sm:gap-2 shrink-0 pt-0.5">
+                            <span className={`text-[10px] sm:hidden font-bold uppercase ${isSelected ? "text-primary" : "text-on-surface-variant"}`}>{key}</span>
+                            <div 
+                              className={`mt-0.5 sm:mt-1 shrink-0 w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center transition-colors font-bold text-xs sm:text-sm ${isSelected ? "border-primary bg-primary text-white" : "border-outline-variant text-on-surface-variant group-hover:border-outline"}`}
+                            >
+                              {isSelected ? (
+                                 <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              ) : (
+                                 <span className="hidden sm:inline">{key.toUpperCase()}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div
+                            className={`text-[15px] sm:text-[15px] md:text-base font-medium prose prose-p:my-0 flex-1 min-w-0 break-words w-full pt-1 sm:pt-0 markdown-body ${isSelected ? "font-bold text-primary" : "text-on-surface"}`}
+                          >
+                            <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                               {val}
+                            </Markdown>
+                          </div>
+                        </label>
+                      );
+                    },
+                  )
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider pl-2">Your Answer</label>
+                    <TheoryEditor
+                      value={answers[currentQ.id] || ""}
+                      onChange={(val) => {
+                        const newAnswers = { ...answers, [currentQ.id]: val };
+                        setAnswers(newAnswers);
+                        localStorage.setItem(stateKey, JSON.stringify({
+                           questions,
+                           answers: newAnswers,
+                           currentIndex,
+                           timeLeft
+                        }));
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             </motion.div>

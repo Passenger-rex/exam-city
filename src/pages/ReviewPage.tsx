@@ -148,7 +148,7 @@ export default function ReviewPage() {
     );
   }
 
-  const scorePercentage = Math.round((result.score / result.total) * 100);
+  const scorePercentage = result.isTheory ? (result.percent || 0) : Math.round((result.score / result.total) * 100);
 
   return (
     <div className="min-h-screen bg-surface-dim font-body-md text-on-surface">
@@ -172,38 +172,47 @@ export default function ReviewPage() {
           className="bg-surface p-6 sm:p-10 rounded-[24px] sm:rounded-[32px] border border-outline-variant/50 shadow-sm flex flex-col md:flex-row items-center gap-6 sm:gap-10 mb-8 sm:mb-12"
         >
           <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center flex-shrink-0">
-            <svg
-              className="w-full h-full -rotate-90 transform"
-              viewBox="0 0 100 100"
-            >
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="10"
-                className="text-outline-variant/30"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="45"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="10"
-                className={`${scorePercentage >= 80 ? "text-green-500" : scorePercentage >= 60 ? "text-yellow-500" : "text-red-500"} transition-all duration-1000 ease-out`}
-                strokeDasharray={`${scorePercentage * 2.82} 282`}
-              />
-            </svg>
-            <div className="absolute text-center">
-              <p className="text-5xl font-extrabold font-headline-md tracking-tight">
-                {scorePercentage}%
-              </p>
-              <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">
-                Score
-              </p>
-            </div>
+            {result.isTheory && (!result.aiMarks || Object.keys(result.aiMarks).length === 0) ? (
+               <div className="w-full h-full rounded-full border-[10px] border-primary/20 flex flex-col items-center justify-center bg-primary/5 text-primary">
+                 <CheckCircle2 className="w-16 h-16 sm:w-20 sm:h-20 mb-2" />
+                 <span className="font-bold text-sm tracking-wider uppercase">Completed</span>
+               </div>
+            ) : (
+              <>
+                <svg
+                  className="w-full h-full -rotate-90 transform"
+                  viewBox="0 0 100 100"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                    className="text-outline-variant/30"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                    className={`${scorePercentage >= 80 ? "text-green-500" : scorePercentage >= 60 ? "text-yellow-500" : "text-red-500"} transition-all duration-1000 ease-out`}
+                    strokeDasharray={`${scorePercentage * 2.82} 282`}
+                  />
+                </svg>
+                <div className="absolute text-center">
+                  <p className="text-5xl font-extrabold font-headline-md tracking-tight">
+                    {scorePercentage}%
+                  </p>
+                  <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">
+                    Score
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex-1 text-center md:text-left">
@@ -211,7 +220,10 @@ export default function ReviewPage() {
               Exam Review
             </h1>
             <p className="text-lg text-on-surface-variant mb-6 font-medium">
-              You got {result.score} out of {result.total} questions correct.
+              {result.isTheory 
+                ? (result.aiMarks && Object.keys(result.aiMarks).length > 0 ? `Your theory exam was evaluated. You scored ${result.score} out of ${result.total * 10} points.` : "You have completed your theory examination. Review your answers and compare them to the expected points below.")
+                : `You got ${result.score} out of ${result.total} questions correct.`
+              }
             </p>
             <div className="flex flex-wrap gap-4 justify-center md:justify-start">
               <button
@@ -291,43 +303,69 @@ export default function ReviewPage() {
                   </div>
                 )}
 
-                <div className="space-y-3 pl-0 sm:pl-12">
-                  {Object.entries(q.options || {}).map(
-                    ([key, val]: [string, any]) => {
-                      const isUserChoice = userAnswer === key;
-                      const isActualCorrect = q.correct_answer === key;
+                {q.options && Object.keys(q.options).length > 0 ? (
+                  <div className="space-y-3 pl-0 sm:pl-12">
+                    {Object.entries(q.options || {}).map(
+                      ([key, val]: [string, any]) => {
+                        const isUserChoice = userAnswer === key;
+                        const isActualCorrect = q.correct_answer === key;
 
-                      let bgClass = "bg-surface border-outline-variant/50";
-                      let textClass = "text-on-surface";
-                      if (isActualCorrect) {
-                        bgClass = "bg-green-500/10 border-green-500";
-                        textClass = "text-green-700 font-bold";
-                      } else if (isUserChoice && !isActualCorrect) {
-                        bgClass = "bg-red-500/10 border-red-500";
-                        textClass = "text-red-700 font-bold";
-                      }
+                        let bgClass = "bg-surface border-outline-variant/50";
+                        let textClass = "text-on-surface";
+                        if (isActualCorrect) {
+                          bgClass = "bg-green-500/10 border-green-500";
+                          textClass = "text-green-700 font-bold";
+                        } else if (isUserChoice && !isActualCorrect) {
+                          bgClass = "bg-red-500/10 border-red-500";
+                          textClass = "text-red-700 font-bold";
+                        }
 
-                      return (
-                        <div
-                          key={key}
-                          className={`p-4 rounded-2xl border-2 flex justify-between items-center ${bgClass} markdown-body`}
-                        >
-                          <div className={`text-sm sm:text-base font-medium flex-1 ${textClass}`}>
-                             <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
-                               {val}
-                             </Markdown>
+                        return (
+                          <div
+                            key={key}
+                            className={`p-4 rounded-2xl border-2 flex justify-between items-center ${bgClass} markdown-body`}
+                          >
+                            <div className={`text-sm sm:text-base font-medium flex-1 ${textClass}`}>
+                               <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                                 {val}
+                               </Markdown>
+                            </div>
+                            {isActualCorrect && (
+                              <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            )}
+                            {isUserChoice && !isActualCorrect && (
+                              <XCircle className="w-5 h-5 text-red-600" />
+                            )}
                           </div>
-                          {isActualCorrect && (
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                          )}
-                          {isUserChoice && !isActualCorrect && (
-                            <XCircle className="w-5 h-5 text-red-600" />
-                          )}
+                        );
+                      },
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4 pl-0 sm:pl-12">
+                    <div className="p-5 rounded-2xl border-2 bg-surface-dim border-outline-variant/50">
+                      <h4 className="font-bold text-sm uppercase tracking-wider mb-2 text-on-surface-variant flex items-center gap-2">
+                        Your Answer
+                      </h4>
+                      <div className="text-on-surface font-medium text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
+                        {userAnswer || <span className="italic text-on-surface-variant/50">No answer provided.</span>}
+                      </div>
+                    </div>
+                    
+                    {q.correct_answer && (
+                      <div className="p-5 rounded-2xl border-2 bg-green-500/5 border-green-500/30">
+                        <h4 className="font-bold text-sm uppercase tracking-wider mb-2 text-green-700 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4" /> Expected Answer Points
+                        </h4>
+                        <div className="text-green-900 dark:text-green-100 font-medium text-sm sm:text-base leading-relaxed markdown-body">
+                           <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                             {q.correct_answer}
+                           </Markdown>
                         </div>
-                      );
-                    },
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {q.explanation && (
                   <div className="mt-8 pl-0 sm:pl-12">
@@ -341,6 +379,31 @@ export default function ReviewPage() {
                         <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
                           {q.explanation}
                         </Markdown>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Theory Assessment */}
+                {result.isTheory && result.aiMarks && result.aiMarks[q.id] !== undefined && (
+                  <div className="mt-8 pl-0 sm:pl-12">
+                    <div className="p-6 rounded-2xl border-2 border-primary/30 bg-primary/5 space-y-4">
+                      <h4 className="font-bold text-sm uppercase tracking-wider text-primary flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" /> AI Evaluation
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-on-surface-variant">Mark:</span>
+                          <span className="font-bold text-lg text-primary">{result.aiMarks[q.id] || 0} / 10</span>
+                        </div>
+                        {result.aiFeedback && result.aiFeedback[q.id] && (
+                          <div className="space-y-1">
+                            <span className="text-sm font-bold text-on-surface-variant">Feedback:</span>
+                            <div className="p-4 bg-surface rounded-xl border border-outline-variant/30 text-on-surface text-sm leading-relaxed whitespace-pre-wrap">
+                              {result.aiFeedback[q.id]}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -924,6 +924,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       topic = "",
       level = "standard",
       board = "",
+      qtype = "mcq",
     } = req.query;
     const limitNum = type === "micro" ? 5 : 40;
 
@@ -942,6 +943,7 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
     const isStandardLevel = String(level).trim().toLowerCase() === "standard";
     const isAlocEligible =
       isStandardLevel &&
+      qtype === "mcq" &&
       bank === "public" &&
       [
         "mathematics",
@@ -1067,43 +1069,81 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
 
       const randomEntropy = Math.floor(Math.random() * 1000000000);
 
-      const prompt = `Generate exactly ${limitNum} novel, academically challenging, and high-quality mock exam multiple choice questions for the subject: "${subjectStr}"${board ? ` aligned with the ${board} board` : ""}. 
-      ${yearInstruction} 
-      ${topicInstruction}
-      ${boardInstruction}
-      
-      The questions MUST:
-      1. Be entirely novel and highly varied. Absolutely NO duplication, repetition, or overlapping concepts. Vary the settings, values, variables, clinical presentations, or theoretical problems across all questions. (Internal entropy seed: ${randomEntropy})
-      2. Strictly follow the STANDARD CURRICULUM of the chosen level ("${level}"). They must not be too simple, requiring multiple cognitive steps or applied knowledge, but they MUST remain strictly within the established examinable topics for this level, avoiding un-examinable edge cases.
-      3. For secondary levels (e.g. 100 level, SSCE, Jamb), perfectly match the syllabus of standard boards (WAEC, NECO, UTME). For higher levels, match the rigorous curriculum of premier institutions.
-      ${levelInstruction}
-      ${clinicalInstruction}
-      4. Use precise modern nomenclature and maintain terminology appropriate for the target exam level.
-      5. Provide highly plausible distractors (incorrect options). The distinctions between correct and incorrect options should be clear but require real understanding to discern.
-      6. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
-      
-      IMPORTANT FOR MATHEMATICS/SCIENCE:
-      - Use inline LaTeX formatting with standard MathJax delimiters: use single dollar signs $...$ for inline equations, and double dollar signs $$...$$ for block/display equations.
-      - Ensure mathematical expressions, fractions (\frac{a}{b}), subscripts, superscripts, algebras, and symbols are well-formatted in standard LaTeX.
-      - DO NOT use raw HTML tags (like <sup> or <sub>) for mathematical equations.
-      - For Chemistry formulas (like Sodium Sulfide), use standard unicode subscript formatting (e.g., follow this exact pattern: Na₂S) instead of LaTeX or HTML subscripts.
-      
-      Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
-      
-      IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted matching this schema:
-      {
-         "subject": "${responseSubject}",
-         "data": [
-            {
-               "id": "q1",
-               "question": "question HTML or text here",
-               "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
-               "answer": "a",
-               "solution": "step by step solution",
-               "examyear": "2024"
-            }
-         ]
-      }`;
+      let prompt = "";
+      if (qtype === "theory") {
+        prompt = `Generate exactly ${limitNum} novel, academically challenging, and high-quality mock exam Theory (Long Answer and Short Answer) questions for the subject: "${subjectStr}"${board ? ` aligned with the ${board} board` : ""}. 
+        ${yearInstruction} 
+        ${topicInstruction}
+        ${boardInstruction}
+        
+        The questions MUST:
+        1. Be entirely novel and highly varied. Include a mix of short answer questions (SAQ) and long answer questions (LAQ). (Internal entropy seed: ${randomEntropy})
+        2. Strictly follow the STANDARD CURRICULUM of the chosen level ("${level}"). They must not be too simple, requiring multiple cognitive steps or applied knowledge, but they MUST remain strictly within the established examinable topics for this level, avoiding un-examinable edge cases.
+        3. For secondary levels (e.g. 100 level, SSCE, Jamb), perfectly match the syllabus of standard boards (WAEC, NECO, UTME). For higher levels, match the rigorous curriculum of premier institutions.
+        ${levelInstruction}
+        ${clinicalInstruction}
+        4. Use precise modern nomenclature and maintain terminology appropriate for the target exam level.
+        5. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
+        
+        IMPORTANT FOR MATHEMATICS/SCIENCE:
+        - Use inline LaTeX formatting with standard MathJax delimiters: use single dollar signs $...$ for inline equations, and double dollar signs $$...$$ for block/display equations.
+        - Ensure mathematical expressions, fractions (\\frac{a}{b}), subscripts, superscripts, algebras, and symbols are well-formatted in standard LaTeX.
+        - DO NOT use raw HTML tags (like <sup> or <sub>) for mathematical equations.
+        - For Chemistry formulas (like Sodium Sulfide), use standard unicode subscript formatting (e.g., follow this exact pattern: Na₂S) instead of LaTeX or HTML subscripts.
+        
+        IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted matching this schema:
+        {
+           "subject": "${responseSubject}",
+           "data": [
+              {
+                 "id": "q1",
+                 "question": "question HTML or text here",
+                 "option": {},
+                 "answer": "This is a theory question. A comprehensive explanation or the expected answer points should go here.",
+                 "solution": "step by step solution or grading rubric",
+                 "examyear": "2024"
+              }
+           ]
+        }`;
+      } else {
+        prompt = `Generate exactly ${limitNum} novel, academically challenging, and high-quality mock exam multiple choice questions for the subject: "${subjectStr}"${board ? ` aligned with the ${board} board` : ""}. 
+        ${yearInstruction} 
+        ${topicInstruction}
+        ${boardInstruction}
+        
+        The questions MUST:
+        1. Be entirely novel and highly varied. Absolutely NO duplication, repetition, or overlapping concepts. Vary the settings, values, variables, clinical presentations, or theoretical problems across all questions. (Internal entropy seed: ${randomEntropy})
+        2. Strictly follow the STANDARD CURRICULUM of the chosen level ("${level}"). They must not be too simple, requiring multiple cognitive steps or applied knowledge, but they MUST remain strictly within the established examinable topics for this level, avoiding un-examinable edge cases.
+        3. For secondary levels (e.g. 100 level, SSCE, Jamb), perfectly match the syllabus of standard boards (WAEC, NECO, UTME). For higher levels, match the rigorous curriculum of premier institutions.
+        ${levelInstruction}
+        ${clinicalInstruction}
+        4. Use precise modern nomenclature and maintain terminology appropriate for the target exam level.
+        5. Provide highly plausible distractors (incorrect options). The distinctions between correct and incorrect options should be clear but require real understanding to discern.
+        6. **CRITICAL: NEVER mention the internal seed in the generated questions, explanations, or output text.**
+        
+        IMPORTANT FOR MATHEMATICS/SCIENCE:
+        - Use inline LaTeX formatting with standard MathJax delimiters: use single dollar signs $...$ for inline equations, and double dollar signs $$...$$ for block/display equations.
+        - Ensure mathematical expressions, fractions (\\frac{a}{b}), subscripts, superscripts, algebras, and symbols are well-formatted in standard LaTeX.
+        - DO NOT use raw HTML tags (like <sup> or <sub>) for mathematical equations.
+        - For Chemistry formulas (like Sodium Sulfide), use standard unicode subscript formatting (e.g., follow this exact pattern: Na₂S) instead of LaTeX or HTML subscripts.
+        
+        Keep the 'solution' field very brief (1-2 sentences maximum) explaining the exact step-by-step reasoning or mathematical proof.
+        
+        IMPORTANT: You MUST return your response as a raw JSON string EXACTLY formatted matching this schema:
+        {
+           "subject": "${responseSubject}",
+           "data": [
+              {
+                 "id": "q1",
+                 "question": "question HTML or text here",
+                 "option": { "a": "opt A", "b": "opt B", "c": "opt C", "d": "opt D" },
+                 "answer": "a",
+                 "solution": "step by step solution",
+                 "examyear": "2024"
+              }
+           ]
+        }`;
+      }
 
       console.log(
         `[AI Generation] Dispatching request for extremely challenging questions of ${subjectStr} (Topic: ${topicStr || "None"})`,
@@ -1124,17 +1164,20 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
         responseSubject = String(json.subject);
       }
       if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-        allQuestions = json.data.map((q: any) => ({
-          ...q,
-          question: formatMath(q.question || ""),
-          solution: formatMath(q.solution || ""),
-          option: {
-            a: formatMath(q.option?.a || ""),
-            b: formatMath(q.option?.b || ""),
-            c: formatMath(q.option?.c || ""),
-            d: formatMath(q.option?.d || ""),
-          },
-        }));
+        allQuestions = json.data.map((q: any) => {
+          const parsedOption: any = {};
+          if (q.option && typeof q.option === 'object' && Object.keys(q.option).length > 0) {
+             Object.entries(q.option).forEach(([k, v]) => {
+                parsedOption[k] = formatMath(v as string);
+             });
+          }
+          return {
+            ...q,
+            question: formatMath(q.question || ""),
+            solution: formatMath(q.solution || ""),
+            option: parsedOption,
+          };
+        });
       } else {
         throw new Error("AI returned empty or invalid question data format.");
       }
@@ -1161,12 +1204,14 @@ app.get(["/api/questions", "/questions"], async (req, res) => {
       const topicStr = String(req.query.topic || "");
       const levelStr = String(req.query.level || "standard");
       const limitNum = req.query.type === "micro" ? 5 : 40;
+      const qtypeStr = String(req.query.qtype || "mcq");
 
       const fallbackQuestions = FallbackGenerator.generateFallbackQuestions(
         subjectStr,
         topicStr,
         levelStr,
         limitNum,
+        qtypeStr as any
       );
       const customSubject = topicStr
         ? `${subjectStr} - ${topicStr}`
@@ -1374,7 +1419,7 @@ app.post("/api/process-file", async (req, res) => {
           ${curTopics && curTopics.length > 0 ? curTopics.map((t, idx) => `* ${idx + 1}. ${t}`).join("\n          ") : "Standard curriculum guidelines."}
         
         ALIGNED GENERATION REQUIREMENT:
-        You MUST align generated questions or summaries directly with the official curriculum specified above. Scan the uploaded file content, identify the overlapping academic topics, and frame the study questions or mock questions so that they test these formal curriculum areas.
+        You MUST align generated questions or summaries directly with the official curriculum specified above. Scan the uploaded file content, identify the overlapping academic topics, and frame the study questions or mock questions so that they test these formal curriculum areas. If generating questions, discard/ignore any content in the uploaded file that falls OUTSIDE this official curriculum scope. Your questions MUST map strictly to the Core Curriculum Topics.
     `;
 
     const isImage =
@@ -1392,6 +1437,8 @@ app.post("/api/process-file", async (req, res) => {
         Ensure your explanations and generated content tightly adhere to this specific academic level's curriculum.
 
         ${curriculumDetailsBlock}
+        
+        If the user asks for study questions, YOU MUST explicitly map them to the curriculum topics listed above. Only generate questions that are relevant to both the uploaded file AND the official curriculum.
 
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
 
@@ -1581,6 +1628,8 @@ app.post("/api/process-file", async (req, res) => {
         Ensure your explanations and generated content tightly adhere to this specific academic level's curriculum.
 
         ${curriculumDetailsBlock}
+        
+        If the user asks for study questions, YOU MUST explicitly map them to the curriculum topics listed above. Only generate questions that test the intersection of the uploaded file's content AND the official curriculum topics. Skip parts of the uploaded file that are irrelevant to the curriculum.
 
         Provide a highly encouraging, structured, and easy-to-understand explanation with bullet points and bold headers. Do not make up information if the content can't be found. Always remain helpful and precise. Respond in Markdown.`;
 
@@ -1721,6 +1770,58 @@ app.post("/api/process-file", async (req, res) => {
             "Unable to process document. Please try a different and smaller format.",
         });
     }
+  }
+});
+
+// Evaluate Theory Questions Endpoint
+app.post("/api/grade-theory", async (req, res) => {
+  const { questions, answers, level = "standard" } = req.body;
+  if (!questions || !answers) {
+    return res.status(400).json({ error: "Questions and answers are required" });
+  }
+
+  try {
+    const prompt = `You are an expert academic evaluator. You are grading a student's theory examination.
+Level: ${level}
+
+Here are the questions and their expected rubrics/solutions. You must evaluate the student's answer based on semantic intent, keywords, and rubrics, rather than strict string matching.
+
+${questions.map((q: any, i: number) => `
+Question ${i + 1} (ID: ${q.id}): ${q.question}
+Expected Solution / Rubric: ${q.answer || q.solution}
+Student Answer: ${answers[q.id] || "No answer provided"}
+`).join("\n")}
+
+Respond ONLY with a JSON object where keys are the question IDs, and the value is an object containing 'mark' (integer 0 to 10) and 'feedback' (string, brief feedback).
+Example format:
+{
+  "q_id_1": { "mark": 8, "feedback": "Good understanding of core concepts." }
+}
+    `;
+
+    if (!genai) {
+      throw new Error("Gemini API key not configured");
+    }
+
+    const aiResponse = await genai.models.generateContent({
+      model: "gemini-2.5-pro", // use a good reasoning model for grading
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+
+    try {
+      const result = JSON.parse(aiResponse.text || "{}");
+      return res.json(result);
+    } catch (e) {
+      console.error("Error parsing JSON from AI grader", e);
+      return res.json({});
+    }
+
+  } catch (error) {
+    console.error("Error grading theory:", error);
+    return res.status(500).json({ error: "Failed to grade theory examination" });
   }
 });
 

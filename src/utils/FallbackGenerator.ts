@@ -18,7 +18,8 @@ export class FallbackGenerator {
     subject: string,
     topic: string = "",
     level: string = "standard",
-    count: number = 40
+    count: number = 40,
+    qtype: "mcq" | "theory" = "mcq"
   ): QuestionSchema[] {
     const subtopics = CurriculumManager.getSubTopics(subject, level);
     const chosenTopic = topic || subtopics[Math.floor(Math.random() * subtopics.length)] || "General Principles";
@@ -252,20 +253,31 @@ export class FallbackGenerator {
           sol = `Secondary national syllabus constraints require straightforward comprehension, definition, and basic calculations of core textbook terms.`;
         }
 
+        const isTheory = qtype === "theory";
+
         compiledQuestions.push({
           id: `fallback-${subject.replace(/\s+/g, "-")}-${i}`,
-          question: customQ,
-          option: {
+          question: isTheory ? customQ.replace("Which statement best describes", "Describe").replace("which option is correct", "explain the key concept") : customQ,
+          option: isTheory ? {} : {
             a: optA,
             b: optB,
             c: optC,
             d: optD
           },
-          answer: ans,
+          answer: isTheory ? sol : ans,
           solution: sol,
           examyear: "Standard Curriculum"
         });
       }
+    }
+
+    if (qtype === "theory") {
+       return compiledQuestions.map(q => ({
+          ...q,
+          option: {},
+          question: q.question.replace("Which of the following", "Explain the").replace("Which statement best describes", "Describe").replace("which option is correct", "explain the key concept"),
+          answer: q.solution
+       }));
     }
 
     return compiledQuestions;

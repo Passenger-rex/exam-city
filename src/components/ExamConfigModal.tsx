@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { CurriculumManager } from "../utils/CurriculumManager";
 import { db, auth } from "../firebase";
 import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
+import { appConfig } from "../config";
 
 interface ExamConfigModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function ExamConfigModal({
   const [subject, setSubject] = useState<string>("Mathematics");
   const [topic, setTopic] = useState<string>("");
   const [difficulty, setDifficulty] = useState<string>("standard");
+  const [questionType, setQuestionType] = useState<"mcq" | "theory">("mcq");
   const [examBoard, setExamBoard] = useState<string>("any");
   const [strictMode, setStrictMode] = useState<boolean>(false);
   const [includePdfAnswers, setIncludePdfAnswers] = useState<boolean>(false);
@@ -311,7 +313,7 @@ export function ExamConfigModal({
     // Clear demo result before starting a new one to prevent conflicts
     sessionStorage.removeItem("demoResult");
     
-    let url = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}`;
+    let url = `/exam?subject=${subject}&year=${selectedYear}&type=${examType}&bank=${bankType}&qtype=${questionType}`;
     if (topic.trim()) url += `&topic=${encodeURIComponent(topic.trim())}`;
     if (difficulty !== "standard") url += `&level=${difficulty}`;
     if (strictMode) url += `&strict=true`;
@@ -345,7 +347,7 @@ export function ExamConfigModal({
           <div>
             <h2 className="text-xl font-bold text-on-surface tracking-tight font-headline-md flex items-center gap-2">
               <div className="w-1.5 h-6 bg-primary rounded-full"></div>
-              Exam Setup
+              {questionType === "theory" ? "Theory Exam Setup" : "Exam Setup"}
             </h2>
           </div>
           <button
@@ -359,7 +361,7 @@ export function ExamConfigModal({
         {/* Scrollable Content */}
         <div className="overflow-y-auto overflow-x-hidden flex-1 custom-scrollbar p-4 sm:p-5 md:p-6 space-y-6 md:space-y-8">
           
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-3 gap-4">
             {/* Subject Dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-bold text-on-surface">Subject</label>
@@ -372,6 +374,26 @@ export function ExamConfigModal({
                   {subjectsList.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Question Type */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-on-surface">Question Type</label>
+              <div className="relative">
+                <select
+                  value={questionType}
+                  onChange={(e) => setQuestionType(e.target.value as any)}
+                  className="w-full p-3 bg-surface-dim border border-outline-variant/60 rounded-xl outline-none text-on-surface font-semibold text-sm appearance-none pr-10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 cursor-pointer"
+                >
+                  <option value="mcq">Multiple Choice</option>
+                  {appConfig.theoryExamsEnabled && (
+                    <option value="theory">Theory (LAQ & SAQ)</option>
+                  )}
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant flex items-center justify-center">
                   <ChevronDown className="w-4 h-4" />
@@ -609,7 +631,7 @@ export function ExamConfigModal({
               ) : showPremiumGate ? (
                 <>Unlock Access</>
               ) : (
-                <><Play className="w-4 h-4 fill-current" /> {isDemo ? "Start Demo Exam" : "Initialize Exam"}</>
+                <><Play className="w-4 h-4 fill-current" /> {isDemo ? "Start Demo Exam" : `Initialize ${questionType === "theory" ? "Theory " : ""}Exam`}</>
               )}
             </button>
             
